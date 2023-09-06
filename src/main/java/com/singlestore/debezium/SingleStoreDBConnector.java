@@ -1,4 +1,4 @@
-package com.singlestore;
+package com.singlestore.debezium;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,7 +28,12 @@ public class SingleStoreDBConnector extends RelationalBaseSourceConnector {
 
     @Override
     public String version() {
-        // TODO return package version
+        return Module.version();
+    }
+
+    @Override
+    public Class<? extends Task> taskClass() {
+        return SingleStoreDBConnectorTask.class;
     }
 
     @Override
@@ -36,10 +41,6 @@ public class SingleStoreDBConnector extends RelationalBaseSourceConnector {
         this.properties = Collections.unmodifiableMap(new HashMap<>(props));
     }
 
-    @Override
-    public Class<? extends Task> taskClass() {
-        return SingleStoreDBConnectorTask.class;
-    }
 
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
