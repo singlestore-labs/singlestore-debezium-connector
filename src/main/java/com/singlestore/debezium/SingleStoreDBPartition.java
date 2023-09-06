@@ -12,7 +12,7 @@ import io.debezium.relational.AbstractPartition;
 import io.debezium.util.Collect;
 
 public class SingleStoreDBPartition extends AbstractPartition {
-        private static final String SERVER_PARTITION_KEY = "server";
+    private static final String SERVER_PARTITION_KEY = "server";
 
     private final String serverName;
 
