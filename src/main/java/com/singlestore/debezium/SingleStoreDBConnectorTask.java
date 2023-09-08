@@ -1,22 +1,31 @@
 package com.singlestore.debezium;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.source.SourceTask;
 
-import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.document.DocumentReader;
+import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.signal.SignalProcessor;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.util.Clock;
+import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 
 public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPartition, SingleStoreDBOffsetContext> {
     
@@ -36,11 +45,15 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
 
     @Override
     public ChangeEventSourceCoordinator<SingleStoreDBPartition, SingleStoreDBOffsetContext> start(Configuration config) {
+        final Clock clock = Clock.system();
         final SingleStoreDBConnectorConfig connectorConfig = new SingleStoreDBConnectorConfig(config);
         final SchemaNameAdjuster schemaNameAdjuster =  connectorConfig.schemaNameAdjuster();
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(SingleStoreDBConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SingleStoreDBValueConverter valueConverter = new SingleStoreDBValueConverter();
         final SingleStoreDBDefaultValueConverter defaultValueConverter = new SingleStoreDBDefaultValueConverter();
+
+        MainConnectionProvidingConnectionFactory<SingleStoreDBConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
+                () -> new SingleStoreDBConnection(new SingleStoreDBConnectorConfig(config)));
 
         this.schema = new SingleStoreDBDatabaseSchema(connectorConfig,
         defaultValueConverter, 
@@ -53,43 +66,40 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
         SingleStoreDBEventMetadataProvider metadataProvider = new SingleStoreDBEventMetadataProvider();
         SingleStoreDBErrorHandler errorHandler = new SingleStoreDBErrorHandler(connectorConfig, queue);
 
+        Offsets<SingleStoreDBPartition, SingleStoreDBOffsetContext> previousOffsets = getPreviousOffsets(
+            new SingleStoreDBPartition.Provider(connectorConfig, config),
+            new SingleStoreDBOffsetContext.Loader(connectorConfig));
+
+        SignalProcessor<SingleStoreDBPartition, SingleStoreDBOffsetContext> signalProcessor = new SignalProcessor<>(
+            SingleStoreDBConnector.class, connectorConfig, Map.of(),
+                    getAvailableSignalChannels(),
+                    DocumentReader.defaultReader(),
+                    previousOffsets);
+
+
         final EventDispatcher<SingleStoreDBPartition, TableId> dispatcher = new EventDispatcher<>(
-                    connectorConfig,
-                    topicNamingStrategy,
-                    schema,
-                    queue,
-                    connectorConfig.getTableFilters().dataCollectionFilter(),
-                    DataChangeEvent::new,
-                    metadataProvider,
-                    // TODO: add heartbeat
-                    schemaNameAdjuster,
-                    signalProcessor);
-
-        // TODO
-        // change this.taskName
-        // change this.taskContext
-        // change this.schema
-
-        // schema = new SingleStoreDBDatabaseSchema(connectorConfig, null, null, schemaNameAdjuster, false, null)
-
-        // offset
-        // errorHandler
-        // ChangeEventSourceFactory
-        // ChangeEventSourceMetricsFactory
-        // dispatcher
-        // schema
-        // signalProcessor
-        // notificationService
-        // taskContext
-        // metadataProvider
+            connectorConfig,
+            topicNamingStrategy,
+            schema,
+            queue,
+            connectorConfig.getTableFilters().dataCollectionFilter(),
+            DataChangeEvent::new,
+            metadataProvider,
+            // TODO: add heartbeat
+            schemaNameAdjuster,
+            signalProcessor);
+        
+        NotificationService<SingleStoreDBPartition, SingleStoreDBOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
+                    connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
         ChangeEventSourceCoordinator<SingleStoreDBPartition, SingleStoreDBOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
             previousOffsets,
             errorHandler,
             SingleStoreDBConnector.class,
             connectorConfig,
-            new SingleStoreDBChangeEventSourceFactory(),
-            new SingleStoreDBChangeEventSourceMetricsFactory(),
+            new SingleStoreDBChangeEventSourceFactory(connectorConfig, connectionFactory, schema, dispatcher, clock),
+            // TODO create custom metrics
+            new DefaultChangeEventSourceMetricsFactory<>(),            
             dispatcher,
             schema,
             signalProcessor,
