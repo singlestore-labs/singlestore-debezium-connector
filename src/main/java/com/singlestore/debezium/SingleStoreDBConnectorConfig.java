@@ -6,27 +6,25 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.SourceInfoStructMaker;
-import io.debezium.document.Document;
 import io.debezium.relational.ColumnFilterMode;
-import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
-import io.debezium.relational.history.HistoryRecordComparator;
 
-public class SingleStoreDBConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
-    
+public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorConfig {
+    protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
+
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(SingleStoreDBSourceInfoStructMaker.class.getName());
 
     public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
 
     public SingleStoreDBConnectorConfig(Configuration config) {
-        super(SingleStoreDBConnector.class,
-            config,
+        super(config,
             new SystemTablesPredicate(),
             // TODO: think if we need to escape names
             x -> x.schema() + "." + x.table(),
-            true,
             DEFAULT_SNAPSHOT_FETCH_SIZE,
             ColumnFilterMode.CATALOG,
             false);
@@ -42,17 +40,6 @@ public class SingleStoreDBConnectorConfig extends HistorizedRelationalDatabaseCo
 
     public static ConfigDef configDef() {
         return CONFIG_DEFINITION.configDef();
-    }
-
-    @Override
-    protected HistoryRecordComparator getHistoryRecordComparator() {
-        return new HistoryRecordComparator() {
-            @Override
-            protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
-                // TODO: implement
-                return true;
-            }
-        };
     }
 
     @Override
