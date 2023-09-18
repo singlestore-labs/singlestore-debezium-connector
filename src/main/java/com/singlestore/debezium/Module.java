@@ -6,8 +6,6 @@ import io.debezium.util.IoUtil;
 
 /*
  * Information about this module.
- * 
- * @author Adalbert Makarrovych
  */
 public class Module {
     private static final Properties INFO = IoUtil.loadProperties(Module.class, "com/singlestore/debezium/build.version");

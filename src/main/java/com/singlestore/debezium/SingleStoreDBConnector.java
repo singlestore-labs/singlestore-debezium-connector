@@ -14,6 +14,14 @@ import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 
+/**
+ * A Kafka Connect source connector that creates tasks that read the SingleStoreDB change log and generate the corresponding
+ * data change events.
+ * <h2>Configuration</h2>
+ * <p>
+ * This connector is configured with the set of properties described in {@link SingleStoreDBConnectorConfig}.
+ */
+
 public class SingleStoreDBConnector extends RelationalBaseSourceConnector {
 
     @Immutable
@@ -49,7 +57,6 @@ public class SingleStoreDBConnector extends RelationalBaseSourceConnector {
 
     @Override
     public void stop() {
-        // TODO
     }
 
     @Override

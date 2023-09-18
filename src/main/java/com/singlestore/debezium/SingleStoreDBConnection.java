@@ -4,7 +4,6 @@ import io.debezium.jdbc.JdbcConnection;
 
 /**
  * {@link JdbcConnection} extension to be used with SingleStoreDB
- *
  */
 public class SingleStoreDBConnection extends JdbcConnection {
 

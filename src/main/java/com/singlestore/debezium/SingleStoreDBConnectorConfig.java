@@ -11,6 +11,9 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 
+/**
+ * The configuration properties.
+ */
 public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorConfig {
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
 
@@ -18,12 +21,16 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(SingleStoreDBSourceInfoStructMaker.class.getName());
 
+    /**
+     * The set of {@link Field}s defined as part of this configuration.
+     */
+    // TODO add SingleStoreDB specific fields
     public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
 
     public SingleStoreDBConnectorConfig(Configuration config) {
         super(config,
             new SystemTablesPredicate(),
-            // TODO: think if we need to escape names
+            // TODO think if we need to escape names
             x -> x.schema() + "." + x.table(),
             DEFAULT_SNAPSHOT_FETCH_SIZE,
             ColumnFilterMode.CATALOG,
@@ -33,7 +40,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
     private static class SystemTablesPredicate implements TableFilter {
         @Override
         public boolean isIncluded(TableId t) {
-            // TODO: implement
+            // TODO implement
             return true;
         }
     }

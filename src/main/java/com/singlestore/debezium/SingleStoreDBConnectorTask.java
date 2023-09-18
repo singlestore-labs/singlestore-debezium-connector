@@ -26,6 +26,10 @@ import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
+/**
+ * The main task executing streaming from SingleStoreDB.
+ * Responsible for lifecycle management of the streaming code.
+ */
 public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPartition, SingleStoreDBOffsetContext> {
     
     private volatile ChangeEventQueue<DataChangeEvent> queue;
@@ -109,7 +113,7 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
         return coordinator;
     }
 
-        @Override
+    @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
 
@@ -120,9 +124,9 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
         return sourceRecords;
     }
 
-
     @Override
     protected void doStop() {
+        schema.close();
         // TODO
     }
 }
