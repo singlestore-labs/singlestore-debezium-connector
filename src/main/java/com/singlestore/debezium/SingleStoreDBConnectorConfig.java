@@ -61,7 +61,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 2))
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("Additional JDBC parameters to use with connection string to SingleStore server. Format: '&param1=value1&param2 = value2& ...'. The supported parameters are\n" +
+            .withDescription("Additional JDBC parameters to use with connection string to SingleStore server. Format: 'param1=value1; param2 = value2; ...'. The supported parameters are\n" +
                     "available in the `SingleStore Connection String Parameters\n" +
                     "<https://docs.singlestore.com/cloud/developer-resources/connect-with-application-development-tools/connect-with-java-jdbc/the-singlestore-jdbc-driver/#connection-string-parameters>`_.");
 
@@ -140,7 +140,8 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
                     INCLUDE_SCHEMA_COMMENTS,
                     INCLUDE_SCHEMA_CHANGES,
                     SCHEMA_INCLUDE_LIST,
-                    SCHEMA_EXCLUDE_LIST)
+                    SCHEMA_EXCLUDE_LIST,
+                    QUERY_FETCH_SIZE)
             .type(
                     HOSTNAME,
                     PORT,
