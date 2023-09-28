@@ -12,8 +12,13 @@ import io.debezium.spi.schema.DataCollectionId;
 
 public class SingleStoreDBOffsetContext extends CommonOffsetContext<SourceInfo> {
 
+    private final Schema sourceInfoSchema;
+
     public SingleStoreDBOffsetContext(SingleStoreDBConnectorConfig connectorConfig) {
         super(new SourceInfo(connectorConfig));
+
+        sourceInfo.update(null, null, null, null);
+        sourceInfoSchema = sourceInfo.schema();
     }
 
     public static class Loader implements OffsetContext.Loader<SingleStoreDBOffsetContext> {
@@ -41,14 +46,12 @@ public class SingleStoreDBOffsetContext extends CommonOffsetContext<SourceInfo> 
 
     @Override
     public Schema getSourceInfoSchema() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getSourceInfoSchema'");
+        return sourceInfoSchema;
     }
 
     @Override
     public boolean isSnapshotRunning() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'isSnapshotRunning'");
+        return sourceInfo.isSnapshot();
     }
 
     @Override
