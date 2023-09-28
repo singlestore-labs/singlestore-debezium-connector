@@ -56,7 +56,7 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
         final SingleStoreDBDefaultValueConverter defaultValueConverter = new SingleStoreDBDefaultValueConverter();
 
         MainConnectionProvidingConnectionFactory<SingleStoreDBConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
-                () -> new SingleStoreDBConnection(new SingleStoreDBConnectorConfig(config)));
+                () -> new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(config)));
 
         this.schema = new SingleStoreDBDatabaseSchema(connectorConfig,
         defaultValueConverter, 
