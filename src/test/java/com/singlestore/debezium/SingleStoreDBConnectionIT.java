@@ -1,17 +1,12 @@
 package com.singlestore.debezium;
 
-import com.singlestore.jdbc.Connection;
-import io.debezium.config.Configuration;
-import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
+
 import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Test;
-import org.testcontainers.containers.GenericContainer;
 
 import java.sql.*;
 import java.time.Instant;
@@ -27,52 +22,7 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
 
-public class SingleStoreDBConnectionIT {
-
-    @ClassRule
-    public static GenericContainer SINGLESTORE_SERVER
-            = new GenericContainer("singlestore-poc-observe-v1")
-            .withExposedPorts(3306);
-
-    static {
-        SINGLESTORE_SERVER.start();
-    }
-
-    private static final Integer EXPOSED_PORT = SINGLESTORE_SERVER.getFirstMappedPort();
-    private static final String DATABASE = "debezium";
-
-    @BeforeClass
-    public static void init() throws SQLException {
-        try (Connection connection = (Connection) DriverManager.getConnection("jdbc:singlestore://localhost:" + EXPOSED_PORT + "/?user=root");
-             Statement statement = connection.createStatement()) {
-            statement.execute("CREATE DATABASE " + DATABASE);
-            statement.execute("USE " + DATABASE);
-            statement.execute("DROP TABLE IF EXISTS person");
-            statement.execute("DROP TABLE IF EXISTS product");
-            statement.execute("DROP TABLE IF EXISTS purchased");
-            statement.execute("CREATE TABLE person ("
-                    + "  name VARCHAR(255) primary key,"
-                    + "  birthdate DATE NULL,"
-                    + "  age INTEGER NULL DEFAULT 10,"
-                    + "  salary DECIMAL(5,2),"
-                    + "  bitStr BIT(18),"
-                    + "  sort key(name),"
-                    + "  unique key(age)"
-                    + ")");
-            statement.execute("CREATE TABLE product ("
-                    + "  id INT NOT NULL AUTO_INCREMENT,"
-                    + "  createdByDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
-                    + "  modifiedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
-                    + "  PRIMARY KEY(id)"
-                    + ")");
-            statement.execute("CREATE TABLE purchased ("
-                    + "  purchaser VARCHAR(255) NOT NULL,"
-                    + "  productId INT NOT NULL,"
-                    + "  purchaseDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
-                    + "  PRIMARY KEY(productId,purchaser)"
-                    + ")");
-        }
-    }
+public class SingleStoreDBConnectionIT extends IntegrationTestBase {
 
     @Test
     public void testConnection() {
@@ -80,7 +30,7 @@ public class SingleStoreDBConnectionIT {
             conn.connect();
             assertTrue(conn.isConnected());
             assertTrue(conn.isValid());
-            assertEquals("jdbc:singlestore://localhost:" + EXPOSED_PORT + "/?connectTimeout=30000", conn.connectionString());
+            assertEquals("jdbc:singlestore://localhost:" + TEST_PORT + "/?connectTimeout=30000", conn.connectionString());
             conn.close();
             assertFalse(conn.isConnected());
         } catch (SQLException e) {
@@ -91,7 +41,7 @@ public class SingleStoreDBConnectionIT {
     @Test
     public void testPrepareQuery() {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
-            conn.execute("use " + DATABASE);
+            conn.execute("use " + TEST_DATABASE);
             conn.prepareQuery("insert into person values(?, ?, ?, ?, ?)", ps -> {
                 ps.setString(1, "product4");
                 ps.setDate(2, Date.valueOf(LocalDate.now()));
@@ -124,13 +74,13 @@ public class SingleStoreDBConnectionIT {
     @Test
     public void testMetadata() {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
-            Set<TableId> tableIds = conn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream().filter(t -> t.catalog().equals(DATABASE)).collect(Collectors.toSet());
+            Set<TableId> tableIds = conn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream().filter(t -> t.catalog().equals(TEST_DATABASE)).collect(Collectors.toSet());
             Set<String> tableNames = tableIds.stream().map(TableId::table).collect(Collectors.toSet());
             assertEquals("readAllTableNames returns a wrong number of tables", 3, tableIds.size());
             assertTrue("readAllTableNames doesn't contain correct table names", tableNames.containsAll(Arrays.asList("person", "product", "purchased")));
             Set<String> catalogNames = conn.readAllCatalogNames();
-            assertTrue("readAllCatalogNames returns a wrong catalog name", catalogNames.contains("debezium"));
-            tableNames = conn.readTableNames("debezium", "", "person", new String[]{"TABLE", "VIEW"})
+            assertTrue("readAllCatalogNames returns a wrong catalog name", catalogNames.contains(TEST_DATABASE));
+            tableNames = conn.readTableNames(TEST_DATABASE, "", "person", new String[]{"TABLE", "VIEW"})
                     .stream().map(TableId::table).collect(Collectors.toSet());
             assertTrue("readTableNames returns a wrong table name", tableNames.contains("person"));
             TableId person = tableIds.stream().filter(t -> t.table().equals("person")).findFirst().orElseThrow();
@@ -147,9 +97,9 @@ public class SingleStoreDBConnectionIT {
     public void testReadSchemaMetadata() {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
-            conn.readSchema(tables, DATABASE, null, null, null, true);
+            conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             assertThat(tables.size()).isEqualTo(3);
-            Table person = tables.forTable(DATABASE, null, "person");
+            Table person = tables.forTable(TEST_DATABASE, null, "person");
             assertThat(person).isNotNull();
             assertThat(person.filterColumns(col -> col.isAutoIncremented())).isEmpty();
             assertThat(person.primaryKeyColumnNames()).containsOnly("name");
@@ -200,8 +150,8 @@ public class SingleStoreDBConnectionIT {
             assertThat(person.columnWithName("bitStr").isGenerated()).isFalse();
             assertThat(person.columnWithName("bitStr").isOptional()).isTrue();
             tables = new Tables();
-            conn.readSchema(tables, DATABASE, null, null, null, true);
-            Table product = tables.forTable(DATABASE, null, "product");
+            conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
+            Table product = tables.forTable(TEST_DATABASE, null, "product");
             assertThat(product).isNotNull();
             List<Column> autoIncColumns = product.filterColumns(Column::isAutoIncremented);
             assertThat(autoIncColumns.get(0).name()).isEqualTo("id");
@@ -234,8 +184,8 @@ public class SingleStoreDBConnectionIT {
             assertThat(product.columnWithName("modifiedDate").isAutoIncremented()).isFalse();
             assertThat(product.columnWithName("modifiedDate").isOptional()).isFalse();
             tables = new Tables();
-            conn.readSchema(tables, DATABASE, null, null, null, true);
-            Table purchased = tables.forTable(DATABASE, null, "purchased");
+            conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
+            Table purchased = tables.forTable(TEST_DATABASE, null, "purchased");
             assertThat(purchased).isNotNull();
             assertThat(person.filterColumns(col -> col.isAutoIncremented())).isEmpty();
             assertThat(purchased.primaryKeyColumnNames()).containsOnly("productId", "purchaser");
@@ -275,7 +225,7 @@ public class SingleStoreDBConnectionIT {
     public void testObserve() {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
             String tempTableName = "person_temporary";
-            conn.execute("use " + DATABASE,
+            conn.execute("use " + TEST_DATABASE,
                     "DROP TABLE IF EXISTS " + tempTableName,
                     "CREATE TABLE " + tempTableName + " ("
                             + "  name VARCHAR(255) primary key,"
@@ -292,7 +242,7 @@ public class SingleStoreDBConnectionIT {
             CountDownLatch latch = new CountDownLatch(1);
             Thread observer = new Thread(() -> {
                 try (SingleStoreDBConnection observerConn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
-                    Set<TableId> tableIds = observerConn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream().filter(t -> t.catalog().equals(DATABASE)).collect(Collectors.toSet());
+                    Set<TableId> tableIds = observerConn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream().filter(t -> t.catalog().equals(TEST_DATABASE)).collect(Collectors.toSet());
                     Set<TableId> person = tableIds.stream().filter(t -> t.table().equals(tempTableName)).collect(Collectors.toSet());
                     observerConn.observe(person, rs -> {
                         int counter = 0;
@@ -318,18 +268,5 @@ public class SingleStoreDBConnectionIT {
         } catch (SQLException | InterruptedException e) {
             Assert.fail(e.getMessage());
         }
-    }
-
-    public static SingleStoreDBConnection.SingleStoreDBConnectionConfiguration defaultJdbcConnectionConfig() {
-        return new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(defaultJdbcConfig());
-    }
-
-    public static JdbcConfiguration defaultJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                .withDefault(SingleStoreDBConnectorConfig.HOSTNAME, "localhost")
-                .withDefault(SingleStoreDBConnectorConfig.PORT, EXPOSED_PORT)
-                .withDefault(SingleStoreDBConnectorConfig.USER, "root")
-                .withDefault(SingleStoreDBConnectorConfig.PASSWORD, "")
-                .build();
     }
 }
