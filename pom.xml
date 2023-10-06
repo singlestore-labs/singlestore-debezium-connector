@@ -123,7 +123,7 @@
                     <verbose>true</verbose>
                     <images>
                         <image>
-                            <!-- A Docker image using the Postgres Server with the DBZ decoderbufs plugin -->
+                            <!-- A Docker image with SingleStoreDB cluster -->
                             <name>adalbertsinglestore/singlestore-poc-observe</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
