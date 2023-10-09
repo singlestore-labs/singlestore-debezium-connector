@@ -194,7 +194,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
 
         @Override
         public boolean isIncluded(TableId t) {
-            return t.schema() != null && !SYSTEM_SCHEMAS.contains(t.schema().toLowerCase());
+            return t.catalog() != null && !SYSTEM_SCHEMAS.contains(t.catalog().toLowerCase());
         }
     }
 
