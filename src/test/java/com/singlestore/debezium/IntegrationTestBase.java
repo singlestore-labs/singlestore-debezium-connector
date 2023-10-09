@@ -1,31 +1,25 @@
 package com.singlestore.debezium;
 
 import static org.junit.Assert.assertNotNull;
-import static org.mockito.Mockito.framework;
 
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 
-public class IntegrationTestBase {
+abstract class IntegrationTestBase {
 
     public static GenericContainer<?> SINGLESTORE_SERVER;    
+    protected static final String TEST_IMAGE = System.getProperty("singlestoredb.image", "adalbertsinglestore/singlestore-poc-observe");    
     protected static Integer TEST_PORT = Integer.parseInt(System.getProperty("singlestoredb.port", "3306"));
     protected static final String TEST_SERVER = System.getProperty("singlestoredb.host", "localhost");    
     protected static final String TEST_USER = System.getProperty("singlestoredb.user", "root");
@@ -39,7 +33,7 @@ public class IntegrationTestBase {
         } catch (SQLException e) {
             // Failed to connect
             // Assume that docker container is not running and start it
-            SINGLESTORE_SERVER = new GenericContainer<>("adalbertsinglestore/singlestore-poc-observe")
+            SINGLESTORE_SERVER = new GenericContainer<>(TEST_IMAGE)
                 .withExposedPorts(3306);
             SINGLESTORE_SERVER.start();
             TEST_PORT = SINGLESTORE_SERVER.getFirstMappedPort();
@@ -70,7 +64,7 @@ public class IntegrationTestBase {
     }
 
     /**
-     * Executes a JDBC statement using the default jdbc config without autocommitting the connection
+     * Executes a JDBC statement using the default jdbc config
      *
      * @param statement A SQL statement
      * @param furtherStatements Further SQL statement(s)
@@ -83,15 +77,10 @@ public class IntegrationTestBase {
         }
 
         try (SingleStoreDBConnection connection = create()) {
-            connection.setAutoCommit(false);
-            connection.executeWithoutCommitting(statement);
-            Connection jdbcConn = connection.connection();
-            if (!statement.endsWith("ROLLBACK;")) {
-                jdbcConn.commit();
-            }
-            else {
-                jdbcConn.rollback();
-            }
+            // TODO: JDBC 1.1.9 doesn't support non-auto commit mode.
+            // When we will use newer JDBC driver then this can be rewritten to 
+            // don't commit changes if at least one query failed.
+            connection.execute(statement);
         }
         catch (RuntimeException e) {
             throw e;
