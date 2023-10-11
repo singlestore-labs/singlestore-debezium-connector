@@ -1,5 +1,6 @@
 package com.singlestore.debezium;
 
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -8,11 +9,13 @@ import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the SingleStoreDB change log and generate the corresponding
@@ -23,6 +26,8 @@ import io.debezium.connector.common.RelationalBaseSourceConnector;
  */
 
 public class SingleStoreDBConnector extends RelationalBaseSourceConnector {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreDBConnector.class);
 
     @Immutable
     private Map<String, String> properties;
@@ -66,7 +71,24 @@ public class SingleStoreDBConnector extends RelationalBaseSourceConnector {
 
     @Override
     protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
-        // TODO: implement connection validation logic
+        ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
+        // Try to connect to the database ...
+        final SingleStoreDBConnection.SingleStoreDBConnectionConfiguration connectionConfig = 
+            new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(config);
+        try (SingleStoreDBConnection connection = new SingleStoreDBConnection(connectionConfig)) {
+            try {
+                connection.connect();
+                connection.execute("SELECT 1");
+                LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
+            }
+            catch (SQLException e) {
+                LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(), connectionConfig.username(), e);
+                hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.error("Unexpected error shutting down the database connection", e);
+        }
     }
 
     @Override
