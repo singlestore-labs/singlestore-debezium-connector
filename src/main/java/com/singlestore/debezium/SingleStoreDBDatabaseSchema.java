@@ -15,7 +15,7 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 public class SingleStoreDBDatabaseSchema extends RelationalDatabaseSchema {
     public SingleStoreDBDatabaseSchema(SingleStoreDBConnectorConfig connectorConfig, 
     SingleStoreDBDefaultValueConverter defaultValueConverter, TopicNamingStrategy<TableId> topicNamingStrategy,
-    SchemaNameAdjuster schemaNameAdjuster, boolean tableIdCaseInsensitive, SingleStoreDBValueConverter valueConverter) {
+    SchemaNameAdjuster schemaNameAdjuster, boolean tableIdCaseInsensitive, SingleStoreDBValueConverters valueConverter) {
         super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         valueConverter,

@@ -54,6 +54,16 @@
             <artifactId>singlestore-jdbc-client</artifactId>
             <version>${singlestore.jdbc.driver}</version>
         </dependency>
+        <dependency>
+            <groupId>io.github.matthieun</groupId>
+            <artifactId>wkb-wkt-converter</artifactId>
+            <version>1.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.xml.bind</groupId>
+            <artifactId>jaxb-api</artifactId>
+            <version>2.3.1</version>
+        </dependency>
 
         <!-- Testing -->
         <dependency>
@@ -181,7 +191,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- 
+            <!--
             Unlike surefire, the failsafe plugin ensures 'post-integration-test' phase always runs, even
             when there are failed integration tests. We rely upon this to always shut down the Docker container
             after the integration tests (defined as '*IT.java') are run.

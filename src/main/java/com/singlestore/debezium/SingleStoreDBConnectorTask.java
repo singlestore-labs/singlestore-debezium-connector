@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.config.Configuration;
@@ -31,7 +34,7 @@ import io.debezium.util.Clock;
  * Responsible for lifecycle management of the streaming code.
  */
 public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPartition, SingleStoreDBOffsetContext> {
-    
+
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile SingleStoreDBDatabaseSchema schema;
 
@@ -52,8 +55,9 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
         final SingleStoreDBConnectorConfig connectorConfig = new SingleStoreDBConnectorConfig(config);
         final SchemaNameAdjuster schemaNameAdjuster =  connectorConfig.schemaNameAdjuster();
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(SingleStoreDBConnectorConfig.TOPIC_NAMING_STRATEGY);
-        final SingleStoreDBValueConverter valueConverter = new SingleStoreDBValueConverter();
-        final SingleStoreDBDefaultValueConverter defaultValueConverter = new SingleStoreDBDefaultValueConverter();
+        final SingleStoreDBValueConverters valueConverter = new SingleStoreDBValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode(),
+                connectorConfig.binaryHandlingMode());
+        final SingleStoreDBDefaultValueConverter defaultValueConverter = new SingleStoreDBDefaultValueConverter(valueConverter);
 
         MainConnectionProvidingConnectionFactory<SingleStoreDBConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
                 () -> new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(config)));
