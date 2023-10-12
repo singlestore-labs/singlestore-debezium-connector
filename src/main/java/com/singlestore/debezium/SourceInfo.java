@@ -86,10 +86,9 @@ public class SourceInfo extends BaseSourceInfo {
      * @param tableId the table that should be included in the source info
      * @return this instance
      */
-    protected SourceInfo update(TableId tableId, Integer partitionId, String txId, List<String> offsets) {
+    protected SourceInfo update(Integer partitionId, String txId, List<String> offsets) {
         this.partitionId = partitionId;
         this.txId = txId;
-        this.tableId = tableId;
         this.offsets = offsets;
 
         return this;
