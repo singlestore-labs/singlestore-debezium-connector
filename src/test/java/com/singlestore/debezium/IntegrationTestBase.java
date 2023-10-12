@@ -3,9 +3,7 @@ package com.singlestore.debezium;
 import static org.junit.Assert.assertNotNull;
 
 import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.stream.Collectors;
 
@@ -14,9 +12,10 @@ import org.junit.BeforeClass;
 import org.testcontainers.containers.GenericContainer;
 
 import io.debezium.config.Configuration;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 
-abstract class IntegrationTestBase {
+abstract class IntegrationTestBase extends AbstractConnectorTest {
 
     public static GenericContainer<?> SINGLESTORE_SERVER;    
     protected static final String TEST_IMAGE = System.getProperty("singlestoredb.image", "adalbertsinglestore/singlestore-poc-observe");    
@@ -124,7 +123,7 @@ abstract class IntegrationTestBase {
     protected static void executeDDL(String ddlFile) throws Exception {
         URL ddlTestFile = IntegrationTestBase.class.getClassLoader().getResource(ddlFile);
         assertNotNull("Cannot locate " + ddlFile, ddlTestFile);
-        String statements = Files.readAllLines(Paths.get(ddlTestFile.toURI()))
+        String statements = java.nio.file.Files.readAllLines(Paths.get(ddlTestFile.toURI()))
                 .stream()
                 .collect(Collectors.joining(System.lineSeparator()));
         try (SingleStoreDBConnection connection = create()) {
