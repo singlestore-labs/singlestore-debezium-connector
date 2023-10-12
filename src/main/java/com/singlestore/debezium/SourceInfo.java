@@ -95,6 +95,13 @@ public class SourceInfo extends BaseSourceInfo {
         return this;
     }
 
+    // TODO comment
+    protected SourceInfo updateTable(TableId tableId) {
+        this.tableId = tableId;
+
+        return this;
+    }    
+
     @Override
     protected Instant timestamp() {
         // When null is returned - current timestamp will be used
