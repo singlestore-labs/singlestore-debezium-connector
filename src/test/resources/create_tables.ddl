@@ -4,8 +4,7 @@ CREATE TABLE db.person (
     age INTEGER NULL DEFAULT 10,
     salary DECIMAL(5,2),
     bitStr BIT(18),
-    sort key(name),
-    unique key(age)
+    sort key(name)
 );
 CREATE TABLE db.product (
     id INT NOT NULL AUTO_INCREMENT,
@@ -61,5 +60,6 @@ CREATE ROWSTORE TABLE db.allTypesTable (
     `enum_f` ENUM('val1','val2','val3') default 'val1',
     `set_f` SET('v1','v2','v3') default 'v1',
     `geographyColumn` GEOGRAPHY DEFAULT 'POLYGON((1 1,2 1,2 2, 1 2, 1 1))',
-    `geographypointColumn` GEOGRAPHYPOINT DEFAULT 'POINT(1.50000003 1.50000000)'
+    `geographypointColumn` GEOGRAPHYPOINT DEFAULT 'POINT(1.50000003 1.50000000)',
+     unique key(intColumn)
  );

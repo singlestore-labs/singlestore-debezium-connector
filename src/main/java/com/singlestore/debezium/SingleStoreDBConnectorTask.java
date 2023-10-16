@@ -62,12 +62,10 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
         MainConnectionProvidingConnectionFactory<SingleStoreDBConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
                 () -> new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(config)));
 
-        this.schema = new SingleStoreDBDatabaseSchema(connectorConfig,
-        defaultValueConverter, 
-        topicNamingStrategy, 
-        schemaNameAdjuster, 
-        false, 
-        valueConverter);
+        this.schema = new SingleStoreDBDatabaseSchema(connectorConfig, valueConverter,
+                defaultValueConverter,
+                topicNamingStrategy,
+                false);
 
         SingleStoreDBTaskContext taskContext = new SingleStoreDBTaskContext(connectorConfig, schema);
         SingleStoreDBEventMetadataProvider metadataProvider = new SingleStoreDBEventMetadataProvider();

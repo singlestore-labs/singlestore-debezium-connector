@@ -12,7 +12,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Types;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -107,12 +107,13 @@ public class SingleStoreDBDefaultValueConverter implements DefaultValueConverter
             case "DATETIME":
             case "TIMESTAMP":
                 return convertToLocalDateTime(column, value);
-        }
-        int jdbcType = column.jdbcType();
-        switch (jdbcType) {
-            case Types.REAL: //FLOAT
+            case "FLOAT":
+            case "FLOAT UNSIGNED":
                 return Float.parseFloat(value);
-            case Types.DOUBLE:
+            case "BIT":
+                return value.getBytes(StandardCharsets.UTF_8);
+            case "DOUBLE":
+            case "DOUBLE UNSIGNED":
                 return Double.parseDouble(value);
         }
         return value;

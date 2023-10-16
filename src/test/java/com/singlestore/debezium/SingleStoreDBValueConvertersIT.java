@@ -13,7 +13,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.junit.Assert;
 import org.junit.Test;
 
-import javax.xml.bind.DatatypeConverter;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -91,15 +90,17 @@ public class SingleStoreDBValueConvertersIT extends IntegrationTestBase {
     public void testGeometry() {
         String geographyValue = "POLYGON ((1 1, 2 1, 2 2, 1 2, 1 1))";
         String geographyPointValue = "POINT(1.50000003 1.50000000)";
+        SingleStoreDBGeometry singleStoreDBgeographyValue = SingleStoreDBGeometry.fromEkt(geographyValue);
+        SingleStoreDBGeometry singleStoreDBgeographyPointValue = SingleStoreDBGeometry.fromEkt(geographyPointValue);
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
             assertThat(table).isNotNull();
             Struct convertedPolygon = (Struct) convertColumnValue(CONVERTERS, table, "geographyColumn", geographyValue);
-            assertArrayEquals((byte[]) convertedPolygon.get("wkb"), DatatypeConverter.parseHexBinary("000000000300000001000000053FF00000000000003FF000000000000040000000000000003FF0000000000000400000000000000040000000000000003FF000000000000040000000000000003FF00000000000003FF0000000000000"));
+            assertArrayEquals((byte[]) convertedPolygon.get("wkb"), singleStoreDBgeographyValue.getWkb());
             Struct convertedPoint = (Struct) convertColumnValue(CONVERTERS, table, "geographypointColumn", geographyPointValue);
-            assertArrayEquals((byte[]) convertedPoint.get("wkb"), DatatypeConverter.parseHexBinary("00000000013FF80000080D95953FF8000000000000"));
+            assertArrayEquals((byte[]) convertedPoint.get("wkb"), singleStoreDBgeographyPointValue.getWkb());
         } catch (SQLException e) {
             Assert.fail(e.getMessage());
         }
