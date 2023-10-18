@@ -17,13 +17,14 @@ import io.debezium.jdbc.JdbcConfiguration;
 
 abstract class IntegrationTestBase extends AbstractConnectorTest {
 
-    public static GenericContainer<?> SINGLESTORE_SERVER;    
-    protected static final String TEST_IMAGE = System.getProperty("singlestoredb.image", "adalbertsinglestore/singlestore-poc-observe");    
+    public static GenericContainer<?> SINGLESTORE_SERVER;
+    protected static final String TEST_IMAGE = System.getProperty("singlestoredb.image", "adalbertsinglestore/singlestore-poc-observe");
     protected static Integer TEST_PORT = Integer.parseInt(System.getProperty("singlestoredb.port", "3306"));
-    protected static final String TEST_SERVER = System.getProperty("singlestoredb.host", "localhost");    
+    protected static final String TEST_SERVER = System.getProperty("singlestoredb.host", "localhost");
     protected static final String TEST_USER = System.getProperty("singlestoredb.user", "root");
-    protected static final String TEST_PASSWORD = System.getProperty("singlestoredb.password", "");    
+    protected static final String TEST_PASSWORD = System.getProperty("singlestoredb.password", "");
     protected static final String TEST_DATABASE = "db";
+    protected static final String TEST_TOPIC_PREFIX = "singlestore_topic";
 
     @BeforeClass
     public static void init() throws Exception {
@@ -52,7 +53,7 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
             SINGLESTORE_SERVER.close();
         }
     }
-    
+
     /**
      * Obtain a default DB connection.
      *
@@ -91,7 +92,7 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
 
     /**
      * Drops all tables in TEST_DATABASE.
-     * 
+     *
      *
      * @throws SQLException if anything fails.
      */
@@ -110,14 +111,17 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
     }
 
     public static JdbcConfiguration defaultJdbcConfig() {
+        return defaultJdbcConfigBuilder().build();
+    }
+
+    public static JdbcConfiguration.Builder defaultJdbcConfigBuilder() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                .with(SingleStoreDBConnectorConfig.TOPIC_PREFIX, "singlestore-topic")
+                .with(SingleStoreDBConnectorConfig.TOPIC_PREFIX, TEST_TOPIC_PREFIX)
                 .withDefault(SingleStoreDBConnectorConfig.HOSTNAME, TEST_SERVER)
                 .withDefault(SingleStoreDBConnectorConfig.PORT, TEST_PORT)
                 .withDefault(SingleStoreDBConnectorConfig.USER, TEST_USER)
                 .withDefault(SingleStoreDBConnectorConfig.PASSWORD, TEST_PASSWORD)
-                .withDefault(SingleStoreDBConnectorConfig.DRIVER_PARAMETERS, "allowMultiQueries=true")
-                .build();
+                .withDefault(SingleStoreDBConnectorConfig.DRIVER_PARAMETERS, "allowMultiQueries=true");
     }
 
     protected static void executeDDL(String ddlFile) throws Exception {

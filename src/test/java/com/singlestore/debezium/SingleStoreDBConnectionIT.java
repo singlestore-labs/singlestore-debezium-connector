@@ -76,7 +76,7 @@ public class SingleStoreDBConnectionIT extends IntegrationTestBase {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
             Set<TableId> tableIds = conn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream().filter(t -> t.catalog().equals(TEST_DATABASE)).collect(Collectors.toSet());
             Set<String> tableNames = tableIds.stream().map(TableId::table).collect(Collectors.toSet());
-            assertEquals("readAllTableNames returns a wrong number of tables", 3, tableIds.size());
+            assertEquals("readAllTableNames returns a wrong number of tables", 4, tableIds.size());
             assertTrue("readAllTableNames doesn't contain correct table names", tableNames.containsAll(Arrays.asList("person", "product", "purchased")));
             Set<String> catalogNames = conn.readAllCatalogNames();
             assertTrue("readAllCatalogNames returns a wrong catalog name", catalogNames.contains(TEST_DATABASE));
@@ -86,8 +86,9 @@ public class SingleStoreDBConnectionIT extends IntegrationTestBase {
             TableId person = tableIds.stream().filter(t -> t.table().equals("person")).findFirst().orElseThrow();
             List<String> pkList = conn.readPrimaryKeyNames(conn.connection().getMetaData(), person);
             assertTrue(pkList.contains("name"));
-            List<String> uniqueList = conn.readTableUniqueIndices(conn.connection().getMetaData(), person);
-            assertTrue(uniqueList.contains("age"));
+            TableId allTypes = tableIds.stream().filter(t -> t.table().equals("allTypesTable")).findFirst().orElseThrow();
+            List<String> uniqueList = conn.readTableUniqueIndices(conn.connection().getMetaData(), allTypes);
+            assertTrue(uniqueList.contains("intColumn"));
         } catch (SQLException e) {
             Assert.fail(e.getMessage());
         }
@@ -98,7 +99,7 @@ public class SingleStoreDBConnectionIT extends IntegrationTestBase {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
-            assertThat(tables.size()).isEqualTo(3);
+            assertThat(tables.size()).isEqualTo(4);
             Table person = tables.forTable(TEST_DATABASE, null, "person");
             assertThat(person).isNotNull();
             assertThat(person.filterColumns(col -> col.isAutoIncremented())).isEmpty();

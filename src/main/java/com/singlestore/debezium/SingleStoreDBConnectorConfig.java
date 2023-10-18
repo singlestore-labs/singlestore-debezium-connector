@@ -6,6 +6,7 @@ import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.schema.DefaultTopicNamingStrategy;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 
@@ -134,6 +135,8 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
             .withDescription("Server's certificate in DER format or the server's CA certificate. " +
                     "The certificate is added to the trust store, which allows the connection to trust a self-signed certificate.");
 
+    public static final Field TOPIC_NAMING_STRATEGY = CommonConnectorConfig.TOPIC_NAMING_STRATEGY.withDefault(DefaultTopicNamingStrategy.class.getName());
+
     private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SingleStoreDB")
             .excluding(SNAPSHOT_LOCK_TIMEOUT_MS,
@@ -177,7 +180,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
     public SingleStoreDBConnectorConfig(Configuration config) {
         super(config,
                 new SystemTablesPredicate(),
-                t -> t.schema() + "." + t.table(),
+                t -> t.catalog() + "." + t.table(),
                 DEFAULT_SNAPSHOT_FETCH_SIZE,
                 ColumnFilterMode.CATALOG,
                 false);
