@@ -6,6 +6,7 @@ import java.util.List;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.relational.TableId;
+import io.debezium.spi.schema.DataCollectionId;
 
 
 /**
@@ -72,6 +73,7 @@ public class SourceInfo extends BaseSourceInfo {
     private String txId;
     private TableId tableId;
     private List<String> offsets;
+    private Instant timestamp;
 
     
     public SourceInfo(SingleStoreDBConnectorConfig connectorConfig) {
@@ -83,22 +85,34 @@ public class SourceInfo extends BaseSourceInfo {
      *
      * @param partitionId index of the SingleStoreDB partition
      * @param txId the ID of the transaction that generated the transaction
-     * @param tableId the table that should be included in the source info
+     * @param offsets hex strings that represent offset for each database partition
      * @return this instance
      */
-    protected SourceInfo update(TableId tableId, Integer partitionId, String txId, List<String> offsets) {
+    protected SourceInfo update(Integer partitionId, String txId, List<String> offsets) {
         this.partitionId = partitionId;
         this.txId = txId;
-        this.tableId = tableId;
         this.offsets = offsets;
+
+        return this;
+    }
+
+    /**
+     * Updates the source with information about a table event.
+     *
+     * @param tableId table that was modified 
+     * @param timestamp time when Debezium received the event information
+     * @return this instance
+     */
+    protected SourceInfo update(TableId tableId, Instant timestamp) {
+        this.tableId = tableId;
+        this.timestamp = timestamp;
 
         return this;
     }
 
     @Override
     protected Instant timestamp() {
-        // When null is returned - current timestamp will be used
-        return null;
+        return timestamp;
     }
 
     @Override
