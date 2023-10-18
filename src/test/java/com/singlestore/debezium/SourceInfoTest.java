@@ -1,6 +1,7 @@
 package com.singlestore.debezium;
 
 
+import java.time.Instant;
 import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,7 +29,8 @@ public class SourceInfoTest {
                         .with(CommonConnectorConfig.TOPIC_PREFIX, "server")
                         .with(SingleStoreDBConnectorConfig.DATABASE_NAME, "database")
                         .build()));
-        source.update(TableId.parse("db.t", true), 10, "123", Arrays.asList("1", "2", null, "3"));
+        source.update(10, "123", Arrays.asList("1", "2", null, "3"));
+        source.update(TableId.parse("db.t", true), Instant.parse("2018-11-30T18:35:24.00Z"));
         source.setSnapshot(SnapshotRecord.TRUE);
     }
 
@@ -49,7 +51,7 @@ public class SourceInfoTest {
 
     @Test
     public void timestampIsPresent() {
-        assertThat(source.struct().getInt64("ts_ms")).isNotNull();
+        assertThat(source.struct().getInt64("ts_ms")).isEqualTo(Instant.parse("2018-11-30T18:35:24.00Z").toEpochMilli());
     }
 
     @Test
