@@ -87,7 +87,7 @@ public class SingleStoreDBConnectionTest {
                 Optional.of("`table1`.`filed1`=1"),
                 rs -> {
                 });
-        verify(connection).query(matches("OBSERVE `debezium`.`table[12]`.`field1`,`debezium`.`table[21]`.`field1` FROM `debezium`.`table[12]`,`debezium`.`table[12]` AS JSON BEGINNING AT \\(1, 2, NULL, 4\\) WHERE `table1`.`filed1`=1"), any());
+        verify(connection).query(matches("OBSERVE `debezium`.`table[12]`.`field1`,`debezium`.`table[21]`.`field1` FROM `debezium`.`table[12]`,`debezium`.`table[12]` AS JSON BEGIN AT \\(1, 2, NULL, 4\\) WHERE `table1`.`filed1`=1"), any());
     }
 
     private SingleStoreDBConnection createConnectionWithParams(Map<Field, String> fieldMap) {

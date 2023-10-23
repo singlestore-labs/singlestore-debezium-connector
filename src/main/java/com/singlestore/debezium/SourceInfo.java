@@ -1,12 +1,12 @@
 package com.singlestore.debezium;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.relational.TableId;
-import io.debezium.spi.schema.DataCollectionId;
 
 
 /**
@@ -76,8 +76,10 @@ public class SourceInfo extends BaseSourceInfo {
     private Instant timestamp;
 
     
-    public SourceInfo(SingleStoreDBConnectorConfig connectorConfig) {
+    public SourceInfo(SingleStoreDBConnectorConfig connectorConfig, Integer numPartitions) {
         super(connectorConfig);
+
+        offsets = Collections.nCopies(numPartitions, null);
     }
 
     /**

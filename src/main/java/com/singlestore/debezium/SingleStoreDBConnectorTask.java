@@ -4,9 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import io.debezium.config.CommonConnectorConfig;
-import io.debezium.jdbc.JdbcValueConverters;
-import io.debezium.jdbc.TemporalPrecisionMode;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.config.Configuration;
@@ -68,17 +65,16 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
                 false);
 
         SingleStoreDBTaskContext taskContext = new SingleStoreDBTaskContext(connectorConfig, schema);
-
-        queue = new ChangeEventQueue.Builder<DataChangeEvent>()
-                .pollInterval(connectorConfig.getPollInterval())
-                .maxBatchSize(connectorConfig.getMaxBatchSize())
-                .maxQueueSize(connectorConfig.getMaxQueueSize())
-                .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
-                .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
-                .build();
-
         SingleStoreDBEventMetadataProvider metadataProvider = new SingleStoreDBEventMetadataProvider();
         SingleStoreDBErrorHandler errorHandler = new SingleStoreDBErrorHandler(connectorConfig, queue);
+
+        this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+            .pollInterval(connectorConfig.getPollInterval())
+            .maxBatchSize(connectorConfig.getMaxBatchSize())
+            .maxQueueSize(connectorConfig.getMaxQueueSize())
+            .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
+            .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
+            .build();
 
         Offsets<SingleStoreDBPartition, SingleStoreDBOffsetContext> previousOffsets = getPreviousOffsets(
             new SingleStoreDBPartition.Provider(connectorConfig, config),
@@ -111,7 +107,7 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
             errorHandler,
             SingleStoreDBConnector.class,
             connectorConfig,
-            new SingleStoreDBChangeEventSourceFactory(connectorConfig, connectionFactory, schema, dispatcher, clock),
+            new SingleStoreDBChangeEventSourceFactory(connectorConfig, connectionFactory, schema, dispatcher, errorHandler, clock),
             // TODO create custom metrics
             new DefaultChangeEventSourceMetricsFactory<>(),            
             dispatcher,

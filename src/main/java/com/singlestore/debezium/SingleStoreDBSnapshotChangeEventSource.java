@@ -507,7 +507,8 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
 
     @Override
     protected void releaseSchemaSnapshotLocks(
-            RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> snapshotContext) {
+            RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> snapshotContext)
+            throws Exception {
     }
 
     @Override
@@ -566,7 +567,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
     }
 
     @Override
-    protected SnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> prepare(
+    protected RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> prepare(
             SingleStoreDBPartition partition) throws Exception {
         return new RelationalSnapshotContext<>(partition, connectorConfig.databaseName());
     }

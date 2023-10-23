@@ -1,6 +1,7 @@
 package com.singlestore.debezium;
 
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
@@ -15,17 +16,20 @@ public class SingleStoreDBChangeEventSourceFactory implements ChangeEventSourceF
     MainConnectionProvidingConnectionFactory<SingleStoreDBConnection> connectionFactory;
     SingleStoreDBDatabaseSchema schema;
     EventDispatcher<SingleStoreDBPartition, TableId> dispatcher;
+    ErrorHandler errorHandler;
     Clock clock;
 
     public SingleStoreDBChangeEventSourceFactory(SingleStoreDBConnectorConfig connectorConfig, 
     MainConnectionProvidingConnectionFactory<SingleStoreDBConnection> connectionFactory,
     SingleStoreDBDatabaseSchema schema,
     EventDispatcher<SingleStoreDBPartition, TableId> dispatcher,
+    ErrorHandler errorHandler,
     Clock clock) {
         this.connectorConfig = connectorConfig;
         this.connectionFactory = connectionFactory;
         this.schema = schema;
         this.dispatcher = dispatcher;
+        this.errorHandler = errorHandler;
         this.clock = clock;
     }
 
@@ -37,7 +41,7 @@ public class SingleStoreDBChangeEventSourceFactory implements ChangeEventSourceF
 
     @Override
     public StreamingChangeEventSource<SingleStoreDBPartition, SingleStoreDBOffsetContext> getStreamingChangeEventSource() {
-        return new SingleStoreDBStreamingChangeEventSource();
+        return new SingleStoreDBStreamingChangeEventSource(connectorConfig, connectionFactory.mainConnection(), dispatcher, errorHandler, schema, clock);
     }
     
     // TODO incremental snapshot

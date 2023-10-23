@@ -154,6 +154,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
                     PORT,
                     USER,
                     PASSWORD,
+                    DATABASE_NAME,
                     SSL_MODE,
                     SSL_KEYSTORE,
                     SSL_KEYSTORE_PASSWORD,
@@ -165,8 +166,6 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
                     DRIVER_PARAMETERS,
                     SNAPSHOT_MODE)
             .events(
-                    DATABASE_INCLUDE_LIST,
-                    DATABASE_EXCLUDE_LIST,
                     INCONSISTENT_SCHEMA_HANDLING_MODE,
                     SOURCE_INFO_STRUCT_MAKER)
             .create();
@@ -273,13 +272,14 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
         /**
          * Perform a snapshot and then stop before attempting to stream events.
          */
-        INITIAL_ONLY("initial_only", true, true, false),
+        INITIAL_ONLY("initial_only", true, true, false);
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin stream events.
          * This should be used with care, but it is very useful when the change event consumers need only the changes
          * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
          */
-        SCHEMA_ONLY("schema_only", true, false, true);
+        // TODO: PLAT-6912
+        // SCHEMA_ONLY("schema_only", true, false, true);
 
         private final String value;
         private final boolean includeSchema;

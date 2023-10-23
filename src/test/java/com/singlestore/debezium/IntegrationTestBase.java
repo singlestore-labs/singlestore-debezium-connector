@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.util.stream.Collectors;
 
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.testcontainers.containers.GenericContainer;
 
@@ -110,6 +111,16 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
         return new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(defaultJdbcConfig());
     }
 
+    public static SingleStoreDBConnection.SingleStoreDBConnectionConfiguration defaultJdbcConnectionConfigWithDatabase() {
+        return new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(defaultJdbcConfigWithDatabase());
+    }
+
+    public static JdbcConfiguration defaultJdbcConfigWithDatabase() {
+        return defaultJdbcConfigBuilder()
+                .withDefault(SingleStoreDBConnectorConfig.DATABASE_NAME, TEST_DATABASE)
+                .build();
+    }
+
     public static JdbcConfiguration defaultJdbcConfig() {
         return defaultJdbcConfigBuilder().build();
     }
@@ -121,7 +132,6 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
                 .withDefault(SingleStoreDBConnectorConfig.PORT, TEST_PORT)
                 .withDefault(SingleStoreDBConnectorConfig.USER, TEST_USER)
                 .withDefault(SingleStoreDBConnectorConfig.PASSWORD, TEST_PASSWORD)
-                .withDefault(SingleStoreDBConnectorConfig.DATABASE_NAME, TEST_DATABASE)
                 .withDefault(SingleStoreDBConnectorConfig.DRIVER_PARAMETERS, "allowMultiQueries=true");
     }
 
