@@ -32,11 +32,13 @@ public class SingleStoreDBEventMetadataProviderTest {
                 .with(SingleStoreDBConnectorConfig.DATABASE_NAME, "database")
                 .build());
 
-        SingleStoreDBOffsetContext offsetContext = new SingleStoreDBOffsetContext(conf, null, null, null, false, false);
+        SingleStoreDBOffsetContext offsetContext = new SingleStoreDBOffsetContext(conf, null, null, Arrays.asList(null, null, null, null), false, false);
 
         table = TableId.parse("db.t", true);
         offsetContext.event(table, Instant.parse("2018-11-30T18:35:24.00Z"));
-        offsetContext.update(1, "3", Arrays.asList("1", "10", null, "2"));
+        offsetContext.update(0, "0", "1");
+        offsetContext.update(1, "1", "10");
+        offsetContext.update(3, "3", "2");
         offsetContext.preSnapshotCompletion();
 
         Schema schema = SchemaBuilder.struct().field(Envelope.FieldName.SOURCE, offsetContext.getSourceInfoSchema()).build();

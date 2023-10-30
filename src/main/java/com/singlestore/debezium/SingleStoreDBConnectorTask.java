@@ -35,6 +35,7 @@ import io.debezium.util.Clock;
  */
 public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPartition, SingleStoreDBOffsetContext> {
 
+    private static final String CONTEXT_NAME = "singlestoredb-connector-task";
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile SingleStoreDBDatabaseSchema schema;
 
@@ -47,7 +48,6 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
     protected Iterable<Field> getAllConfigurationFields() {
         return SingleStoreDBConnectorConfig.ALL_FIELDS;
     }
-
 
     @Override
     public ChangeEventSourceCoordinator<SingleStoreDBPartition, SingleStoreDBOffsetContext> start(Configuration config) {
@@ -68,6 +68,15 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
                 false);
 
         SingleStoreDBTaskContext taskContext = new SingleStoreDBTaskContext(connectorConfig, schema);
+
+        queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+                .pollInterval(connectorConfig.getPollInterval())
+                .maxBatchSize(connectorConfig.getMaxBatchSize())
+                .maxQueueSize(connectorConfig.getMaxQueueSize())
+                .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
+                .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
+                .build();
+
         SingleStoreDBEventMetadataProvider metadataProvider = new SingleStoreDBEventMetadataProvider();
         SingleStoreDBErrorHandler errorHandler = new SingleStoreDBErrorHandler(connectorConfig, queue);
 

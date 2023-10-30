@@ -8,7 +8,7 @@ public class SingleStoreDBStreamingChangeEventSource implements StreamingChangeE
     public void execute(ChangeEventSourceContext context, SingleStoreDBPartition partition,
             SingleStoreDBOffsetContext offsetContext) throws InterruptedException {
         // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'execute'");
+//        throw new UnsupportedOperationException("Unimplemented method 'execute'");
     }
     
 }

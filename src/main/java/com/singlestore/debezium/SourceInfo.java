@@ -97,6 +97,22 @@ public class SourceInfo extends BaseSourceInfo {
     }
 
     /**
+     * Updates the source with information about a particular received or read event.
+     *
+     * @param partitionId index of the SingleStoreDB partition
+     * @param txId the ID of the transaction that generated the transaction
+     * @param offset hex strings that represent offset for given database partition
+     * @return this instance
+     */
+    protected SourceInfo update(Integer partitionId, String txId, String offset) {
+        this.partitionId = partitionId;
+        this.txId = txId;
+        this.offsets.set(partitionId, offset);
+
+        return this;
+    }
+
+    /**
      * Updates the source with information about a table event.
      *
      * @param tableId table that was modified 
@@ -117,11 +133,11 @@ public class SourceInfo extends BaseSourceInfo {
 
     @Override
     protected String database() {
-        return tableId.catalog();
+        return tableId == null ? "" : tableId.catalog();
     }
 
     protected String table() {
-        return tableId.table();
+        return tableId == null ? "" : tableId.table();
     }
 
     protected String txId() {
