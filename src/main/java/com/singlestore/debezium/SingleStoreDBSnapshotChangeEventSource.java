@@ -477,7 +477,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
                 return rs.getInt(1);
             }
         } catch (SQLException e) {
-            LOGGER.error("Failed to read number of partitions for database '" + database + "'.");
+            LOGGER.warn("Failed to read number of partitions for database '" + database + "'.");
         }
         return 1;
     }

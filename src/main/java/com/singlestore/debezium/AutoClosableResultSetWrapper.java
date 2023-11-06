@@ -20,7 +20,6 @@ public class AutoClosableResultSetWrapper implements AutoCloseable {
     public void close() {
         try {
             if (!isClosed() && !isAfterLast()) { // Result set is still open and not exhausted
-                getStatement().cancel();
                 ((com.singlestore.jdbc.Connection) getStatement().getConnection()).cancelCurrentQuery();
                 resultSet.close();
             }
