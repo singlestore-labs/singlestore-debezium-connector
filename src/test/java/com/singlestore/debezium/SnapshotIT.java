@@ -27,13 +27,15 @@ public class SnapshotIT extends IntegrationTestBase {
                 "DROP TABLE IF EXISTS " + TEST_DATABASE + ".A;" +
                 "DROP TABLE IF EXISTS " + TEST_DATABASE + ".B;" +
                 "CREATE TABLE " + TEST_DATABASE + ".A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
-                "CREATE TABLE " + TEST_DATABASE + ".B (aa INT, bb VARCHAR(10));" +
+                "CREATE TABLE " + TEST_DATABASE + ".B (aa INT, bb VARCHAR(20));" +
                 "INSERT INTO " + TEST_DATABASE + ".B VALUES(0, 'test0');" +
                 "INSERT INTO " + TEST_DATABASE + ".A VALUES(0, 'test0');" +
                 "INSERT INTO " + TEST_DATABASE + ".A VALUES(4, 'test4');" +
                 "INSERT INTO " + TEST_DATABASE + ".A VALUES(1, 'test1');" +
                 "INSERT INTO " + TEST_DATABASE + ".A VALUES(2, 'test2');" +
-                "DELETE FROM " + TEST_DATABASE + ".A WHERE pk = 4;";
+                "UPDATE " + TEST_DATABASE + ".B SET bb = 'testUpdated' WHERE aa = 0;" +
+                "DELETE FROM " + TEST_DATABASE + ".A WHERE pk = 4;" +
+                "SNAPSHOT DATABASE " + TEST_DATABASE + ";";
         execute(statements);
     }
 
@@ -75,7 +77,7 @@ public class SnapshotIT extends IntegrationTestBase {
         final SourceRecord record1 = table2.get(0);
         final List<SchemaAndValueField> expectedRow1 = Arrays.asList(
                 new SchemaAndValueField("aa", Schema.OPTIONAL_INT32_SCHEMA, 0),
-                new SchemaAndValueField("bb", Schema.OPTIONAL_STRING_SCHEMA, "test0"));
+                new SchemaAndValueField("bb", Schema.OPTIONAL_STRING_SCHEMA, "testUpdated"));
         final Struct key1 = (Struct) record1.key();
         final Struct value1 = (Struct) record1.value();
         assertRecord((Struct) value1.get("after"), expectedRow1);

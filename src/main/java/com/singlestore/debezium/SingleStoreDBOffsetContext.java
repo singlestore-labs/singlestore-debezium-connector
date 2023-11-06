@@ -1,20 +1,18 @@
 package com.singlestore.debezium;
 
-import java.time.Instant;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import org.apache.kafka.connect.data.Schema;
-
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.spi.schema.DataCollectionId;
+import org.apache.kafka.connect.data.Schema;
+
+import java.time.Instant;
+import java.util.*;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class SingleStoreDBOffsetContext extends CommonOffsetContext<SourceInfo> {
 
@@ -27,7 +25,7 @@ public class SingleStoreDBOffsetContext extends CommonOffsetContext<SourceInfo> 
     private final Schema sourceInfoSchema;
 
     public SingleStoreDBOffsetContext(SingleStoreDBConnectorConfig connectorConfig, Integer partitionId,
-        String txId, List<String> offsets, boolean snapshot, boolean snapshotCompleted) {
+                                      String txId, List<String> offsets, boolean snapshot, boolean snapshotCompleted) {
         super(new SourceInfo(connectorConfig));
 
         sourceInfo.update(partitionId, txId, offsets);
@@ -36,10 +34,19 @@ public class SingleStoreDBOffsetContext extends CommonOffsetContext<SourceInfo> 
         this.snapshotCompleted = snapshotCompleted;
         if (this.snapshotCompleted) {
             postSnapshotCompletion();
-        }
-        else {
+        } else {
             sourceInfo.setSnapshot(snapshot ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
         }
+    }
+
+    public static SingleStoreDBOffsetContext initial(SingleStoreDBConnectorConfig connectorConfig, Supplier<Integer> partitionNumberSupplier) {
+        int numPartitions = partitionNumberSupplier.get();
+        if (numPartitions < 1) {
+            throw new IllegalArgumentException("Wrong number of partitions: " + numPartitions);
+        }
+        ArrayList<String> initOffsetList = Stream.generate(() -> (String) null)
+                .limit(numPartitions).collect(Collectors.toCollection(ArrayList::new));
+        return new SingleStoreDBOffsetContext(connectorConfig, null, null, initOffsetList, true, false);
     }
 
     public static class Loader implements OffsetContext.Loader<SingleStoreDBOffsetContext> {
@@ -56,8 +63,7 @@ public class SingleStoreDBOffsetContext extends CommonOffsetContext<SourceInfo> 
             }
 
             return Arrays.asList(offsets.split(",")).stream().map(offset -> {
-                if (offset.equals("null")) 
-                {
+                if (offset.equals("null")) {
                     return null;
                 } else {
                     return offset;
@@ -68,15 +74,14 @@ public class SingleStoreDBOffsetContext extends CommonOffsetContext<SourceInfo> 
         @Override
         public SingleStoreDBOffsetContext load(Map<String, ?> offset) {
             String txId = (String) offset.get(SourceInfo.TXID_KEY);
-            Integer partitionId = (Integer) offset.get(SourceInfo.PARTITIONID_KEY);
-            List<String> offsets = parseOffsets((String)offset.get(SourceInfo.OFFSETS_KEY));
+            Integer partitionId = offset.get(SourceInfo.PARTITIONID_KEY) == null ? null : ((Number) offset.get(SourceInfo.PARTITIONID_KEY)).intValue();
+            List<String> offsets = parseOffsets((String) offset.get(SourceInfo.OFFSETS_KEY));
             Boolean snapshot = (Boolean) ((Map<String, Object>) offset).getOrDefault(SourceInfo.SNAPSHOT_KEY, Boolean.FALSE);
             Boolean snapshotCompleted = (Boolean) ((Map<String, Object>) offset).getOrDefault(SNAPSHOT_COMPLETED_KEY, Boolean.FALSE);
 
             return new SingleStoreDBOffsetContext(connectorConfig, partitionId, txId, offsets, snapshot, snapshotCompleted);
         }
     }
-
 
 
     @Override
@@ -141,11 +146,7 @@ public class SingleStoreDBOffsetContext extends CommonOffsetContext<SourceInfo> 
     }
 
     public void update(Integer partitionId, String txId, List<String> offsets) {
-        offsets.forEach(o -> {
-            if (o != null) {
-                sourceInfo.update(partitionId, txId, o);
-            }
-        });
+        sourceInfo.update(partitionId, txId, offsets);
     }
 
     @Override
