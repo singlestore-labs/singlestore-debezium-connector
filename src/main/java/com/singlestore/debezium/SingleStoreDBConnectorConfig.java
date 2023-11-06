@@ -146,6 +146,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
                     SCHEMA_EXCLUDE_LIST,
                     QUERY_FETCH_SIZE,
                     SNAPSHOT_FETCH_SIZE,
+                    SNAPSHOT_MAX_THREADS,
                     // TODO PLAT-6820 implement transaction monitoring
                     PROVIDE_TRANSACTION_METADATA)
             .type(

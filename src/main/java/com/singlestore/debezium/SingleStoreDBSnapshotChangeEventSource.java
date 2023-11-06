@@ -102,9 +102,6 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
             if (snapshottingTask.snapshotData()) {
                 LOGGER.info("Snapshot step 4.a - Creating connection pool");
                 connectionPool = createConnectionPool(ctx);
-            }
-
-            if (snapshottingTask.snapshotData()) {
                 LOGGER.info("Snapshot step 5 - Snapshotting data");
                 createDataEvents(context, ctx, connectionPool);
             } else {
@@ -162,6 +159,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
 
         int tableCount = rowCountTables.size();
         List<Callable<SingleStoreDBOffsetContext>> dataEventTasks = new ArrayList<>(tableCount);
+        CyclicBarrier barrier = new CyclicBarrier(tableCount);
         int tableOrder = 1;
         for (TableId tableId : rowCountTables.keySet()) {
             boolean firstTable = tableOrder == 1 && snapshotMaxThreads == 1;
@@ -170,7 +168,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
             OptionalLong rowCount = rowCountTables.get(tableId);
             Callable<SingleStoreDBOffsetContext> callable = createDataEventsForTableCallable(sourceContext, snapshotContext, snapshotReceiver,
                     snapshotContext.tables.forTable(tableId), firstTable, lastTable, tableOrder++, tableCount, selectStatement,
-                    rowCount, offsets, connectionPool);
+                    rowCount, offsets, connectionPool, barrier);
             dataEventTasks.add(callable);
         }
         List<SingleStoreDBOffsetContext> commitSnapshotOffsetList = new ArrayList<>(tableCount);
@@ -190,6 +188,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
         } finally {
             offsetIsWrong = false;
             OFFSET_SET.clear();
+            barrier.reset();
             executorService.shutdownNow();
         }
         commitSnapshotOffsetList.forEach(o -> {
@@ -213,13 +212,13 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
     private Callable<SingleStoreDBOffsetContext> createDataEventsForTableCallable(ChangeEventSource.ChangeEventSourceContext sourceContext, RelationalSnapshotChangeEventSource.RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> snapshotContext,
                                                                                   EventDispatcher.SnapshotReceiver<SingleStoreDBPartition> snapshotReceiver, Table table, boolean firstTable, boolean lastTable, int tableOrder,
                                                                                   int tableCount, String selectStatement, OptionalLong rowCount,
-                                                                                  Queue<SingleStoreDBOffsetContext> offsets, Queue<JdbcConnection> connectionPool) {
+                                                                                  Queue<SingleStoreDBOffsetContext> offsets, Queue<JdbcConnection> connectionPool, CyclicBarrier barrier) {
         return () -> {
             JdbcConnection connection = connectionPool.poll();
             SingleStoreDBOffsetContext offset = offsets.poll();
             try {
                 return doCreateDataEventsForTable(sourceContext, snapshotContext, offset, snapshotReceiver, table,
-                        firstTable, lastTable, tableOrder, tableCount, selectStatement, rowCount, connection);
+                        firstTable, lastTable, tableOrder, tableCount, selectStatement, rowCount, connection, barrier);
             } finally {
                 offsets.add(offset);
                 connectionPool.add(connection);
@@ -233,7 +232,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
             SingleStoreDBOffsetContext offset,
             EventDispatcher.SnapshotReceiver<SingleStoreDBPartition> snapshotReceiver, Table table,
             boolean firstTable, boolean lastTable, int tableOrder, int tableCount,
-            String selectStatement, OptionalLong rowCount, JdbcConnection jdbcConnection)
+            String selectStatement, OptionalLong rowCount, JdbcConnection jdbcConnection, CyclicBarrier barrier)
             throws InterruptedException {
         SingleStoreDBPartition partition = snapshotContext.partition;
         if (!sourceContext.isRunning()) {
@@ -250,6 +249,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
             long rows = 0;
             Threads.Timer logTimer = getTableScanLogTimer();
             boolean hasNext = validateBeginSnapshotResultSet(rs);
+            barrier.await();
             int numPartitions = snapshotContext.offset.offsets().size();
             if (hasNext) {
                 while (hasNext && numPartitions > 0) {
@@ -294,13 +294,13 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
             LOGGER.info("\t Finished exporting {} records for table '{}' ({} of {} tables); total duration '{}'",
                     rows, table.id(), tableOrder, tableCount, Strings.duration(clock.currentTimeInMillis() - exportStart));
             snapshotProgressListener.dataCollectionSnapshotCompleted(partition, table.id(), rows);
-        } catch (SQLException e) {
+        } catch (SQLException | BrokenBarrierException e) {
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
         }
         return commitOffset;
     }
 
-    private boolean validateBeginSnapshotResultSet(ResultSet rs) throws SQLException, InterruptedException {
+    private boolean validateBeginSnapshotResultSet(ResultSet rs) throws SQLException {
         if (rs.next()) {
             if (!ObserveResultSetUtils.isBeginSnapshot(rs)) {
                 LOGGER.warn("Observe query first row response must be of 'BeginSnapshot' type, skip snapshotting");
@@ -419,7 +419,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
         Queue<JdbcConnection> connectionPool = new ConcurrentLinkedQueue<>();
         connectionPool.add(jdbcConnection);
 
-        int snapshotMaxThreads = Math.max(1, Math.min(connectorConfig.getSnapshotMaxThreads(), ctx.capturedTables.size()));
+        int snapshotMaxThreads = ctx.capturedTables.size();
         if (snapshotMaxThreads > 1) {
             Optional<String> firstQuery = getSnapshotConnectionFirstSelect(ctx, ctx.capturedTables.iterator().next());
             for (int i = 1; i < snapshotMaxThreads; i++) {
