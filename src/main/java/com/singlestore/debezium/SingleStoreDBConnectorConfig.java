@@ -145,6 +145,8 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
                     QUERY_FETCH_SIZE,
+                    SNAPSHOT_FETCH_SIZE,
+                    SNAPSHOT_MAX_THREADS,
                     // TODO PLAT-6820 implement transaction monitoring
                     PROVIDE_TRANSACTION_METADATA)
             .type(
@@ -232,6 +234,10 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
 
     public EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode() {
         return inconsistentSchemaFailureHandlingMode;
+    }
+
+    public String databaseName() {
+        return config.getString(DATABASE_NAME);
     }
 
     public String hostname() {

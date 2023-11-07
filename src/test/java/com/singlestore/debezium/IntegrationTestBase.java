@@ -121,6 +121,7 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
                 .withDefault(SingleStoreDBConnectorConfig.PORT, TEST_PORT)
                 .withDefault(SingleStoreDBConnectorConfig.USER, TEST_USER)
                 .withDefault(SingleStoreDBConnectorConfig.PASSWORD, TEST_PASSWORD)
+                .withDefault(SingleStoreDBConnectorConfig.DATABASE_NAME, TEST_DATABASE)
                 .withDefault(SingleStoreDBConnectorConfig.DRIVER_PARAMETERS, "allowMultiQueries=true");
     }
 
