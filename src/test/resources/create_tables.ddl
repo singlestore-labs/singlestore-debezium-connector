@@ -65,5 +65,5 @@ CREATE ROWSTORE TABLE db.allTypesTable (
     `set_f` SET('v1','v2','v3') default 'v1',
 --    `geographyColumn` GEOGRAPHY DEFAULT 'POLYGON((1 1,2 1,2 2, 1 2, 1 1))',
     `geographypointColumn` GEOGRAPHYPOINT DEFAULT 'POINT(1.50000003 1.50000000)',
-     unique key(decimalColumn)
+     unique key(intColumn)
  );
