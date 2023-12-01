@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Field;
 import org.slf4j.Logger;
@@ -56,7 +57,10 @@ public class SingleStoreDBStreamingChangeEventSource implements StreamingChangeE
         }
         
         Set<TableId> tables = schema.tableIds();
-        List<String> offsets = offsetContext.offsets();
+        List<String> offsets = offsetContext.offsets()
+            .stream()
+            .map(o -> o == null ? "NULL" : "'" + o + "'")
+            .collect(Collectors.toList());
         Optional<String> offset;
         if (offsets == null) {
             offset = Optional.empty();
@@ -70,7 +74,6 @@ public class SingleStoreDBStreamingChangeEventSource implements StreamingChangeE
             connection.observe(null, tables, Optional.empty(), Optional.empty(), offset, Optional.empty(), new ResultSetConsumer() {
                 @Override
                 public void accept(ResultSet rs) throws SQLException {
-
                     Thread t = new Thread(new Runnable() {
                         @Override
                         public void run() {
@@ -79,7 +82,7 @@ public class SingleStoreDBStreamingChangeEventSource implements StreamingChangeE
                                     Thread.sleep(1000);
                                 } catch (InterruptedException e) {
                                 }
-                            }                        
+                            }
                             try {
                                 ((com.singlestore.jdbc.Connection)rs.getStatement().getConnection()).cancelCurrentQuery();
                             } catch (SQLException ex) {

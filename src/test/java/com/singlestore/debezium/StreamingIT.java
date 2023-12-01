@@ -71,7 +71,6 @@ public class StreamingIT extends IntegrationTestBase {
 
             Configuration config = defaultJdbcConfigWithDatabase();
             config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.SNAPSHOT_MODE, "schema_only")
             .withDefault(SingleStoreDBConnectorConfig.TABLE_INCLUDE_LIST, "db.allTypesTable")
             .build();
 
@@ -146,7 +145,6 @@ public class StreamingIT extends IntegrationTestBase {
 
             Configuration config = defaultJdbcConfigWithDatabase();
             config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.SNAPSHOT_MODE, "schema_only")
             .withDefault(SingleStoreDBConnectorConfig.TABLE_INCLUDE_LIST, "db.song")
             .build();
 
@@ -196,7 +194,6 @@ public class StreamingIT extends IntegrationTestBase {
 
             Configuration config = defaultJdbcConfigWithDatabase();
             config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.SNAPSHOT_MODE, "schema_only")
             .withDefault(SingleStoreDBConnectorConfig.TABLE_INCLUDE_LIST, "db.product")
             .build();
 
