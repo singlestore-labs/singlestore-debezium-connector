@@ -24,9 +24,9 @@ public class SingleStoreDBOffsetContext extends CommonOffsetContext<SourceInfo> 
     private boolean snapshotCompleted;
     private final Schema sourceInfoSchema;
 
-    public SingleStoreDBOffsetContext(SingleStoreDBConnectorConfig connectorConfig, Integer partitionId,
-                                      String txId, List<String> offsets, boolean snapshot, boolean snapshotCompleted) {
-        super(new SourceInfo(connectorConfig));
+    public SingleStoreDBOffsetContext(SingleStoreDBConnectorConfig connectorConfig, Integer partitionId, 
+        String txId, List<String> offsets, boolean snapshot, boolean snapshotCompleted) {
+        super(new SourceInfo(connectorConfig, offsets.size()));
 
         sourceInfo.update(partitionId, txId, offsets);
         sourceInfoSchema = sourceInfo.schema();

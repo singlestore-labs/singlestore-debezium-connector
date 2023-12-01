@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import java.io.IOException;
+import java.nio.ByteOrder;
 import java.sql.SQLException;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoField;
@@ -130,6 +131,10 @@ public class SingleStoreDBValueConverters extends JdbcValueConverters {
         return super.converter(column, fieldDefn);
     }
 
+    protected ByteOrder byteOrderOfBitType() {
+        return ByteOrder.BIG_ENDIAN;
+    }
+
     /**
      * Converts SingleStoreBlob to byte array.
      *
@@ -213,7 +218,7 @@ public class SingleStoreDBValueConverters extends JdbcValueConverters {
         return convertValue(column, fieldDefn, data, 0, (r) -> {
             Object mutData = data;
             if (data instanceof java.sql.Date) {
-                r.deliver(((java.sql.Date) data).getYear());
+                r.deliver(((java.sql.Date) data).getYear() + 1900);
             } else if (data instanceof String) {
                 mutData = Integer.parseInt((String) data);
             }

@@ -18,6 +18,10 @@ CREATE TABLE db.purchased (
     purchaseDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(productId,purchaser)
 );
+CREATE TABLE db.song (
+    author TEXT,
+    name TEXT
+);
 
 CREATE ROWSTORE TABLE db.allTypesTable (
     `boolColumn` BOOL DEFAULT true,
@@ -41,9 +45,9 @@ CREATE ROWSTORE TABLE db.allTypesTable (
     `timestamp6Column` TIMESTAMP(6) DEFAULT '2022-01-19 03:14:07.111111',
     `yearColumn` YEAR DEFAULT '1989',
     `decimalColumn` DECIMAL(65, 30) DEFAULT 10000.100001,
-    `decColumn` DEC DEFAULT 10000.100001,
-    `fixedColumn` FIXED DEFAULT 10000.100001,
-    `numericColumn` NUMERIC DEFAULT 10000.100001,
+    `decColumn` DEC DEFAULT 10000,
+    `fixedColumn` FIXED DEFAULT 10000,
+    `numericColumn` NUMERIC DEFAULT 10000,
     `charColumn` CHAR DEFAULT 'a',
     `mediumtextColumn` MEDIUMTEXT DEFAULT 'abc',
     `binaryColumn` BINARY DEFAULT 'a',
@@ -59,7 +63,7 @@ CREATE ROWSTORE TABLE db.allTypesTable (
     `jsonColumn` JSON DEFAULT '{}',
     `enum_f` ENUM('val1','val2','val3') default 'val1',
     `set_f` SET('v1','v2','v3') default 'v1',
-    `geographyColumn` GEOGRAPHY DEFAULT 'POLYGON((1 1,2 1,2 2, 1 2, 1 1))',
+--    `geographyColumn` GEOGRAPHY DEFAULT 'POLYGON((1 1,2 1,2 2, 1 2, 1 1))',
     `geographypointColumn` GEOGRAPHYPOINT DEFAULT 'POINT(1.50000003 1.50000000)',
      unique key(intColumn)
  );

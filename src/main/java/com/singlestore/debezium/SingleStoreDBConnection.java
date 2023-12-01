@@ -26,6 +26,7 @@ public class SingleStoreDBConnection extends JdbcConnection {
 
     private static final String QUOTED_CHARACTER = "`";
     protected static final String URL_PATTERN = "jdbc:singlestore://${hostname}:${port}/?connectTimeout=${connectTimeout}";
+    protected static final String URL_PATTERN_DATABASE = "jdbc:singlestore://${hostname}:${port}/${dbname}?connectTimeout=${connectTimeout}";
 
     private final SingleStoreDBConnectionConfiguration connectionConfig;
 
@@ -98,7 +99,7 @@ public class SingleStoreDBConnection extends JdbcConnection {
         }
         format.ifPresent(f -> query.append(" AS ").append(f.name()));
         outputConfig.ifPresent(c -> query.append(" INTO ").append(c));
-        offSetConfig.ifPresent(o -> query.append(" BEGINNING AT ").append(o));
+        offSetConfig.ifPresent(o -> query.append(" BEGIN AT ").append(o));
         recordFilter.ifPresent(f -> query.append(" WHERE ").append(f));
         return query(query.toString(), resultSetConsumer);
     }
@@ -108,7 +109,7 @@ public class SingleStoreDBConnection extends JdbcConnection {
     }
 
     public String connectionString() {
-        return connectionString(URL_PATTERN);
+        return database() != null ? connectionString(URL_PATTERN_DATABASE) : connectionString(URL_PATTERN);
     }
 
     @Override
@@ -160,6 +161,7 @@ public class SingleStoreDBConnection extends JdbcConnection {
                     .with("connectTimeout", Long.toString(getConnectionTimeout().toMillis()))
                     .with("sslMode", sslMode().getValue())
                     .with("defaultFetchSize", 1)
+                    .with("tinyInt1IsBit", "false")
                     .without("parameters");
             if (useSSL) {
                 if (!Strings.isNullOrBlank(sslTrustStore())) {
@@ -180,7 +182,10 @@ public class SingleStoreDBConnection extends JdbcConnection {
             }
             driverParameters().forEach(jdbcConfigBuilder::with);
             this.jdbcConfig = JdbcConfiguration.adapt(jdbcConfigBuilder.build());
-            factory = JdbcConnection.patternBasedFactory(SingleStoreDBConnection.URL_PATTERN, com.singlestore.jdbc.Driver.class.getName(), getClass().getClassLoader());
+            factory = JdbcConnection.patternBasedFactory(
+                databaseName() != null ? SingleStoreDBConnection.URL_PATTERN_DATABASE : SingleStoreDBConnection.URL_PATTERN, 
+                com.singlestore.jdbc.Driver.class.getName(), 
+                getClass().getClassLoader());
         }
 
         public JdbcConfiguration config() {
@@ -209,6 +214,10 @@ public class SingleStoreDBConnection extends JdbcConnection {
 
         public int port() {
             return config.getInteger(SingleStoreDBConnectorConfig.PORT);
+        }
+
+        public String databaseName() {
+            return config.getString(SingleStoreDBConnectorConfig.DATABASE_NAME);
         }
 
         public SingleStoreDBConnectorConfig.SecureConnectionMode sslMode() {

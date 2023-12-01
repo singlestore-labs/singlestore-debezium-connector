@@ -60,7 +60,7 @@ public class SingleStoreDBPartition extends AbstractPartition {
         @Override
         public Set<SingleStoreDBPartition> getPartitions() {
             return Collections.singleton(new SingleStoreDBPartition(
-                    connectorConfig.getLogicalName(), taskConfig.getString(DATABASE_NAME.name())));
+                    connectorConfig.getLogicalName(), connectorConfig.databaseName()));
         }
     }
 }

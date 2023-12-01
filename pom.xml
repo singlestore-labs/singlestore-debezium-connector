@@ -11,7 +11,7 @@
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
-        <singlestore.jdbc.driver>1.1.9</singlestore.jdbc.driver>
+        <singlestore.jdbc.driver>1.2.0</singlestore.jdbc.driver>
         <version.mockito>3.0.0</version.mockito>
 
         <!--

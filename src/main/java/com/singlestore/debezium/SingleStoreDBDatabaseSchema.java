@@ -4,6 +4,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
+import io.debezium.relational.Key.KeyMapper;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 import java.sql.SQLException;
@@ -18,14 +19,14 @@ public class SingleStoreDBDatabaseSchema extends RelationalDatabaseSchema {
 
     public SingleStoreDBDatabaseSchema(SingleStoreDBConnectorConfig config, SingleStoreDBValueConverters valueConverter,
                                        SingleStoreDBDefaultValueConverter defaultValueConverter, TopicNamingStrategy<TableId> topicNamingStrategy,
-                                       boolean tableIdCaseInsensitive) {
+                                       boolean tableIdCaseInsensitive) {        
         super(config, topicNamingStrategy, config.getTableFilters().dataCollectionFilter(), config.getColumnFilter(),
                 getTableSchemaBuilder(config, valueConverter, defaultValueConverter), tableIdCaseInsensitive, config.getKeyMapper());
     }
 
     private static TableSchemaBuilder getTableSchemaBuilder(SingleStoreDBConnectorConfig config, SingleStoreDBValueConverters valueConverter,
                                                             SingleStoreDBDefaultValueConverter defaultValueConverter) {
-        return new TableSchemaBuilder(valueConverter, defaultValueConverter, config.schemaNameAdjuster(),
+        return new SingleStoreDBTableSchemaBuilder(valueConverter, defaultValueConverter, config.schemaNameAdjuster(),
                 config.customConverterRegistry(), config.getSourceInfoStructMaker().schema(),
                 config.getFieldNamer(), false);
     }

@@ -28,7 +28,7 @@ public class SourceInfoTest {
                 Configuration.create()
                         .with(CommonConnectorConfig.TOPIC_PREFIX, "server")
                         .with(SingleStoreDBConnectorConfig.DATABASE_NAME, "database")
-                        .build()));
+                        .build()), 4);
         source.update(10, "123", Arrays.asList("1", "2", null, "3"));
         source.update(TableId.parse("db.t", true), Instant.parse("2018-11-30T18:35:24.00Z"));
         source.setSnapshot(SnapshotRecord.TRUE);
