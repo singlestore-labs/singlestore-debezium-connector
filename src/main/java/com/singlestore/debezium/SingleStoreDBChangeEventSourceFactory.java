@@ -3,6 +3,7 @@ package com.singlestore.debezium;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -35,8 +36,9 @@ public class SingleStoreDBChangeEventSourceFactory implements ChangeEventSourceF
 
     @Override
     public SnapshotChangeEventSource<SingleStoreDBPartition, SingleStoreDBOffsetContext> getSnapshotChangeEventSource(
-            SnapshotProgressListener<SingleStoreDBPartition> snapshotProgressListener) {
-        return new SingleStoreDBSnapshotChangeEventSource(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
+            SnapshotProgressListener<SingleStoreDBPartition> snapshotProgressListener, 
+            NotificationService<SingleStoreDBPartition, SingleStoreDBOffsetContext> notificationService) {
+        return new SingleStoreDBSnapshotChangeEventSource(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
     }
 
     @Override

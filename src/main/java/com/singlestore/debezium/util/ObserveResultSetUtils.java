@@ -45,8 +45,8 @@ public final class ObserveResultSetUtils {
                         + ". This might be caused by DBZ-4350");
             }
             greatestColumnPosition = greatestColumnPosition < columns[i].position()
-                    ? columns[i].position() + firstColumnIndex
-                    : greatestColumnPosition + firstColumnIndex;
+                    ? columns[i].position()
+                    : greatestColumnPosition;
         }
         return new ColumnArray(columns, greatestColumnPosition);
     }
@@ -54,13 +54,12 @@ public final class ObserveResultSetUtils {
     public static Object[] rowToArray(Table table, ResultSet rs, ColumnArray columnArray) throws SQLException {
         final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
         for (int i = 0; i < columnArray.getColumns().length; i++) {
-            row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1,
-                    columnArray.getColumns()[i], table);
+            row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1);
         }
         return row;
     }
 
-    public static Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
+    public static Object getColumnValue(ResultSet rs, int columnIndex) throws SQLException {
         return rs.getObject(columnIndex + METADATA_COLUMNS.length);
     }
 
