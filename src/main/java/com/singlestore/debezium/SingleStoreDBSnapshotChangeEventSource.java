@@ -81,6 +81,8 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
         Exception exceptionWhileSnapshot = null;
         Queue<JdbcConnection> connectionPool = null;
         try {
+            Set<Pattern> dataCollectionsToBeSnapshotted = getDataCollectionPattern(snapshottingTask.getDataCollections());
+
             LOGGER.info("Snapshot step 1 - Preparing");
 
             if (previousOffset != null && previousOffset.isSnapshotRunning()) {
@@ -94,7 +96,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
 
             // Note that there's a minor race condition here: a new table matching the filters could be created between
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
-            determineCapturedTables(ctx);
+            determineCapturedTables(ctx, dataCollectionsToBeSnapshotted);
             snapshotProgressListener.monitoredDataCollectionsDetermined(snapshotContext.partition, ctx.capturedTables);
 
             LOGGER.info("Snapshot step 3 - Determining snapshot offset");
@@ -360,9 +362,9 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
         return Threads.timer(clock, LOG_INTERVAL);
     }
 
-    private void determineCapturedTables(RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> ctx) throws Exception {
+    private void determineCapturedTables(RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> ctx, Set<Pattern> dataCollectionsToBeSnapshotted) throws Exception {
         Set<TableId> allTableIds = getAllTableIds(ctx);
-        Set<TableId> snapshottedTableIds = determineDataCollectionsToBeSnapshotted(allTableIds).collect(Collectors.toSet());
+        Set<TableId> snapshottedTableIds = determineDataCollectionsToBeSnapshotted(allTableIds, dataCollectionsToBeSnapshotted).collect(Collectors.toSet());
 
         Set<TableId> capturedTables = new HashSet<>();
         Set<TableId> capturedSchemaTables = new HashSet<>();
@@ -554,8 +556,12 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(SingleStoreDBPartition partition,
+    public SnapshottingTask getSnapshottingTask(SingleStoreDBPartition partition,
                                                    SingleStoreDBOffsetContext previousOffset) {
+        List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
+        Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
+        .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
+
         boolean snapshotSchema = true;
         boolean snapshotData = true;
         // found a previous offset and the earlier snapshot has completed
@@ -572,7 +578,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
             }
             snapshotData = this.connectorConfig.getSnapshotMode().includeData();
         }
-        return new SnapshottingTask(snapshotSchema, snapshotData);
+        return new SnapshottingTask(snapshotSchema, snapshotData, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable, false);
     }
 
     @Override
