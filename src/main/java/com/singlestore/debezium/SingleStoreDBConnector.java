@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -12,10 +13,13 @@ import org.apache.kafka.connect.connector.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.TableId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the SingleStoreDB change log and generate the corresponding
@@ -94,5 +98,20 @@ public class SingleStoreDBConnector extends RelationalBaseSourceConnector {
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
         return config.validate(SingleStoreDBConnectorConfig.ALL_FIELDS);
+    }
+
+    @Override
+    public List<TableId> getMatchingCollections(Configuration config) {
+        SingleStoreDBConnectorConfig connectorConfig = new SingleStoreDBConnectorConfig(config);
+        final SingleStoreDBConnection.SingleStoreDBConnectionConfiguration connectionConfig = 
+            new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(config);
+        try (SingleStoreDBConnection connection = new SingleStoreDBConnection(connectionConfig)) {
+            return connection.readTableNames(connectorConfig.databaseName(), null, null, new String[]{ "TABLE" }).stream()
+                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+                    .collect(Collectors.toList());
+        }
+        catch (SQLException e) {
+            throw new DebeziumException(e);
+        }
     }
 }

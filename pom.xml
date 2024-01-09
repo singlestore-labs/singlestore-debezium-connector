@@ -11,9 +11,21 @@
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
-        <singlestore.jdbc.driver>1.2.0</singlestore.jdbc.driver>
+        
+        <version.debezium>2.5.0.Final</version.debezium>
+        <version.kafka>3.6.1</version.kafka>
+        <version.singlestore.jdbc.driver>1.2.0</version.singlestore.jdbc.driver>
+        <version.jts.io>1.19.0</version.jts.io>
+        
+        <version.kafka-connect-avro-converter>7.5.1</version.kafka-connect-avro-converter>
+        <version.connect-json>3.6.1</version.connect-json>
+        <version.logback-classic>1.4.14</version.logback-classic>
+        <version.testcontainers>1.19.3</version.testcontainers>
+        <version.awaitility>4.2.0</version.awaitility>
         <version.mockito>3.0.0</version.mockito>
-
+        <version.junit>4.13.2</version.junit>
+        <version.assertj-core>3.25.1</version.assertj-core>
+        
         <!--
           Specify the properties that will be used for setting up the integration tests' Docker container.
           Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
@@ -42,47 +54,73 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
-            <version>2.3.2.Final</version>
+            <version>${version.debezium}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-api</artifactId>
-            <version>3.5.1</version>
+            <version>${version.kafka}</version>
         </dependency>
         <dependency>
             <groupId>com.singlestore</groupId>
             <artifactId>singlestore-jdbc-client</artifactId>
-            <version>${singlestore.jdbc.driver}</version>
+            <version>${version.singlestore.jdbc.driver}</version>
         </dependency>
         <dependency>
-            <groupId>io.github.matthieun</groupId>
-            <artifactId>wkb-wkt-converter</artifactId>
-            <version>1.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>javax.xml.bind</groupId>
-            <artifactId>jaxb-api</artifactId>
-            <version>2.3.1</version>
+            <groupId>org.locationtech.jts.io</groupId>
+            <artifactId>jts-io-common</artifactId>
+            <version>${version.jts.io}</version>
         </dependency>
 
         <!-- Testing -->
         <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <scope>test</scope>
-            <version>1.2.10</version>
-        </dependency>
-        <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
-            <version>2.3.2.Final</version>
+            <version>${version.debezium}</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-embedded</artifactId>
+            <version>${version.debezium}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-embedded</artifactId>
+            <version>${version.debezium}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-connect-avro-converter</artifactId>
+            <version>${version.kafka-connect-avro-converter}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>connect-json</artifactId>
+            <version>${version.connect-json}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <scope>test</scope>
+            <version>${version.logback-classic}</version>
+        </dependency>
+        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>1.19.0</version>
+            <version>${version.testcontainers}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>${version.awaitility}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -95,44 +133,13 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
-            <version>4.13.1</version>
+            <version>${version.junit}</version>
         </dependency>
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
-            <version>3.11.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.awaitility</groupId>
-            <artifactId>awaitility</artifactId>
-            <version>4.0.1</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.confluent</groupId>
-            <artifactId>kafka-connect-avro-converter</artifactId>
-            <version>7.0.1</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>connect-json</artifactId>
-            <version>3.4.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-embedded</artifactId>
-            <version>2.3.2.Final</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-embedded</artifactId>
-            <version>2.3.2.Final</version>
-            <scope>test</scope>
+            <version>${version.assertj-core}</version>
         </dependency>
     </dependencies>
 

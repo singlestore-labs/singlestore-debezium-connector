@@ -64,7 +64,7 @@ public class SnapshotIT extends IntegrationTestBase {
             assertRecord(key1, expectedKey1);
             assertRecord((Struct) value1.get("after"), expectedRow1);
             assertThat(record1.sourceOffset())
-                    .extracting("snapshot").containsExactly(true);
+                    .extracting("snapshot").isEqualTo(true);
 //            assertThat(record1.sourceOffset())
 //                    .extracting("snapshot_completed").containsExactly(i == 2);
             assertNull(value1.get("before"));
@@ -80,7 +80,7 @@ public class SnapshotIT extends IntegrationTestBase {
         final Struct value1 = (Struct) record1.value();
         assertRecord((Struct) value1.get("after"), expectedRow1);
         assertThat(record1.sourceOffset())
-                .extracting("snapshot").containsExactly(true);
+                .extracting("snapshot").isEqualTo(true);
 //        assertThat(record1.sourceOffset())
 //                .extracting("snapshot_completed").containsExactly(false);
         assertNull(value1.get("before"));

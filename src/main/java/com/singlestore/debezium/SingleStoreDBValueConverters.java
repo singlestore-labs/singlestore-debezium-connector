@@ -1,6 +1,8 @@
 package com.singlestore.debezium;
 
 import com.singlestore.jdbc.SingleStoreBlob;
+import org.locationtech.jts.io.ParseException;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Json;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -237,11 +239,16 @@ public class SingleStoreDBValueConverters extends JdbcValueConverters {
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
+    protected Object convertGeometry(Column column, Field fieldDefn, Object data) throws IllegalArgumentException {
         SingleStoreDBGeometry empty = SingleStoreDBGeometry.createEmpty();
         return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
             if (data instanceof String) {
-                SingleStoreDBGeometry geometry = SingleStoreDBGeometry.fromEkt((String) data);
+                SingleStoreDBGeometry geometry;
+                try {
+                    geometry = SingleStoreDBGeometry.fromEkt((String) data);
+                } catch (ParseException e) {
+                    throw new IllegalArgumentException(e);
+                }
                 r.deliver(io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), geometry.getWkb(), geometry.getSrid()));
             }
         });
