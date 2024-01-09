@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.Assert;
 import org.junit.Test;
+import org.locationtech.jts.io.ParseException;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -87,7 +88,7 @@ public class SingleStoreDBValueConvertersIT extends IntegrationTestBase {
     }
 
     @Test
-    public void testGeometry() {
+    public void testGeometry() throws ParseException {
         String geographyValue = "POLYGON ((1 1, 2 1, 2 2, 1 2, 1 1))";
         String geographyPointValue = "POINT(1.50000003 1.50000000)";
         SingleStoreDBGeometry singleStoreDBgeographyValue = SingleStoreDBGeometry.fromEkt(geographyValue);

@@ -1,14 +1,17 @@
 package com.singlestore.debezium;
 
 import io.debezium.util.HexConverter;
-import io.github.matthieun.conversion.WktWkbConverter;
+
+import org.locationtech.jts.io.ParseException;
+import org.locationtech.jts.io.WKBWriter;
+import org.locationtech.jts.io.WKTReader;
+import org.locationtech.jts.geom.Geometry;
 
 public class SingleStoreDBGeometry {
 
-    /**
-     * WKT to WKB converter
-     */
-    private static final WktWkbConverter WKT_WKB_CONVERTER = new WktWkbConverter();
+    private static final WKBWriter wkbWriter = new WKBWriter();
+    private static final WKTReader wktReader = new WKTReader();
+
     /**
      * Static Hex EKWB for a GEOMETRYCOLLECTION EMPTY.
      */
@@ -42,8 +45,10 @@ public class SingleStoreDBGeometry {
      * Create a SingleStoreDBGeometry using the supplied WKT.
      * srid is null as not specified by Single Store.
      */
-    public static SingleStoreDBGeometry fromEkt(String wkt) {
-        return new SingleStoreDBGeometry(WKT_WKB_CONVERTER.wktToWkb(wkt), null);
+    public static SingleStoreDBGeometry fromEkt(String wkt) throws ParseException {
+        final Geometry geometry = wktReader.read(wkt);
+        final byte[] wkb = wkbWriter.write(geometry);
+        return new SingleStoreDBGeometry(wkb, null);
     }
 
     /**

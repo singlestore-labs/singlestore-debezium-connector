@@ -14,12 +14,13 @@ import java.util.List;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
+import org.locationtech.jts.io.ParseException;
 
 import io.debezium.config.Configuration;
 
 public class StreamingIT extends IntegrationTestBase {
     @Test
-    public void canReadAllTypes() throws SQLException, InterruptedException {
+    public void canReadAllTypes() throws SQLException, InterruptedException, ParseException {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithDatabase())) {
             conn.execute(String.format("SNAPSHOT DATABASE %s", TEST_DATABASE));
 

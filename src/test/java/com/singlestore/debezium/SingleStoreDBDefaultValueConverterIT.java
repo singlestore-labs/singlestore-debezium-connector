@@ -10,6 +10,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.locationtech.jts.io.ParseException;
 
 import java.nio.ByteBuffer;
 import java.sql.Date;
@@ -75,7 +76,7 @@ public class SingleStoreDBDefaultValueConverterIT extends IntegrationTestBase {
 
     @Test
     @Ignore //todo enable after PLAT-6817 is resolved
-    public void testGeometryValues() {
+    public void testGeometryValues() throws ParseException {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
