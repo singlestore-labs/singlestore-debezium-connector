@@ -26,6 +26,9 @@
         <version.junit>4.13.2</version.junit>
         <version.assertj-core>3.25.1</version.assertj-core>
         
+        <version.assembly.plugin>3.6.0</version.assembly.plugin>
+        <version.failsafe.plugin>3.2.3</version.failsafe.plugin>
+
         <!--
           Specify the properties that will be used for setting up the integration tests' Docker container.
           Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
@@ -60,6 +63,7 @@
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-api</artifactId>
             <version>${version.kafka}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.singlestore</groupId>
@@ -237,4 +241,55 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>assembly</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${version.assembly.plugin}</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.debezium</groupId>
+                                <artifactId>debezium-assembly-descriptors</artifactId>
+                                <version>${version.debezium}</version>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <id>default</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>${project.artifactId}-${project.version}</finalName>
+                                    <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
+                                    <descriptorRefs>
+                                        <descriptorRef>connector-distribution</descriptorRef>
+                                    </descriptorRefs>
+                                    <tarLongFileMode>posix</tarLongFileMode>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>${version.failsafe.plugin}</version>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
