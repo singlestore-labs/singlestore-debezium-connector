@@ -40,7 +40,7 @@ public class SingleStoreDBDatabaseSchemaIT extends IntegrationTestBase {
     @Test
     public void testKeySchema() {
         schema = getSchema(new SingleStoreDBConnectorConfig(defaultJdbcConfig()));
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
             schema.refresh(conn);
             assertKeySchema("db.allTypesTable", "intColumn", SchemaBuilder.int32().defaultValue(2147483647).optional().build());//as unique index
             assertKeySchema("db.person", "name", SchemaBuilder.string().required().build());
