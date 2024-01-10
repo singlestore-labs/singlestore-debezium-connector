@@ -93,7 +93,7 @@ public class SnapshotIT extends IntegrationTestBase {
     public void testSnapshotFilter() throws InterruptedException {
         final Configuration config = defaultJdbcConfigBuilder()
                 .with(SingleStoreDBConnectorConfig.DATABASE_INCLUDE_LIST, TEST_DATABASE)
-                .with(SingleStoreDBConnectorConfig.TABLE_INCLUDE_LIST, TEST_DATABASE + ".B")
+                .with(SingleStoreDBConnectorConfig.TABLE_NAME, "B")
                 .build();
 
         start(SingleStoreDBConnector.class, config);

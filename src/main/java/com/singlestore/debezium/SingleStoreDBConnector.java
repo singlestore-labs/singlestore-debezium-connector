@@ -19,7 +19,6 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the SingleStoreDB change log and generate the corresponding

@@ -72,7 +72,7 @@ public class StreamingIT extends IntegrationTestBase {
 
             Configuration config = defaultJdbcConfigWithDatabase();
             config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.TABLE_INCLUDE_LIST, "db.allTypesTable")
+            .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "allTypesTable")
             .build();
 
             start(SingleStoreDBConnector.class, config);
@@ -146,7 +146,7 @@ public class StreamingIT extends IntegrationTestBase {
 
             Configuration config = defaultJdbcConfigWithDatabase();
             config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.TABLE_INCLUDE_LIST, "db.song")
+            .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "song")
             .build();
 
             start(SingleStoreDBConnector.class, config);
@@ -195,7 +195,7 @@ public class StreamingIT extends IntegrationTestBase {
 
             Configuration config = defaultJdbcConfigWithDatabase();
             config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.TABLE_INCLUDE_LIST, "db.product")
+            .withDefault(SingleStoreDBConnectorConfig.TABLE_INCLUDE_LIST, "product")
             .build();
 
             start(SingleStoreDBConnector.class, config);
