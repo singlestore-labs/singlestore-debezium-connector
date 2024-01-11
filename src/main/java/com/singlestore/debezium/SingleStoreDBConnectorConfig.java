@@ -4,10 +4,13 @@ import io.debezium.config.*;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalTableFilters;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigValue;
 
 import java.time.Duration;
@@ -135,6 +138,16 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
             .withDescription("Server's certificate in DER format or the server's CA certificate. " +
                     "The certificate is added to the trust store, which allows the connection to trust a self-signed certificate.");
 
+    public static final Field TABLE_NAME = Field.create(DATABASE_CONFIG_PREFIX + "table")
+        .withDisplayName("Table")
+        .withType(ConfigDef.Type.STRING)
+        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 7))
+        .withWidth(Width.MEDIUM)
+        .withImportance(Importance.HIGH)
+        .required()
+        .withDescription("The name of the table from which the connector should capture changes");
+
+
     public static final Field TOPIC_NAMING_STRATEGY = CommonConnectorConfig.TOPIC_NAMING_STRATEGY.withDefault(DefaultTopicNamingStrategy.class.getName());
 
     private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
@@ -147,6 +160,10 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
                     QUERY_FETCH_SIZE,
                     SNAPSHOT_FETCH_SIZE,
                     SNAPSHOT_MAX_THREADS,
+                    TABLE_IGNORE_BUILTIN,
+                    TABLE_INCLUDE_LIST,
+                    TABLE_EXCLUDE_LIST,
+                    INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY,
                     // TODO PLAT-6820 implement transaction monitoring
                     PROVIDE_TRANSACTION_METADATA)
             .type(
@@ -155,6 +172,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
                     USER,
                     PASSWORD,
                     DATABASE_NAME,
+                    TABLE_NAME,
                     SSL_MODE,
                     SSL_KEYSTORE,
                     SSL_KEYSTORE_PASSWORD,
@@ -179,6 +197,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
     private final SnapshotMode snapshotMode;
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final Duration connectionTimeout;
+    private final RelationalTableFilters tableFilters;
 
     public SingleStoreDBConnectorConfig(Configuration config) {
         super(config,
@@ -188,10 +207,11 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
                 ColumnFilterMode.CATALOG,
                 false);
         this.config = config;
+        this.tableFilters = new SingleStoreDBTableFilters(config, new SystemTablesPredicate(), getTableIdMapper(), false);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         final String inconsistentSchemaFailureHandlingMode = config.getString(SingleStoreDBConnectorConfig.INCONSISTENT_SCHEMA_HANDLING_MODE);
         this.inconsistentSchemaFailureHandlingMode = EventProcessingFailureHandlingMode.parse(inconsistentSchemaFailureHandlingMode);
-        this.connectionTimeout = Duration.ofMillis(config.getLong(SingleStoreDBConnectorConfig.CONNECTION_TIMEOUT_MS));
+        this.connectionTimeout = Duration.ofMillis(config.getLong(SingleStoreDBConnectorConfig.CONNECTION_TIMEOUT_MS));        
     }
 
     private static class SystemTablesPredicate implements TableFilter {
@@ -257,6 +277,10 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
 
     public String driverParameters() {
         return config.getString(DRIVER_PARAMETERS);
+    }
+
+    public RelationalTableFilters getTableFilters() {
+        return tableFilters;
     }
 
     /**

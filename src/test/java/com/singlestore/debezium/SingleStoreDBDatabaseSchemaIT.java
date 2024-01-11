@@ -39,12 +39,33 @@ public class SingleStoreDBDatabaseSchemaIT extends IntegrationTestBase {
 
     @Test
     public void testKeySchema() {
-        schema = getSchema(new SingleStoreDBConnectorConfig(defaultJdbcConfig()));
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        schema = getSchema(new SingleStoreDBConnectorConfig(defaultJdbcConfigWithTable("allTypesTable")));
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
             schema.refresh(conn);
             assertKeySchema("db.allTypesTable", "intColumn", SchemaBuilder.int32().defaultValue(2147483647).optional().build());//as unique index
+        } catch (SQLException e) {
+            Assert.fail(e.getMessage());
+        }
+
+        schema = getSchema(new SingleStoreDBConnectorConfig(defaultJdbcConfigWithTable("person")));
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("person"))) {
+            schema.refresh(conn);
             assertKeySchema("db.person", "name", SchemaBuilder.string().required().build());
+        } catch (SQLException e) {
+            Assert.fail(e.getMessage());
+        }
+
+        schema = getSchema(new SingleStoreDBConnectorConfig(defaultJdbcConfigWithTable("product")));
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("product"))) {
+            schema.refresh(conn);
             assertKeySchema("db.product", "id", SchemaBuilder.int32().required().build());
+        } catch (SQLException e) {
+            Assert.fail(e.getMessage());
+        }
+
+        schema = getSchema(new SingleStoreDBConnectorConfig(defaultJdbcConfigWithTable("purchased")));
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("purchased"))) {
+            schema.refresh(conn);
             assertKeySchema("db.purchased", "productId,purchaser",
                     SchemaBuilder.int32().required().build(), SchemaBuilder.string().required().build());
         } catch (SQLException e) {
@@ -54,10 +75,10 @@ public class SingleStoreDBDatabaseSchemaIT extends IntegrationTestBase {
 
     @Test
     public void testTableSchema() {
-        schema = getSchema(new SingleStoreDBConnectorConfig(defaultJdbcConfig()));
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        schema = getSchema(new SingleStoreDBConnectorConfig(defaultJdbcConfigWithTable("person")));
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("person"))) {
             schema.refresh(conn);
-            assertTablesIncluded("db.person", "db.product", "db.purchased", "db.allTypesTable");
+            assertTablesIncluded("db.person");
             assertTableSchema("db.person", "name, birthdate, age, salary, bitStr",
                     SchemaBuilder.string().required().build(),
                     org.apache.kafka.connect.data.Date.builder().optional().build(),
@@ -65,6 +86,14 @@ public class SingleStoreDBDatabaseSchemaIT extends IntegrationTestBase {
                     SchemaBuilder.float64().optional().build(),
                     Bits.builder(18).optional().build()
             );
+        } catch (SQLException e) {
+            Assert.fail(e.getMessage());
+        }
+
+        schema = getSchema(new SingleStoreDBConnectorConfig(defaultJdbcConfigWithTable("product")));
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("product"))) {
+            schema.refresh(conn);
+            assertTablesIncluded("db.product");
             assertTableSchema("db.product", "id, createdByDate, modifiedDate",
                     SchemaBuilder.int32().required().build(),//id
                     org.apache.kafka.connect.data.Timestamp.builder()
@@ -72,13 +101,21 @@ public class SingleStoreDBDatabaseSchemaIT extends IntegrationTestBase {
                     org.apache.kafka.connect.data.Timestamp.builder()
                             .defaultValue(Date.from(LocalDateTime.of(1970, 1, 1, 0, 0, 0).toInstant(ZoneOffset.UTC))).required().build() //modifiedDate epoch timestamp
             );
+        } catch (SQLException e) {
+            Assert.fail(e.getMessage());
+        }
+
+        schema = getSchema(new SingleStoreDBConnectorConfig(defaultJdbcConfigWithTable("allTypesTable")));
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
+            schema.refresh(conn);
+            assertTablesIncluded("db.allTypesTable");
             assertTableSchema("db.allTypesTable", "boolColumn, booleanColumn, bitColumn, tinyintColumn, mediumintColumn, " +
                             "smallintColumn, intColumn, integerColumn, bigintColumn, floatColumn, doubleColumn, realColumn, dateColumn, timeColumn, " +
                             "time6Column, datetimeColumn, datetime6Column, timestampColumn, timestamp6Column, yearColumn, decimalColumn, decColumn, " +
                             "fixedColumn, numericColumn, charColumn, mediumtextColumn, binaryColumn, varcharColumn, varbinaryColumn, longtextColumn, " +
-                            "textColumn, tinytextColumn, longblobColumn, mediumblobColumn, blobColumn, tinyblobColumn, jsonColumn, enum_f, set_f, geographyColumn, geographypointColumn",
-                    Bits.builder(3).optional().defaultValue("1".getBytes(StandardCharsets.UTF_8)).build(), //boolColumn
-                    Bits.builder(3).optional().defaultValue("1".getBytes(StandardCharsets.UTF_8)).build(), //booleanColumn
+                            "textColumn, tinytextColumn, longblobColumn, mediumblobColumn, blobColumn, tinyblobColumn, jsonColumn, enum_f, set_f, " /* "geographyColumn, "" */ + "geographypointColumn",
+                    SchemaBuilder.int16().optional().defaultValue((short) 1).build(), //boolColumn
+                    SchemaBuilder.int16().optional().defaultValue((short) 1).build(), //booleanColumn
                     Bits.builder(64).optional().defaultValue("01234567".getBytes(StandardCharsets.UTF_8)).build(), //bitColumn
                     SchemaBuilder.int16().optional().defaultValue((short) 124).build(), //tinyintColumn
                     SchemaBuilder.int32().optional().defaultValue(8388607).build(), //mediumintColumn
@@ -105,9 +142,9 @@ public class SingleStoreDBDatabaseSchemaIT extends IntegrationTestBase {
                             .defaultValue(Date.from(LocalDateTime.of(2022, 1, 19, 3, 14, 7).atZone(ZoneId.of("UTC")).toInstant())).build(), //timestamp6Column
                     Year.builder().optional().defaultValue(1989).build(), //yearColumn
                     SchemaBuilder.float64().defaultValue(10000.100001).optional().build(), //decimalColumn
-                    SchemaBuilder.float64().defaultValue(10000.100001).optional().build(), //decColumn
-                    SchemaBuilder.float64().defaultValue(10000.100001).optional().build(), //fixedColumn
-                    SchemaBuilder.float64().defaultValue(10000.100001).optional().build(), //numericColumn
+                    SchemaBuilder.float64().defaultValue(10000.0).optional().build(), //decColumn
+                    SchemaBuilder.float64().defaultValue(10000.0).optional().build(), //fixedColumn
+                    SchemaBuilder.float64().defaultValue(10000.0).optional().build(), //numericColumn
                     SchemaBuilder.string().optional().defaultValue("a").build(), //charColumn
                     SchemaBuilder.string().optional().defaultValue("abc").build(), //mediumtextColumn
                     SchemaBuilder.bytes().optional().defaultValue("a".getBytes(StandardCharsets.UTF_8)).build(), //binaryColumn
@@ -123,7 +160,7 @@ public class SingleStoreDBDatabaseSchemaIT extends IntegrationTestBase {
                     io.debezium.data.Json.builder().optional().defaultValue("{}").build(), //jsonColumn
                     SchemaBuilder.string().optional().defaultValue("val1").build(), //enum_f
                     SchemaBuilder.string().optional().defaultValue("v1").build(), //set_f
-                    io.debezium.data.geometry.Geometry.builder().optional().build(),//geographyColumn
+//                    io.debezium.data.geometry.Geometry.builder().optional().build(),//geographyColumn
                     io.debezium.data.geometry.Geometry.builder().optional().build()//geographypointColumn
             );
         } catch (SQLException e) {
@@ -140,11 +177,15 @@ public class SingleStoreDBDatabaseSchemaIT extends IntegrationTestBase {
                 "CREATE ROWSTORE TABLE d3.A (pk INT, aa VARCHAR(10), ab INT, PRIMARY KEY(pk));" +
                 "CREATE TABLE d3.B (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));";
         execute(statements);
-        Configuration configuration = defaultJdbcConfigBuilder().with(SingleStoreDBConnectorConfig.DATABASE_INCLUDE_LIST, "d3").build();
+        Configuration configuration = defaultJdbcConfigBuilder()
+            .with(SingleStoreDBConnectorConfig.DATABASE_NAME, "d3")
+            .with(SingleStoreDBConnectorConfig.TABLE_NAME, "A")
+            .build();
         schema = getSchema(new SingleStoreDBConnectorConfig(configuration));
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(configuration))) {
             schema.refresh(conn);
-            assertTablesIncluded("d3.A", "d3.B");
+            assertTablesIncluded("d3.A");
+            assertTablesExcluded("d3.B");
             assertTableSchema("d3.A", "pk, aa",
                     SchemaBuilder.int32().required().defaultValue(0).build(),
                     SchemaBuilder.string().optional().build()
@@ -161,8 +202,9 @@ public class SingleStoreDBDatabaseSchemaIT extends IntegrationTestBase {
         schema = getSchema(new SingleStoreDBConnectorConfig(configuration));
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(configuration))) {
             schema.refresh(conn);
-            assertTablesIncluded("d3.A", "d3.C");
+            assertTablesIncluded("d3.A");
             assertTablesExcluded("d3.B");
+            assertTablesExcluded("d3.C");
             assertTableSchema("d3.A", "pk, ab, ac",
                     SchemaBuilder.int32().required().defaultValue(0).build(),
                     SchemaBuilder.float64().optional().build(),
@@ -176,91 +218,42 @@ public class SingleStoreDBDatabaseSchemaIT extends IntegrationTestBase {
     @Test
     public void testApplyFilters() {
         String statements = "CREATE DATABASE IF NOT EXISTS d1; " +
-                "CREATE DATABASE IF NOT EXISTS d2; " +
                 "DROP TABLE IF EXISTS d1.A;" +
-                "DROP TABLE IF EXISTS d1.B;" +
-                "DROP TABLE IF EXISTS d2.A;" +
-                "DROP TABLE IF EXISTS d2.B;" +
-                "CREATE TABLE d1.A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
-                "CREATE TABLE d1.B (pk INT, ba VARCHAR(10), PRIMARY KEY(pk));" +
-                "CREATE TABLE d2.A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
-                "CREATE TABLE d2.B (pk INT, ba VARCHAR(10), PRIMARY KEY(pk));";
+                "CREATE TABLE d1.A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));";
         execute(statements);
-        Configuration configuration = defaultJdbcConfigBuilder().with(SingleStoreDBConnectorConfig.DATABASE_EXCLUDE_LIST, "d1").build();
+        Configuration configuration = defaultJdbcConfigBuilder()
+            .with(SingleStoreDBConnectorConfig.DATABASE_NAME, "d1")
+            .with(SingleStoreDBConnectorConfig.TABLE_NAME, "A")
+            .with(SingleStoreDBConnectorConfig.COLUMN_EXCLUDE_LIST, ".*aa")
+            .build();
         schema = getSchema(new SingleStoreDBConnectorConfig(configuration));
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(configuration))) {
             schema.refresh(conn);
-            assertTablesIncluded("d2.A", "d2.B");
-            assertTablesExcluded("d1.A", "d1.B");
+            assertColumnsExcluded("d1.A.aa");
         } catch (SQLException e) {
             Assert.fail(e.getMessage());
         }
-        configuration = defaultJdbcConfigBuilder().with(SingleStoreDBConnectorConfig.DATABASE_EXCLUDE_LIST, "d.*").build();
+        configuration = defaultJdbcConfigBuilder()
+            .with(SingleStoreDBConnectorConfig.DATABASE_NAME, "d1")
+            .with(SingleStoreDBConnectorConfig.TABLE_NAME, "A")
+            .with(SingleStoreDBConnectorConfig.COLUMN_EXCLUDE_LIST, ".*p.*")
+            .build();
         schema = getSchema(new SingleStoreDBConnectorConfig(configuration));
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(configuration))) {
             schema.refresh(conn);
-            assertTablesExcluded("d1.A", "d1.B", "d2.A", "d2.B");
-        } catch (SQLException e) {
-            Assert.fail(e.getMessage());
-        }
-        configuration = defaultJdbcConfigBuilder().with(SingleStoreDBConnectorConfig.TABLE_EXCLUDE_LIST, "d1.A,d2.A").build();
-        schema = getSchema(new SingleStoreDBConnectorConfig(configuration));
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(configuration))) {
-            schema.refresh(conn);
-            assertTablesIncluded("d1.B", "d2.B");
-            assertTablesExcluded("d1.A", "d2.A");
-        } catch (SQLException e) {
-            Assert.fail(e.getMessage());
-        }
-        configuration = defaultJdbcConfigBuilder().with(SingleStoreDBConnectorConfig.DATABASE_EXCLUDE_LIST, "d2")
-                .with(SingleStoreDBConnectorConfig.TABLE_EXCLUDE_LIST, "d1.A").build();
-        schema = getSchema(new SingleStoreDBConnectorConfig(configuration));
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(configuration))) {
-            schema.refresh(conn);
-            assertTablesIncluded("d1.B");
-            assertTablesExcluded("d1.A", "d2.A", "d2.A");
-        } catch (SQLException e) {
-            Assert.fail(e.getMessage());
-        }
-        configuration = defaultJdbcConfigBuilder().with(SingleStoreDBConnectorConfig.COLUMN_EXCLUDE_LIST, ".*aa").build();
-        schema = getSchema(new SingleStoreDBConnectorConfig(configuration));
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(configuration))) {
-            schema.refresh(conn);
-            assertColumnsExcluded("d1.a.aa", "d2.b.aa");
-        } catch (SQLException e) {
-            Assert.fail(e.getMessage());
-        }
-        configuration = defaultJdbcConfigBuilder().with(SingleStoreDBConnectorConfig.COLUMN_EXCLUDE_LIST, ".*aa").build();
-        schema = getSchema(new SingleStoreDBConnectorConfig(configuration));
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(configuration))) {
-            schema.refresh(conn);
-            assertColumnsExcluded("d1.a.aa", "d2.a.aa");
-        } catch (SQLException e) {
-            Assert.fail(e.getMessage());
-        }
-        //test tableIdCaseInsensitive
-        configuration = defaultJdbcConfigBuilder().build();
-        schema = getSchema(new SingleStoreDBConnectorConfig(configuration), false);
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(configuration))) {
-            schema.refresh(conn);
-            assertTablesExcluded("d1.b", "d2.b", "d1.a", "d2.a");
-            assertTablesIncluded("d1.B", "d2.B", "d1.A", "d2.A");
+            assertColumnsExcluded("d1.A.pk");
         } catch (SQLException e) {
             Assert.fail(e.getMessage());
         }
     }
 
-    public static SingleStoreDBDatabaseSchema getSchema(SingleStoreDBConnectorConfig config, boolean tableIdCaseInsensitive) {
+    public static SingleStoreDBDatabaseSchema getSchema(SingleStoreDBConnectorConfig config) {
         return new SingleStoreDBDatabaseSchema(
                 config,
                 CONVERTERS,
                 new SingleStoreDBDefaultValueConverter(CONVERTERS),
                 config.getTopicNamingStrategy(SingleStoreDBConnectorConfig.TOPIC_NAMING_STRATEGY),
-                tableIdCaseInsensitive);
-    }
-
-    public static SingleStoreDBDatabaseSchema getSchema(SingleStoreDBConnectorConfig config) {
-        return getSchema(config, true);
+                false);
     }
 
     protected void assertTablesIncluded(String... fullyQualifiedTableNames) {

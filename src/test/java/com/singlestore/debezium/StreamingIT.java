@@ -21,64 +21,62 @@ import io.debezium.config.Configuration;
 public class StreamingIT extends IntegrationTestBase {
     @Test
     public void canReadAllTypes() throws SQLException, InterruptedException, ParseException {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithDatabase())) {
-            conn.execute(String.format("SNAPSHOT DATABASE %s", TEST_DATABASE));
-
-            conn.execute("INSERT INTO `allTypesTable` VALUES (\n" + 
-            "TRUE, " + // boolColumn
-            "TRUE, " + // booleanColumn
-            "'abcdefgh', " + // bitColumn
-            "-128, " +  // tinyintColumn
-            "-8388608, " + // mediumintColumn
-            "-32768, " + // smallintColumn
-            "-2147483648, " + // intColumn
-            "-2147483648, " + // integerColumn
-            "-9223372036854775808, " + // bigintColumn
-            "-100.01, " + // floatColumn
-            "-1000.01, " + // doubleColumn
-            "-1000.01, " + // realColumn
-            "'1000-01-01', " + // dateColumn
-            // Negative time returns incorrect result
-            // It is converted to 24h - time during reading of the result 
-            "'0:00:00', " + // timeColumn
-            "'0:00:00.000000', " + // time6Column
-            "'1000-01-01 00:00:00', " +  // datetimeColumn
-            "'1000-01-01 00:00:00.000000', " + // datetime6Column
-            "'1970-01-01 00:00:01', " +  // timestampColumn
-            "'1970-01-01 00:00:01.000000', " +  // timestamp6Column
-            "1901, " +  // yearColumn
-            "12345678901234567890123456789012345.123456789012345678901234567891, " + // decimalColumn
-            "1234567890, " + // decColumn
-            "1234567890, " + // fixedColumn
-            "1234567890, " +  // numericColumn
-            "'a', " + // charColumn
-            "'abc', " +  // mediumtextColumn
-            "'a', " + // binaryColumn
-            "'abc', " +  // varcharColumn
-            "'abc', " +  // varbinaryColumn
-            "'abc', " +  // longtextColumn
-            "'abc', " +  // textColumn
-            "'abc', " +  // tinytextColumn
-            "'abc', " +  // longblobColumn
-            "'abc', " +  // mediumblobColumn
-            "'abc', " +  // blobColumn
-            "'abc', " +  // tinyblobColumn
-            "'{}', " + // jsonColumn
-            "'val1', " + // enum_f
-            "'v1', " + // set_f
-//            "'POLYGON((1 1,2 1,2 2, 1 2, 1 1))', " + // geographyColumn TODO: PLAT-6907 test GEOGRAPHY datatype
-            "'POINT(1.50000003 1.50000000)')" // geographypointColumn
-            );
-
-            Configuration config = defaultJdbcConfigWithDatabase();
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
+            Configuration config = defaultJdbcConfigWithTable("allTypesTable");
             config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.TABLE_INCLUDE_LIST, "db.allTypesTable")
+            .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "allTypesTable")
             .build();
 
             start(SingleStoreDBConnector.class, config);
             assertConnectorIsRunning();
 
             try {
+                conn.execute("INSERT INTO `allTypesTable` VALUES (\n" + 
+                    "TRUE, " + // boolColumn
+                    "TRUE, " + // booleanColumn
+                    "'abcdefgh', " + // bitColumn
+                    "-128, " +  // tinyintColumn
+                    "-8388608, " + // mediumintColumn
+                    "-32768, " + // smallintColumn
+                    "-2147483648, " + // intColumn
+                    "-2147483648, " + // integerColumn
+                    "-9223372036854775808, " + // bigintColumn
+                    "-100.01, " + // floatColumn
+                    "-1000.01, " + // doubleColumn
+                    "-1000.01, " + // realColumn
+                    "'1000-01-01', " + // dateColumn
+                    // Negative time returns incorrect result
+                    // It is converted to 24h - time during reading of the result 
+                    "'0:00:00', " + // timeColumn
+                    "'0:00:00.000000', " + // time6Column
+                    "'1000-01-01 00:00:00', " +  // datetimeColumn
+                    "'1000-01-01 00:00:00.000000', " + // datetime6Column
+                    "'1970-01-01 00:00:01', " +  // timestampColumn
+                    "'1970-01-01 00:00:01.000000', " +  // timestamp6Column
+                    "1901, " +  // yearColumn
+                    "12345678901234567890123456789012345.123456789012345678901234567891, " + // decimalColumn
+                    "1234567890, " + // decColumn
+                    "1234567890, " + // fixedColumn
+                    "1234567890, " +  // numericColumn
+                    "'a', " + // charColumn
+                    "'abc', " +  // mediumtextColumn
+                    "'a', " + // binaryColumn
+                    "'abc', " +  // varcharColumn
+                    "'abc', " +  // varbinaryColumn
+                    "'abc', " +  // longtextColumn
+                    "'abc', " +  // textColumn
+                    "'abc', " +  // tinytextColumn
+                    "'abc', " +  // longblobColumn
+                    "'abc', " +  // mediumblobColumn
+                    "'abc', " +  // blobColumn
+                    "'abc', " +  // tinyblobColumn
+                    "'{}', " + // jsonColumn
+                    "'val1', " + // enum_f
+                    "'v1', " + // set_f
+//                       "'POLYGON((1 1,2 1,2 2, 1 2, 1 1))', " + // geographyColumn TODO: PLAT-6907 test GEOGRAPHY datatype
+                    "'POINT(1.50000003 1.50000000)')" // geographypointColumn
+                );
+
                 List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
                 assertEquals(1, records.size());
 
@@ -138,21 +136,20 @@ public class StreamingIT extends IntegrationTestBase {
 
     @Test
     public void noPrimaryKey() throws SQLException, InterruptedException {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithDatabase())) {
-            conn.execute(String.format("SNAPSHOT DATABASE %s", TEST_DATABASE));
-            conn.execute("INSERT INTO `song` VALUES ('Metallica', 'Enter Sandman')");
-            conn.execute("INSERT INTO `song` VALUES ('AC/DC', 'Back In Black')");
-            conn.execute("DELETE FROM `song` WHERE name = 'Enter Sandman'");
-
-            Configuration config = defaultJdbcConfigWithDatabase();
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("song"))) {
+            Configuration config = defaultJdbcConfigWithTable("song");
             config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.TABLE_INCLUDE_LIST, "db.song")
+            .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "song")
             .build();
 
             start(SingleStoreDBConnector.class, config);
             assertConnectorIsRunning();
 
             try {
+                conn.execute("INSERT INTO `song` VALUES ('Metallica', 'Enter Sandman')");
+                conn.execute("INSERT INTO `song` VALUES ('AC/DC', 'Back In Black')");
+                conn.execute("DELETE FROM `song` WHERE name = 'Enter Sandman'");
+
                 List<SourceRecord> records = consumeRecordsByTopic(4).allRecordsInOrder();
                 
                 List<Long> ids = new ArrayList<>();
@@ -184,24 +181,23 @@ public class StreamingIT extends IntegrationTestBase {
 
     @Test
     public void readSeveralOperations() throws SQLException, InterruptedException {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithDatabase())) {
-            conn.execute(String.format("SNAPSHOT DATABASE %s", TEST_DATABASE));
-            conn.execute("INSERT INTO `product` (`id`) VALUES (1)");
-            conn.execute("INSERT INTO `product` (`id`) VALUES (2)");
-            conn.execute("INSERT INTO `product` (`id`) VALUES (3)");
-            conn.execute("DELETE FROM `product` WHERE `id` = 1");
-            conn.execute("UPDATE `product` SET `createdByDate` = '2013-11-23 15:22:33' WHERE `id` = 2");
-            conn.execute("INSERT INTO `product` (`id`) VALUES (4)");
-
-            Configuration config = defaultJdbcConfigWithDatabase();
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("product"))) {
+            Configuration config = defaultJdbcConfigWithTable("product");
             config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.TABLE_INCLUDE_LIST, "db.product")
+            .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "product")
             .build();
 
             start(SingleStoreDBConnector.class, config);
             assertConnectorIsRunning();
 
             try {
+                conn.execute("INSERT INTO `product` (`id`) VALUES (1)");
+                conn.execute("INSERT INTO `product` (`id`) VALUES (2)");
+                conn.execute("INSERT INTO `product` (`id`) VALUES (3)");
+                conn.execute("DELETE FROM `product` WHERE `id` = 1");
+                conn.execute("UPDATE `product` SET `createdByDate` = '2013-11-23 15:22:33' WHERE `id` = 2");
+                conn.execute("INSERT INTO `product` (`id`) VALUES (4)");
+
                 List<SourceRecord> records = consumeRecordsByTopic(7).allRecordsInOrder();
                 
                 List<Integer> ids = Arrays.asList(new Integer[]{1, 2, 3, 

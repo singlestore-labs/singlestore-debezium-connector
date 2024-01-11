@@ -111,13 +111,14 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
         return new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(defaultJdbcConfig());
     }
 
-    public static SingleStoreDBConnection.SingleStoreDBConnectionConfiguration defaultJdbcConnectionConfigWithDatabase() {
-        return new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(defaultJdbcConfigWithDatabase());
+    public static SingleStoreDBConnection.SingleStoreDBConnectionConfiguration defaultJdbcConnectionConfigWithTable(String table) {
+        return new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(defaultJdbcConfigWithTable(table));
     }
 
-    public static JdbcConfiguration defaultJdbcConfigWithDatabase() {
+    public static JdbcConfiguration defaultJdbcConfigWithTable(String table) {
         return defaultJdbcConfigBuilder()
                 .withDefault(SingleStoreDBConnectorConfig.DATABASE_NAME, TEST_DATABASE)
+                .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, table)
                 .build();
     }
 

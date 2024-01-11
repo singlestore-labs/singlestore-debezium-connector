@@ -134,7 +134,7 @@ public class SingleStoreDBValueConverters extends JdbcValueConverters {
     }
 
     protected ByteOrder byteOrderOfBitType() {
-        return ByteOrder.BIG_ENDIAN;
+        return ByteOrder.LITTLE_ENDIAN;
     }
 
     /**

@@ -76,7 +76,7 @@ public class SingleStoreDBConnectionIT extends IntegrationTestBase {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
             Set<TableId> tableIds = conn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream().filter(t -> t.catalog().equals(TEST_DATABASE)).collect(Collectors.toSet());
             Set<String> tableNames = tableIds.stream().map(TableId::table).collect(Collectors.toSet());
-            assertEquals("readAllTableNames returns a wrong number of tables", 4, tableIds.size());
+            assertEquals("readAllTableNames returns a wrong number of tables", 5, tableIds.size());
             assertTrue("readAllTableNames doesn't contain correct table names", tableNames.containsAll(Arrays.asList("person", "product", "purchased")));
             Set<String> catalogNames = conn.readAllCatalogNames();
             assertTrue("readAllCatalogNames returns a wrong catalog name", catalogNames.contains(TEST_DATABASE));
@@ -99,7 +99,7 @@ public class SingleStoreDBConnectionIT extends IntegrationTestBase {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
-            assertThat(tables.size()).isEqualTo(4);
+            assertThat(tables.size()).isEqualTo(5);
             Table person = tables.forTable(TEST_DATABASE, null, "person");
             assertThat(person).isNotNull();
             assertThat(person.filterColumns(col -> col.isAutoIncremented())).isEmpty();
@@ -226,7 +226,7 @@ public class SingleStoreDBConnectionIT extends IntegrationTestBase {
     public void testObserve() {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
             String tempTableName = "person_temporary";
-            conn.execute("use " + TEST_DATABASE,
+            conn.execute("USE " + TEST_DATABASE,
                     "DROP TABLE IF EXISTS " + tempTableName,
                     "CREATE TABLE " + tempTableName + " ("
                             + "  name VARCHAR(255) primary key,"
@@ -234,33 +234,41 @@ public class SingleStoreDBConnectionIT extends IntegrationTestBase {
                             + "  age INTEGER NULL DEFAULT 10,"
                             + "  salary DECIMAL(5,2),"
                             + "  bitStr BIT(18)"
-                            + ")",
-                    "insert into " + tempTableName + " values('product1', NOW(), 1, 300, 1)",
-                    "insert into " + tempTableName + " values('product2', NOW(), 2, 400, 0)",
-                    "delete from " + tempTableName + " where name = 'product1'");
-            String[] expectedTypesOrder = {"Insert", "CommitTransaction", "BeginTransaction", "Insert", "CommitTransaction", "BeginTransaction", "Delete", "CommitTransaction"};
+                            + ")");
+            String[] expectedTypesOrder = {"BeginSnapshot", "CommitSnapshot", 
+                "BeginTransaction", "Insert", "CommitTransaction", 
+                "BeginTransaction", "Insert", "CommitTransaction", 
+                "BeginTransaction", "Delete", "CommitTransaction"};
             List<String> actualTypes = new CopyOnWriteArrayList<>();
-            CountDownLatch latch = new CountDownLatch(1);
+            CountDownLatch latch1 = new CountDownLatch(1);
+            CountDownLatch latch2 = new CountDownLatch(1);
             Thread observer = new Thread(() -> {
                 try (SingleStoreDBConnection observerConn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
                     Set<TableId> tableIds = observerConn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream().filter(t -> t.catalog().equals(TEST_DATABASE)).collect(Collectors.toSet());
                     Set<TableId> person = tableIds.stream().filter(t -> t.table().equals(tempTableName)).collect(Collectors.toSet());
                     observerConn.observe(person, rs -> {
                         int counter = 0;
+                        latch1.countDown();
                         while (counter < expectedTypesOrder.length && rs.next()) {
                             actualTypes.add(rs.getString(3));
                             counter++;
                         }
-                        latch.countDown();
+                        ((com.singlestore.jdbc.Connection)rs.getStatement().getConnection()).cancelCurrentQuery();
+                        latch2.countDown();
                     });
                 } catch (Exception e) {
                     Assert.fail(e.getMessage());
                 } finally {
-                    latch.countDown();
+                    latch1.countDown();
+                    latch2.countDown();
                 }
             });
             observer.start();
-            latch.await();
+            latch1.await();
+            conn.execute("insert into " + tempTableName + " values('product1', NOW(), 1, 300, 1)",
+                    "insert into " + tempTableName + " values('product2', NOW(), 2, 400, 0)",
+                    "delete from " + tempTableName + " where name = 'product1'");
+            latch2.await();
             observer.interrupt();
             for (int i = 0; i < expectedTypesOrder.length; i++) {
                 assertEquals(expectedTypesOrder[i], actualTypes.get(i));

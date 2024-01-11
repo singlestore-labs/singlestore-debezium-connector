@@ -1,6 +1,5 @@
 package com.singlestore.debezium;
 
-import static io.debezium.relational.RelationalDatabaseConnectorConfig.DATABASE_NAME;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;

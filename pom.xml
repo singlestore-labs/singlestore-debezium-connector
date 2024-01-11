@@ -24,7 +24,7 @@
         <version.awaitility>4.2.0</version.awaitility>
         <version.mockito>3.0.0</version.mockito>
         <version.junit>4.13.2</version.junit>
-        <version.assertj-core>3.25.1</version.assertj-core>
+        <version.assertj-core>3.11.1</version.assertj-core>
         
         <version.assembly.plugin>3.6.0</version.assembly.plugin>
         <version.failsafe.plugin>3.2.3</version.failsafe.plugin>
