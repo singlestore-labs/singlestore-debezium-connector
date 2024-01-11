@@ -145,7 +145,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
         .withWidth(Width.MEDIUM)
         .withImportance(Importance.HIGH)
         .required()
-        .withDescription("The name of the ефиду from which the connector should capture changes");
+        .withDescription("The name of the table from which the connector should capture changes");
 
 
     public static final Field TOPIC_NAMING_STRATEGY = CommonConnectorConfig.TOPIC_NAMING_STRATEGY.withDefault(DefaultTopicNamingStrategy.class.getName());

@@ -19,7 +19,7 @@ public class SingleStoreDBDatabaseSchema extends RelationalDatabaseSchema {
 
     public SingleStoreDBDatabaseSchema(SingleStoreDBConnectorConfig config, SingleStoreDBValueConverters valueConverter,
                                        SingleStoreDBDefaultValueConverter defaultValueConverter, TopicNamingStrategy<TableId> topicNamingStrategy,
-                                       boolean tableIdCaseInsensitive) {        
+                                       boolean tableIdCaseInsensitive) {  
         super(config, topicNamingStrategy, config.getTableFilters().dataCollectionFilter(), config.getColumnFilter(),
                 getTableSchemaBuilder(config, valueConverter, defaultValueConverter), tableIdCaseInsensitive, config.getKeyMapper());
     }
