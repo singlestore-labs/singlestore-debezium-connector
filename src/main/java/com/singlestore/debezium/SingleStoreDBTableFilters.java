@@ -14,20 +14,16 @@ public class SingleStoreDBTableFilters extends RelationalTableFilters {
     private final Predicate<String> databaseFilter;
     private final String tableName;
     private final String databaseName;
-    private final TableIdToStringMapper mapper;
 
     public SingleStoreDBTableFilters(Configuration config, TableFilter systemTablesFilter,
             TableIdToStringMapper tableIdMapper, boolean useCatalogBeforeSchema) {
         super(config, systemTablesFilter, tableIdMapper, useCatalogBeforeSchema);
-        
-        mapper = tableIdMapper;
         databaseName = config.getString(SingleStoreDBConnectorConfig.DATABASE_NAME);
-        tableName = tableIdMapper.toString(new TableId(databaseName, null, 
-            config.getString(SingleStoreDBConnectorConfig.TABLE_NAME)));
+        tableName = config.getString(SingleStoreDBConnectorConfig.TABLE_NAME);
 
         tableFilter = TableFilter.fromPredicate(
             table -> 
-                mapper.toString(table).equals(tableName)
+                table.table().equals(tableName) && table.catalog().equals(databaseName)
             );
         databaseFilter = 
             db -> db.equals(databaseName);
