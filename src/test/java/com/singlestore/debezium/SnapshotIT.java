@@ -9,9 +9,12 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -129,4 +132,50 @@ public class SnapshotIT extends IntegrationTestBase {
         int breakAfterNulls = waitTimeForRecordsAfterNulls();
         return this.consumeRecords(numberOfRecords, breakAfterNulls, recordConsumer, false);
     }
+
+    @Test
+    public void filterColumns() throws SQLException, InterruptedException {
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("A"))) {
+
+            Configuration config = defaultJdbcConfigWithTable("A");
+            config = config.edit()
+            .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "A")
+            .withDefault(SingleStoreDBConnectorConfig.COLUMN_INCLUDE_LIST, "aa")
+            .build();
+
+            start(SingleStoreDBConnector.class, config);
+            assertConnectorIsRunning();
+            try {
+
+                List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
+                
+                List<String> values = Arrays.asList(new String[]{"test0", "test1", "test2"});
+                List<String> operations = Arrays.asList(new String[]{"r", "r", "r"});
+
+                for (int i = 0; i < records.size(); i++) {
+                    SourceRecord record = records.get(i);
+
+                    String operation = operations.get(i);
+                    Struct value = (Struct) record.value();
+                    if (operation == null) {
+                        assertNull(value);
+                    } else {
+                        assertEquals(operation, value.get("op"));                    
+                    }
+
+                    value = value.getStruct("after");
+                    Set<String> columnNames = value.schema()
+                        .fields()
+                        .stream()
+                        .map(field -> field.name())
+                        .collect(Collectors.toSet());
+                    assertEquals(new HashSet<>(Arrays.asList("aa")), columnNames);
+                    assertEquals(values.get(i), value.get("aa"));
+                }
+            } finally {
+                stopConnector();
+            }    
+        }
+    }
+
 }

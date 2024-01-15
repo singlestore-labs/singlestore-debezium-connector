@@ -251,7 +251,8 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
         try (Statement statement = jdbcConnection.connection().createStatement();
              AutoClosableResultSetWrapper rsWrapper = AutoClosableResultSetWrapper.from(statement.executeQuery(selectStatement))) {
             ResultSet rs = rsWrapper.getResultSet();
-            ObserveResultSetUtils.ColumnArray columnArray = ObserveResultSetUtils.toArray(rs, table);
+            ObserveResultSetUtils.ColumnArray columnArray = 
+                ObserveResultSetUtils.toArray(rs, table, schema.schemaFor(table.id()).valueSchema().fields());
             long rows = 0;
             Threads.Timer logTimer = getTableScanLogTimer();
             boolean hasNext = validateBeginSnapshotResultSet(rs);

@@ -9,7 +9,10 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -222,6 +225,59 @@ public class StreamingIT extends IntegrationTestBase {
 
                 assertEquals(ids.get(0), ids.get(3));
                 assertEquals(ids.get(1), ids.get(4));
+            } finally {
+                stopConnector();
+            }    
+        }
+    }
+
+    @Test
+    public void filterColumns() throws SQLException, InterruptedException {
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("person"))) {
+            Configuration config = defaultJdbcConfigWithTable("person");
+            config = config.edit()
+            .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "person")
+            .withDefault(SingleStoreDBConnectorConfig.COLUMN_INCLUDE_LIST, "name,age")
+            .build();
+
+            start(SingleStoreDBConnector.class, config);
+            assertConnectorIsRunning();
+
+            try {
+                conn.execute("INSERT INTO `person` (`name`, `birthdate`, `age`, `salary`, `bitStr`) " +
+                    "VALUES ('Adalbert', '2001-04-11', 22, 100, 'a')");
+                conn.execute("INSERT INTO `person` (`name`, `birthdate`, `age`, `salary`, `bitStr`) " +
+                    "VALUES ('Alice', '2001-04-11', 23, 100, 'a')");
+                conn.execute("INSERT INTO `person` (`name`, `birthdate`, `age`, `salary`, `bitStr`) " +
+                    "VALUES ('Bob', '2001-04-11', 24, 100, 'a')");
+
+                List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
+                
+                List<String> names = Arrays.asList(new String[]{"Adalbert", "Alice", "Bob"});
+                List<Integer> ages = Arrays.asList(new Integer[]{22, 23, 24});
+                List<String> operations = Arrays.asList(new String[]{"c", "c", "c"});
+
+                for (int i = 0; i < records.size(); i++) {
+                    SourceRecord record = records.get(i);
+
+                    String operation = operations.get(i);
+                    Struct value = (Struct) record.value();
+                    if (operation == null) {
+                        assertNull(value);
+                    } else {
+                        assertEquals(operation, value.get("op"));                    
+                    }
+
+                    value = value.getStruct("after");
+                    Set<String> columnNames = value.schema()
+                        .fields()
+                        .stream()
+                        .map(field -> field.name())
+                        .collect(Collectors.toSet());
+                    assertEquals(new HashSet<>(Arrays.asList("name", "age")), columnNames);
+                    assertEquals(names.get(i), value.get("name"));
+                    assertEquals(ages.get(i), value.get("age"));
+                }
             } finally {
                 stopConnector();
             }    
