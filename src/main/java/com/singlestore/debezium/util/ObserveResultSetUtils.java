@@ -6,6 +6,10 @@ import io.debezium.relational.Table;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.List;
+
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
 
 public final class ObserveResultSetUtils {
 
@@ -13,7 +17,7 @@ public final class ObserveResultSetUtils {
     private static final String BEGIN_SNAPSHOT = "BeginSnapshot";
     private static final String COMMIT_SNAPSHOT = "CommitSnapshot";
 
-    public static ColumnArray toArray(ResultSet resultSet, Table table) throws SQLException {
+    public static ColumnArray toArray(ResultSet resultSet, Table table, List<Field> fields) throws SQLException {
         ResultSetMetaData metaData = resultSet.getMetaData();
 
         int allColumnsCount = metaData.getColumnCount();
@@ -21,8 +25,8 @@ public final class ObserveResultSetUtils {
         int firstColumnIndex = allColumnsCount - dataColumnsCount + 1;
         Column[] columns = new Column[dataColumnsCount];
         int greatestColumnPosition = 0;
-        for (int i = 0; i < dataColumnsCount; i++) {
-            final String columnName = metaData.getColumnName(i + firstColumnIndex);
+        for (int i = 0; i < fields.size(); i++) {
+            final String columnName = fields.get(i).name();
             columns[i] = table.columnWithName(columnName);
             if (columns[i] == null) {
                 // This situation can happen when SQL Server and Db2 schema is changed before
