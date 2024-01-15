@@ -185,6 +185,7 @@ public class StreamingIT extends IntegrationTestBase {
             Configuration config = defaultJdbcConfigWithTable("product");
             config = config.edit()
             .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "product")
+            .withDefault("tombstones.on.delete", "false")
             .build();
 
             start(SingleStoreDBConnector.class, config);
@@ -198,15 +199,12 @@ public class StreamingIT extends IntegrationTestBase {
                 conn.execute("UPDATE `product` SET `createdByDate` = '2013-11-23 15:22:33' WHERE `id` = 2");
                 conn.execute("INSERT INTO `product` (`id`) VALUES (4)");
 
-                List<SourceRecord> records = consumeRecordsByTopic(7).allRecordsInOrder();
+                List<SourceRecord> records = consumeRecordsByTopic(6).allRecordsInOrder();
                 
-                List<Integer> ids = Arrays.asList(new Integer[]{1, 2, 3, 
-                    0, // TODO: PLAT-6906 get PK for DELETE events
-                    0, // TODO: PLAT-6906 get PK for DELETE events
-                    2, 4});
-                List<String> operations = Arrays.asList(new String[]{"c", "c", "c", "d", null, "u", "c"});
+                List<Long> ids = new ArrayList<>();
+                List<String> operations = Arrays.asList(new String[]{"c", "c", "c", "d", "u", "c"});
 
-                assertEquals(7, records.size());
+                assertEquals(6, records.size());
                 for (int i = 0; i < records.size(); i++) {
                     SourceRecord record = records.get(i);
 
@@ -219,8 +217,11 @@ public class StreamingIT extends IntegrationTestBase {
                     }
 
                     Struct key = (Struct) record.key();
-                    assertEquals(ids.get(i), key.get("id"));
+                    ids.add(key.getInt64("internalId"));
                 }
+
+                assertEquals(ids.get(0), ids.get(3));
+                assertEquals(ids.get(1), ids.get(4));
             } finally {
                 stopConnector();
             }    

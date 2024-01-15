@@ -49,19 +49,19 @@ public class SnapshotIT extends IntegrationTestBase {
         try {
             final SourceRecords recordsA = consumeRecordsByTopic(3);
             final List<SourceRecord> table1 = recordsA.recordsForTopic(TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
-                    .stream().sorted(Comparator.comparingInt(v -> (Integer) ((Struct) v.key()).get("pk"))).collect(Collectors.toList());
+                    .stream().sorted(Comparator.comparingInt(v -> (Integer) ((Struct)((Struct) v.value()).get("after")).get("pk"))).collect(Collectors.toList());
             assertThat(table1).hasSize(3);
             
             for (int i = 0; i < 3; i++) {
                 final SourceRecord record1 = table1.get(i);
-                final List<SchemaAndValueField> expectedKey1 = List.of(
-                        new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).required().build(), i));
                 final List<SchemaAndValueField> expectedRow1 = Arrays.asList(
                         new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).required().build(), i),
                         new SchemaAndValueField("aa", Schema.OPTIONAL_STRING_SCHEMA, "test" + i));
                 final Struct key1 = (Struct) record1.key();
                 final Struct value1 = (Struct) record1.value();
-                assertRecord(key1, expectedKey1);
+                assertNotNull(key1.get("internalId"));
+                assertEquals(Schema.Type.STRUCT, key1.schema().type());
+                assertEquals(Schema.Type.INT64, key1.schema().fields().get(0).schema().type());
                 assertRecord((Struct) value1.get("after"), expectedRow1);
                 assertThat(record1.sourceOffset())
                         .extracting("snapshot").containsExactly(true);

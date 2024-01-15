@@ -40,7 +40,7 @@ public class SingleStoreDBChangeRecordEmitter extends RelationalChangeRecordEmit
     protected void emitCreateRecord(Receiver<SingleStoreDBPartition> receiver, TableSchema tableSchema)
             throws InterruptedException {
         Object[] newColumnValues = getNewColumnValues();
-        Struct newKey = getKey(tableSchema, newColumnValues);
+        Struct newKey = keyFromInternalId();
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
 
@@ -58,7 +58,7 @@ public class SingleStoreDBChangeRecordEmitter extends RelationalChangeRecordEmit
         Object[] oldColumnValues = getOldColumnValues();
         Object[] newColumnValues = getNewColumnValues();
 
-        Struct newKey = getKey(tableSchema, newColumnValues);
+        Struct newKey = keyFromInternalId();
 
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
@@ -86,8 +86,7 @@ public class SingleStoreDBChangeRecordEmitter extends RelationalChangeRecordEmit
     @Override
     protected void emitDeleteRecord(Receiver<SingleStoreDBPartition> receiver, TableSchema tableSchema) throws InterruptedException {
         Object[] oldColumnValues = getOldColumnValues();
-        Object[] newColumnValues = getNewColumnValues();
-        Struct newKey = getKey(tableSchema, newColumnValues);
+        Struct newKey = keyFromInternalId();
 
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
@@ -118,15 +117,6 @@ public class SingleStoreDBChangeRecordEmitter extends RelationalChangeRecordEmit
     @Override
     protected Object[] getNewColumnValues() {
         return after;
-    }
-
-    private Struct getKey(TableSchema tableSchema, Object[] columnData) {
-        Struct key = tableSchema.keyFromColumnData(columnData);
-        if (key == null) {
-            return keyFromInternalId();
-        } else {
-            return key;
-        }
     }
 
     private Struct keyFromInternalId() {
