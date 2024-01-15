@@ -31,15 +31,11 @@ public class SingleStoreDBTableSchemaBuilder extends TableSchemaBuilder {
     
     public TableSchema create(TopicNamingStrategy topicNamingStrategy, Table table, ColumnNameFilter filter, ColumnMappers mappers, KeyMapper keysMapper) {
         TableSchema schema = super.create(topicNamingStrategy, table, filter, mappers, keysMapper);
-        if (schema.keySchema() == null) {
-            return new TableSchema(schema.id(), 
-                SchemaBuilder.struct().field(INTERNAL_ID, Schema.INT64_SCHEMA).build(),
-                (row) -> schema.keyFromColumnData(row),
-                schema.getEnvelopeSchema(),
-                schema.valueSchema(),
-                (row) -> schema.valueFromColumnData(row));
-        } else {
-            return schema;
-        }
+        return new TableSchema(schema.id(), 
+            SchemaBuilder.struct().field(INTERNAL_ID, Schema.INT64_SCHEMA).build(),
+            (row) -> schema.keyFromColumnData(row),
+            schema.getEnvelopeSchema(),
+            schema.valueSchema(),
+            (row) -> schema.valueFromColumnData(row));
     }
 }

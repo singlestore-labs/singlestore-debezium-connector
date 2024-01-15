@@ -25,11 +25,10 @@ public class SingleStoreDBSnapshotChangeRecordEmitter extends SnapshotChangeReco
     protected void emitReadRecord(Receiver<SingleStoreDBPartition> receiver, TableSchema tableSchema)
             throws InterruptedException {
         Object[] newColumnValues = getNewColumnValues();
-        Struct newKey = tableSchema.keyFromColumnData(newColumnValues);
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct envelope = tableSchema.getEnvelopeSchema().read(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
 
-        receiver.changeRecord(getPartition(), tableSchema, Envelope.Operation.READ, newKey != null ? newKey : keyFromInternalId(), envelope, getOffset(), null);
+        receiver.changeRecord(getPartition(), tableSchema, Envelope.Operation.READ, keyFromInternalId(), envelope, getOffset(), null);
     }
 
     private Struct keyFromInternalId() {
