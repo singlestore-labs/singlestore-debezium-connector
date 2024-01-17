@@ -24,7 +24,7 @@ public class SingleStoreDBChangeRecordEmitter extends RelationalChangeRecordEmit
     private final Object[] after;
     private final long internalId;
     
-    private static final String INTERNAL_ID = "internalId";
+    private static final String INTERNAL_ID = "InternalId";
 
     public SingleStoreDBChangeRecordEmitter(SingleStoreDBPartition partition, OffsetContext offset, Clock clock, Operation operation, Object[] before,
                                     Object[] after, long internalId, SingleStoreDBConnectorConfig connectorConfig) {

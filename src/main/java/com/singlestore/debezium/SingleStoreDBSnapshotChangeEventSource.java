@@ -42,6 +42,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -251,8 +252,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
         try (Statement statement = jdbcConnection.connection().createStatement();
              AutoClosableResultSetWrapper rsWrapper = AutoClosableResultSetWrapper.from(statement.executeQuery(selectStatement))) {
             ResultSet rs = rsWrapper.getResultSet();
-            ObserveResultSetUtils.ColumnArray columnArray = 
-                ObserveResultSetUtils.toArray(rs, table, schema.schemaFor(table.id()).valueSchema().fields());
+            List<Field> fields = schema.schemaFor(table.id()).valueSchema().fields();
             long rows = 0;
             Threads.Timer logTimer = getTableScanLogTimer();
             boolean hasNext = validateBeginSnapshotResultSet(rs);
@@ -274,7 +274,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
                         hasNext = rs.next();
                     } else {
                         rows++;
-                        final Object[] row = ObserveResultSetUtils.rowToArray(table, rs, columnArray);
+                        final Object[] row = ObserveResultSetUtils.rowToArray(rs, fields);
                         final Long internalId = ObserveResultSetUtils.internalId(rs);
                         if (logTimer.expired()) {
                             long stop = clock.currentTimeInMillis();

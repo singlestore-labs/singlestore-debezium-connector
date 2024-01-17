@@ -62,7 +62,7 @@ public class SnapshotIT extends IntegrationTestBase {
                         new SchemaAndValueField("aa", Schema.OPTIONAL_STRING_SCHEMA, "test" + i));
                 final Struct key1 = (Struct) record1.key();
                 final Struct value1 = (Struct) record1.value();
-                assertNotNull(key1.get("internalId"));
+                assertNotNull(key1.get("InternalId"));
                 assertEquals(Schema.Type.STRUCT, key1.schema().type());
                 assertEquals(Schema.Type.INT64, key1.schema().fields().get(0).schema().type());
                 assertRecord((Struct) value1.get("after"), expectedRow1);
@@ -100,7 +100,7 @@ public class SnapshotIT extends IntegrationTestBase {
 //          assertThat(record1.sourceOffset())
 //                  .extracting("snapshot_completed").containsExactly(false);
             assertNull(value1.get("before"));
-            assertNotNull(key1.get("internalId"));
+            assertNotNull(key1.get("InternalId"));
             assertEquals(Schema.Type.STRUCT, key1.schema().type());
             assertEquals(Schema.Type.INT64, key1.schema().fields().get(0).schema().type());
 

@@ -171,7 +171,7 @@ public class StreamingIT extends IntegrationTestBase {
                     }
 
                     Struct key = (Struct) record.key();
-                    ids.add((Long) key.get("internalId"));
+                    ids.add((Long) key.get("InternalId"));
                 }
 
                 assertEquals(ids.get(0), ids.get(2));
@@ -220,7 +220,7 @@ public class StreamingIT extends IntegrationTestBase {
                     }
 
                     Struct key = (Struct) record.key();
-                    ids.add(key.getInt64("internalId"));
+                    ids.add(key.getInt64("InternalId"));
                 }
 
                 assertEquals(ids.get(0), ids.get(3));

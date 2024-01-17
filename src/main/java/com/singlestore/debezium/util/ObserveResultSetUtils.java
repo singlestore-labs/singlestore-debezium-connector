@@ -17,48 +17,10 @@ public final class ObserveResultSetUtils {
     private static final String BEGIN_SNAPSHOT = "BeginSnapshot";
     private static final String COMMIT_SNAPSHOT = "CommitSnapshot";
 
-    public static ColumnArray toArray(ResultSet resultSet, Table table, List<Field> fields) throws SQLException {
-        ResultSetMetaData metaData = resultSet.getMetaData();
-
-        int allColumnsCount = metaData.getColumnCount();
-        int dataColumnsCount = allColumnsCount - METADATA_COLUMNS.length;
-        int firstColumnIndex = allColumnsCount - dataColumnsCount + 1;
-        Column[] columns = new Column[dataColumnsCount];
-        int greatestColumnPosition = 0;
+    public static Object[] rowToArray(ResultSet rs, List<Field> fields) throws SQLException {
+        final Object[] row = new Object[fields.size()];
         for (int i = 0; i < fields.size(); i++) {
-            final String columnName = fields.get(i).name();
-            columns[i] = table.columnWithName(columnName);
-            if (columns[i] == null) {
-                // This situation can happen when SQL Server and Db2 schema is changed before
-                // an incremental snapshot is started and no event with the new schema has been
-                // streamed yet.
-                // This warning will help to identify the issue in case of a support request.
-
-                final String[] resultSetColumns = new String[metaData.getColumnCount()];
-                for (int j = 0; j < metaData.getColumnCount(); j++) {
-                    resultSetColumns[j] = metaData.getColumnName(j + firstColumnIndex);
-                }
-                throw new IllegalArgumentException("Column '"
-                        + columnName
-                        + "' not found in result set '"
-                        + String.join(", ", resultSetColumns)
-                        + "' for table '"
-                        + table.id()
-                        + "', "
-                        + table
-                        + ". This might be caused by DBZ-4350");
-            }
-            greatestColumnPosition = greatestColumnPosition < columns[i].position()
-                    ? columns[i].position()
-                    : greatestColumnPosition;
-        }
-        return new ColumnArray(columns, greatestColumnPosition);
-    }
-
-    public static Object[] rowToArray(Table table, ResultSet rs, ColumnArray columnArray) throws SQLException {
-        final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
-        for (int i = 0; i < columnArray.getColumns().length; i++) {
-            row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1);
+            row[i] = rs.getObject(fields.get(i).name());
         }
         return row;
     }

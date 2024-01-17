@@ -12,7 +12,7 @@ import org.apache.kafka.connect.data.Struct;
 
 public class SingleStoreDBSnapshotChangeRecordEmitter extends SnapshotChangeRecordEmitter<SingleStoreDBPartition> {
 
-    private static final String INTERNAL_ID = "internalId";
+    private static final String INTERNAL_ID = "InternalId";
 
     private final long internalId;
 
