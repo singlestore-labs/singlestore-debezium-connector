@@ -73,8 +73,16 @@ public class SingleStoreDBOffsetContext extends CommonOffsetContext<SourceInfo> 
 
         @Override
         public SingleStoreDBOffsetContext load(Map<String, ?> offset) {
-            String txId = (String) offset.get(SourceInfo.TXID_KEY);
-            Integer partitionId = (Integer) offset.get(SourceInfo.PARTITIONID_KEY);
+            String txId = (String) offset.get(SourceInfo.TXID_KEY);            
+            Object pId = offset.get(SourceInfo.PARTITIONID_KEY);
+            Integer partitionId;
+            if (pId == null) {
+                partitionId = null;
+            } else if (pId instanceof Long) {
+                partitionId = ((Long) pId).intValue();
+            } else {
+                partitionId = (Integer) pId;
+            }
             List<String> offsets = parseOffsets((String) offset.get(SourceInfo.OFFSETS_KEY));
             Boolean snapshot = (Boolean) ((Map<String, Object>) offset).getOrDefault(SourceInfo.SNAPSHOT_KEY, Boolean.FALSE);
             Boolean snapshotCompleted = (Boolean) ((Map<String, Object>) offset).getOrDefault(SNAPSHOT_COMPLETED_KEY, Boolean.FALSE);
