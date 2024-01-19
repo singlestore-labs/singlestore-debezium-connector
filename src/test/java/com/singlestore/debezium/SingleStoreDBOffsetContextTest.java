@@ -2,6 +2,7 @@ package com.singlestore.debezium;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -32,7 +33,7 @@ public class SingleStoreDBOffsetContextTest {
         offsetContext.update(1, "3", "10");
         offsetContext.preSnapshotCompletion();
 
-        Map<String, ?> offset = offsetContext.getOffset();
+        Map<String, Object> offset = (Map<String, Object>)offsetContext.getOffset();
 
         Loader loader = new SingleStoreDBOffsetContext.Loader(conf);
         SingleStoreDBOffsetContext loadedOffsetContext = loader.load(offset);
@@ -41,5 +42,13 @@ public class SingleStoreDBOffsetContextTest {
         assertEquals(loadedOffsetContext.txId(), "3");
         assertEquals(loadedOffsetContext.offsets(), Arrays.asList("1", "10", null, "2"));
         assertFalse(loadedOffsetContext.isSnapshotRunning());
+
+        offset.put("partitionId", Long.valueOf(2));
+        loadedOffsetContext = loader.load(offset);
+        assertEquals(loadedOffsetContext.partitionId(), (Integer)2);
+
+        offset.put("partitionId", null);
+        loadedOffsetContext = loader.load(offset);
+        assertNull(loadedOffsetContext.partitionId());
     }
 }
