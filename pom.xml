@@ -239,6 +239,17 @@
                 </configuration>
             </plugin>
         </plugins>
+        <resources>
+            <!-- Apply the properties set in the POM to the resource files -->
+            <resource>
+                <filtering>true</filtering>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>*</include>
+                    <include>**/*</include>
+                </includes>
+            </resource>
+        </resources>
     </build>
 
     <profiles>

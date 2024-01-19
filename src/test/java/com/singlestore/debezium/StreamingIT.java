@@ -2,6 +2,7 @@ package com.singlestore.debezium;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import java.math.BigDecimal;
@@ -26,9 +27,6 @@ public class StreamingIT extends IntegrationTestBase {
     public void canReadAllTypes() throws SQLException, InterruptedException, ParseException {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
             Configuration config = defaultJdbcConfigWithTable("allTypesTable");
-            config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "allTypesTable")
-            .build();
 
             start(SingleStoreDBConnector.class, config);
             assertConnectorIsRunning();
@@ -138,12 +136,40 @@ public class StreamingIT extends IntegrationTestBase {
     }
 
     @Test
+    public void populatesSourceInfo() throws SQLException, InterruptedException {
+        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("purchased"))) {
+            Configuration config = defaultJdbcConfigWithTable("purchased");
+
+            start(SingleStoreDBConnector.class, config);
+            assertConnectorIsRunning();
+            try {
+                conn.execute("INSERT INTO `purchased` VALUES ('archie', 1, NOW())");
+                List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+                assertEquals(1, records.size());
+                SourceRecord record = records.get(0);
+
+                Struct source = (Struct)((Struct)record.value()).get("source");
+                assertEquals(source.get("version"), "1.0-SNAPSHOT");
+                assertEquals(source.get("connector"), "singlestoredb");
+                assertEquals(source.get("name"), "singlestore_topic");
+                assertNotNull(source.get("ts_ms"));
+                assertEquals(source.get("snapshot"), "true");
+                assertEquals(source.get("db"), "db");
+                assertEquals(source.get("table"), "purchased");
+                assertNotNull(source.get("txId"));
+                assertEquals(source.get("partitionId"), 0);
+                assertNotNull(source.get("offsets"));
+                assertEquals(1, ((List)source.get("offsets")).size());
+            } finally {
+                stopConnector();
+            }
+        }
+    }
+
+    @Test
     public void noPrimaryKey() throws SQLException, InterruptedException {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("song"))) {
             Configuration config = defaultJdbcConfigWithTable("song");
-            config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "song")
-            .build();
 
             start(SingleStoreDBConnector.class, config);
             assertConnectorIsRunning();
@@ -178,7 +204,7 @@ public class StreamingIT extends IntegrationTestBase {
                 assertEquals(ids.get(0), ids.get(3));
             } finally {
                 stopConnector();
-            }    
+            }
         }
     }
 
@@ -187,7 +213,6 @@ public class StreamingIT extends IntegrationTestBase {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("product"))) {
             Configuration config = defaultJdbcConfigWithTable("product");
             config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "product")
             .withDefault("tombstones.on.delete", "false")
             .build();
 
@@ -236,7 +261,6 @@ public class StreamingIT extends IntegrationTestBase {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("person"))) {
             Configuration config = defaultJdbcConfigWithTable("person");
             config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "person")
             .withDefault(SingleStoreDBConnectorConfig.COLUMN_INCLUDE_LIST, "name,age")
             .build();
 
