@@ -140,7 +140,7 @@ public class SnapshotIT extends IntegrationTestBase {
             Configuration config = defaultJdbcConfigWithTable("A");
             config = config.edit()
             .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "A")
-            .withDefault(SingleStoreDBConnectorConfig.COLUMN_INCLUDE_LIST, "aa")
+            .withDefault(SingleStoreDBConnectorConfig.COLUMN_INCLUDE_LIST, "db.A.aa")
             .build();
 
             start(SingleStoreDBConnector.class, config);
@@ -148,7 +148,7 @@ public class SnapshotIT extends IntegrationTestBase {
             try {
 
                 List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
-                
+
                 List<String> values = Arrays.asList(new String[]{"test0", "test1", "test2"});
                 List<String> operations = Arrays.asList(new String[]{"r", "r", "r"});
 

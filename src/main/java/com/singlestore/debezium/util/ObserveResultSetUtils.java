@@ -1,15 +1,15 @@
 package com.singlestore.debezium.util;
 
-import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
+
+import com.singlestore.debezium.SingleStoreDBTableSchemaBuilder;
 
 public final class ObserveResultSetUtils {
 
@@ -17,73 +17,25 @@ public final class ObserveResultSetUtils {
     private static final String BEGIN_SNAPSHOT = "BeginSnapshot";
     private static final String COMMIT_SNAPSHOT = "CommitSnapshot";
 
-    public static ColumnArray toArray(ResultSet resultSet, Table table, List<Field> fields) throws SQLException {
-        ResultSetMetaData metaData = resultSet.getMetaData();
-
-        int allColumnsCount = metaData.getColumnCount();
-        int dataColumnsCount = allColumnsCount - METADATA_COLUMNS.length;
-        int firstColumnIndex = allColumnsCount - dataColumnsCount + 1;
-        Column[] columns = new Column[dataColumnsCount];
-        int greatestColumnPosition = 0;
+    public static List<Integer> columnPositions(ResultSet resultSet, List<Field> fields, Boolean populateInternalId) throws SQLException {
+        List<Integer> positions = new ArrayList<>();
         for (int i = 0; i < fields.size(); i++) {
-            final String columnName = fields.get(i).name();
-            columns[i] = table.columnWithName(columnName);
-            if (columns[i] == null) {
-                // This situation can happen when SQL Server and Db2 schema is changed before
-                // an incremental snapshot is started and no event with the new schema has been
-                // streamed yet.
-                // This warning will help to identify the issue in case of a support request.
-
-                final String[] resultSetColumns = new String[metaData.getColumnCount()];
-                for (int j = 0; j < metaData.getColumnCount(); j++) {
-                    resultSetColumns[j] = metaData.getColumnName(j + firstColumnIndex);
-                }
-                throw new IllegalArgumentException("Column '"
-                        + columnName
-                        + "' not found in result set '"
-                        + String.join(", ", resultSetColumns)
-                        + "' for table '"
-                        + table.id()
-                        + "', "
-                        + table
-                        + ". This might be caused by DBZ-4350");
+            String columnName = fields.get(i).name();
+            if (populateInternalId && columnName.equals(SingleStoreDBTableSchemaBuilder.INTERNAL_ID)) {
+                columnName = METADATA_COLUMNS[6];
             }
-            greatestColumnPosition = greatestColumnPosition < columns[i].position()
-                    ? columns[i].position()
-                    : greatestColumnPosition;
+
+            positions.add(resultSet.findColumn(columnName));
         }
-        return new ColumnArray(columns, greatestColumnPosition);
+        return positions;
     }
 
-    public static Object[] rowToArray(Table table, ResultSet rs, ColumnArray columnArray) throws SQLException {
-        final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
-        for (int i = 0; i < columnArray.getColumns().length; i++) {
-            row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1);
+    public static Object[] rowToArray(ResultSet rs, List<Integer> positions) throws SQLException {
+        final Object[] row = new Object[positions.size()];
+        for (int i = 0; i < positions.size(); i++) {
+            row[i] = rs.getObject(positions.get(i));
         }
         return row;
-    }
-
-    public static Object getColumnValue(ResultSet rs, int columnIndex) throws SQLException {
-        return rs.getObject(columnIndex + METADATA_COLUMNS.length);
-    }
-
-    public static class ColumnArray {
-
-        private Column[] columns;
-        private int greatestColumnPosition;
-
-        public ColumnArray(Column[] columns, int greatestColumnPosition) {
-            this.columns = columns;
-            this.greatestColumnPosition = greatestColumnPosition;
-        }
-
-        public Column[] getColumns() {
-            return columns;
-        }
-
-        public int getGreatestColumnPosition() {
-            return greatestColumnPosition;
-        }
     }
 
     public static String offset(ResultSet rs) throws SQLException {

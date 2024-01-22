@@ -147,6 +147,13 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
         .required()
         .withDescription("The name of the table from which the connector should capture changes");
 
+    public static final Field POPULATE_INTERNAL_ID = Field.create("populate.internal.id")
+        .withDisplayName("Add internalId to the `after` field of the event message")
+        .withType(ConfigDef.Type.BOOLEAN)
+        .withWidth(Width.SHORT)
+        .withImportance(Importance.MEDIUM)
+        .withDescription("Specifies whether to add internalId to the `after` field of the event message")
+        .withDefault(false);
 
     public static final Field TOPIC_NAMING_STRATEGY = CommonConnectorConfig.TOPIC_NAMING_STRATEGY.withDefault(DefaultTopicNamingStrategy.class.getName());
 
@@ -185,7 +192,8 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
                     SNAPSHOT_MODE)
             .events(
                     INCONSISTENT_SCHEMA_HANDLING_MODE,
-                    SOURCE_INFO_STRUCT_MAKER)
+                    SOURCE_INFO_STRUCT_MAKER,
+                    POPULATE_INTERNAL_ID)
             .create();
 
     /**
@@ -198,6 +206,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final Duration connectionTimeout;
     private final RelationalTableFilters tableFilters;
+    private final Boolean populateInternalId;
 
     public SingleStoreDBConnectorConfig(Configuration config) {
         super(config,
@@ -212,6 +221,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
         final String inconsistentSchemaFailureHandlingMode = config.getString(SingleStoreDBConnectorConfig.INCONSISTENT_SCHEMA_HANDLING_MODE);
         this.inconsistentSchemaFailureHandlingMode = EventProcessingFailureHandlingMode.parse(inconsistentSchemaFailureHandlingMode);
         this.connectionTimeout = Duration.ofMillis(config.getLong(SingleStoreDBConnectorConfig.CONNECTION_TIMEOUT_MS));        
+        this.populateInternalId = config.getBoolean(SingleStoreDBConnectorConfig.POPULATE_INTERNAL_ID);
     }
 
     private static class SystemTablesPredicate implements TableFilter {
@@ -281,6 +291,10 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
 
     public RelationalTableFilters getTableFilters() {
         return tableFilters;
+    }
+
+    public Boolean populateInternalId() {
+        return populateInternalId;
     }
 
     /**

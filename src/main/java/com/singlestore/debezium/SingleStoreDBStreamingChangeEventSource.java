@@ -57,6 +57,9 @@ public class SingleStoreDBStreamingChangeEventSource implements StreamingChangeE
         }
         
         Set<TableId> tables = schema.tableIds();
+        // We must have only one table
+        assert(tables.size() == 1);
+        TableId table = tables.iterator().next();
         List<String> offsets = offsetContext.offsets()
             .stream()
             .map(o -> o == null ? "NULL" : "'" + o + "'")
@@ -92,6 +95,8 @@ public class SingleStoreDBStreamingChangeEventSource implements StreamingChangeE
                     });
                     t.start();
 
+                    List<Integer> columnPositions = 
+                        ObserveResultSetUtils.columnPositions(rs, schema.schemaFor(table).valueSchema().fields(), connectorConfig.populateInternalId());
                     try {
                         while (rs.next() && context.isRunning()) {
                             Operation operation;
@@ -112,17 +117,12 @@ public class SingleStoreDBStreamingChangeEventSource implements StreamingChangeE
                             String offset = ObserveResultSetUtils.offset(rs);
                             Integer partitionId = ObserveResultSetUtils.partitionId(rs);
                             String txId = ObserveResultSetUtils.txId(rs);
-                            TableId table = new TableId(connectorConfig.databaseName(), null, ObserveResultSetUtils.tableName(rs));
                             Long internalId = ObserveResultSetUtils.internalId(rs);
 
                             offsetContext.event(table, Instant.now());
                             offsetContext.update(partitionId, txId, offset);
 
-                            List<Field> fields = schema.schemaFor(table).valueSchema().fields();
-                            Object[] after = new Object[fields.size()];
-                            for (int i = 0; i < fields.size(); i++) {
-                                after[i] = rs.getObject(fields.get(i).name());
-                            }
+                            Object[] after = ObserveResultSetUtils.rowToArray(rs, columnPositions);
 
                             try {
                                 dispatcher.dispatchDataChangeEvent(partition, table, 
