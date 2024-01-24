@@ -113,6 +113,7 @@ public class StreamingIT extends IntegrationTestBase {
         assertEquals(new BigDecimal("1234567890"), after.get("decColumn"));
         assertEquals(new BigDecimal("1234567890"), after.get("fixedColumn"));
         assertEquals(new BigDecimal("1234567890"), after.get("numericColumn"));
+        assertEquals("a", after.get("charColumn"));
         assertEquals("abc", after.get("mediumtextColumn"));
         assertEquals(ByteBuffer.wrap("a".getBytes()), after.get("binaryColumn"));
         assertEquals("abc", after.get("varcharColumn"));
