@@ -28,7 +28,7 @@ public class SingleStoreDBDatabaseSchema extends RelationalDatabaseSchema {
                                                             SingleStoreDBDefaultValueConverter defaultValueConverter) {
         return new SingleStoreDBTableSchemaBuilder(valueConverter, defaultValueConverter, config.schemaNameAdjuster(),
                 config.customConverterRegistry(), config.getSourceInfoStructMaker().schema(),
-                config.getFieldNamer(), false);
+                config.getFieldNamer(), false, config.populateInternalId());
     }
 
     /**

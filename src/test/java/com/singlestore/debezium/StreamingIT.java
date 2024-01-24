@@ -21,6 +21,7 @@ import org.junit.Test;
 import org.locationtech.jts.io.ParseException;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Field.Recommender;
 
 public class StreamingIT extends IntegrationTestBase {
     @Test
@@ -261,7 +262,7 @@ public class StreamingIT extends IntegrationTestBase {
         try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("person"))) {
             Configuration config = defaultJdbcConfigWithTable("person");
             config = config.edit()
-            .withDefault(SingleStoreDBConnectorConfig.COLUMN_INCLUDE_LIST, "name,age")
+            .withDefault(SingleStoreDBConnectorConfig.COLUMN_INCLUDE_LIST, "db.person.name,db.person.age")
             .build();
 
             start(SingleStoreDBConnector.class, config);
@@ -305,6 +306,41 @@ public class StreamingIT extends IntegrationTestBase {
             } finally {
                 stopConnector();
             }    
+        }
+    }
+
+    @Test
+    public void internalId() throws SQLException, InterruptedException {
+        try (SingleStoreDBConnection createTableConn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("product"))) {
+            createTableConn.execute("CREATE TABLE internalIdTable(a INT)");
+            try {
+                try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfigWithTable("internalIdTable"))) {
+                    Configuration config = defaultJdbcConfigWithTable("internalIdTable");
+                    config = config.edit()
+                        .withDefault(SingleStoreDBConnectorConfig.POPULATE_INTERNAL_ID, "true")
+                        .build();
+        
+                    start(SingleStoreDBConnector.class, config);
+                    assertConnectorIsRunning();
+        
+                    try {
+                        conn.execute("INSERT INTO internalIdTable VALUES (1)");
+
+                        List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+                        assertEquals(1, records.size());
+                        for (SourceRecord record: records) {
+                            Struct value = (Struct) record.value();
+                            Struct key = (Struct) record.key();
+                            Long internalId = value.getStruct("after").getInt64("internalId");
+                            assertEquals(key.getInt64("internalId"), internalId);
+                        }
+                    } finally {
+                        stopConnector();
+                    }    
+                }        
+            } finally {
+                createTableConn.execute("DROP TABLE internalIdTable");
+            }
         }
     }
 }

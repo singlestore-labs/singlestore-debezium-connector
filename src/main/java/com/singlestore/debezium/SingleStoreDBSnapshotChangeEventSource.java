@@ -251,8 +251,8 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
         try (Statement statement = jdbcConnection.connection().createStatement();
              AutoClosableResultSetWrapper rsWrapper = AutoClosableResultSetWrapper.from(statement.executeQuery(selectStatement))) {
             ResultSet rs = rsWrapper.getResultSet();
-            ObserveResultSetUtils.ColumnArray columnArray = 
-                ObserveResultSetUtils.toArray(rs, table, schema.schemaFor(table.id()).valueSchema().fields());
+            List<Integer> columnPostitions = 
+                ObserveResultSetUtils.columnPositions(rs, schema.schemaFor(table.id()).valueSchema().fields(), connectorConfig.populateInternalId());
             long rows = 0;
             Threads.Timer logTimer = getTableScanLogTimer();
             boolean hasNext = validateBeginSnapshotResultSet(rs);
@@ -274,7 +274,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
                         hasNext = rs.next();
                     } else {
                         rows++;
-                        final Object[] row = ObserveResultSetUtils.rowToArray(table, rs, columnArray);
+                        final Object[] row = ObserveResultSetUtils.rowToArray(rs, columnPostitions);
                         final Long internalId = ObserveResultSetUtils.internalId(rs);
                         if (logTimer.expired()) {
                             long stop = clock.currentTimeInMillis();
