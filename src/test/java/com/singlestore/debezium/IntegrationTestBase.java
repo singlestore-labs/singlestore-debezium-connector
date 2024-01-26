@@ -2,19 +2,17 @@ package com.singlestore.debezium;
 
 import static org.junit.Assert.assertNotNull;
 
-import java.net.URL;
-import java.nio.file.Paths;
-import java.sql.SQLException;
-import java.util.stream.Collectors;
-
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.testcontainers.containers.GenericContainer;
-
 import io.debezium.config.Configuration;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
+import java.net.URL;
+import java.nio.file.Paths;
+import java.sql.SQLException;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.testcontainers.containers.GenericContainer;
 
 abstract class IntegrationTestBase extends AbstractConnectorTest {
 
@@ -62,6 +60,22 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
      */
     public static SingleStoreDBConnection create() {
         return new SingleStoreDBConnection(defaultJdbcConnectionConfig());
+    }
+
+    protected void waitForSnapshotToBeCompleted() throws InterruptedException {
+        waitForSnapshotToBeCompleted("singlestoredb", "singlestore_topic");
+    }
+
+    protected void waitForSnapshotWithCustomMetricsToBeCompleted(Map<String, String> props) throws InterruptedException {
+        waitForSnapshotWithCustomMetricsToBeCompleted("singlestoredb", "singlestore_topic", props);
+    }
+
+    protected void waitForStreamingToStart() throws InterruptedException {
+        waitForStreamingRunning("singlestoredb", "singlestore_topic");
+    }
+
+    protected void waitForStreamingWithCustomMetricsToStart(Map<String, String> props) throws InterruptedException {
+        waitForStreamingWithCustomMetricsToStart("singlestoredb", "singlestore_topic", props);
     }
 
     /**

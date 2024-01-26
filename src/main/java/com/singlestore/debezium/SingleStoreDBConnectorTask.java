@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import io.debezium.DebeziumException;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.config.Configuration;
@@ -86,7 +87,7 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
                     DocumentReader.defaultReader(),
                     previousOffsets);
 
-
+        final Configuration heartbeatConfig = config;
         final EventDispatcher<SingleStoreDBPartition, TableId> dispatcher = new EventDispatcher<>(
             connectorConfig,
             topicNamingStrategy,
@@ -94,8 +95,16 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
             queue,
             connectorConfig.getTableFilters().dataCollectionFilter(),
             DataChangeEvent::new,
-            metadataProvider,
-            // TODO: add heartbeat
+                metadataProvider,
+                connectorConfig.createHeartbeat(
+                        topicNamingStrategy,
+                        schemaNameAdjuster,
+                        () -> new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(heartbeatConfig)),
+                        exception -> {
+                            final String sqlErrorId = exception.getMessage();
+                            throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
+                        }
+                ),
             schemaNameAdjuster,
             signalProcessor);
         

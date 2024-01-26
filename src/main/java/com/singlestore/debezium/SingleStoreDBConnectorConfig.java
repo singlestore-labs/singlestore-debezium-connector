@@ -160,6 +160,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
     private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SingleStoreDB")
             .excluding(SNAPSHOT_LOCK_TIMEOUT_MS,
+                    MSG_KEY_COLUMNS,
                     INCLUDE_SCHEMA_COMMENTS,
                     INCLUDE_SCHEMA_CHANGES,
                     SCHEMA_INCLUDE_LIST,
@@ -168,9 +169,18 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
                     SNAPSHOT_FETCH_SIZE,
                     SNAPSHOT_MAX_THREADS,
                     TABLE_IGNORE_BUILTIN,
+                    SNAPSHOT_MODE_TABLES,
                     TABLE_INCLUDE_LIST,
                     TABLE_EXCLUDE_LIST,
+                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
+                    SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
                     INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY,
+                    SIGNAL_DATA_COLLECTION,
+                    SIGNAL_POLL_INTERVAL_MS,
+                    SIGNAL_ENABLED_CHANNELS,
+                    SNAPSHOT_FULL_COLUMN_SCAN_FORCE, //single table supported
+                    SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT, //single table supported
                     // TODO PLAT-6820 implement transaction monitoring
                     PROVIDE_TRANSACTION_METADATA)
             .type(
