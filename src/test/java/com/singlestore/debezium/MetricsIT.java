@@ -40,10 +40,13 @@ public class MetricsIT extends IntegrationTestBase {
   public void testCustomMetrics() throws Exception {
     //create snapshot
     String statements =
-        "DROP TABLE IF EXISTS " + TEST_DATABASE + ".A;" + "CREATE TABLE " + TEST_DATABASE
-            + ".A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" + "INSERT INTO " + TEST_DATABASE
-            + ".A VALUES(0, 'test0');" + "INSERT INTO " + TEST_DATABASE + ".A VALUES(4, 'test4');"
-            + "SNAPSHOT DATABASE " + TEST_DATABASE + ";";
+        "DROP TABLE IF EXISTS " + TEST_DATABASE + ".A;" +
+            "CREATE TABLE " + TEST_DATABASE + ".A (pk INT, aa VARCHAR(50), PRIMARY KEY(pk));" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(0, 'test0');" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(1, 'test1');" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(2, 'test2');" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(4, 'test4');" +
+            "SNAPSHOT DATABASE " + TEST_DATABASE + ";";
     execute(statements);
     final Configuration config = defaultJdbcConfigBuilder().withDefault(
             SingleStoreDBConnectorConfig.DATABASE_NAME, TEST_DATABASE)
@@ -67,7 +70,7 @@ public class MetricsIT extends IntegrationTestBase {
     assertThat(mBeanServer.getAttribute(objectName, "TotalTableCount")).isEqualTo(1);
     assertThat(mBeanServer.getAttribute(objectName, "CapturedTables")).isEqualTo(
         new String[]{"db.A"});
-    assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfEventsSeen")).isEqualTo(2L);
+    assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfEventsSeen")).isEqualTo(4L);
     assertThat(mBeanServer.getAttribute(objectName, "SnapshotRunning")).isEqualTo(false);
     assertThat(mBeanServer.getAttribute(objectName, "SnapshotAborted")).isEqualTo(false);
     assertThat(mBeanServer.getAttribute(objectName, "SnapshotCompleted")).isEqualTo(true);
@@ -84,15 +87,18 @@ public class MetricsIT extends IntegrationTestBase {
     // Insert for streaming events
     waitForStreamingWithCustomMetricsToStart(customMetricTags);
     String statements =
-        "INSERT INTO " + TEST_DATABASE + ".A VALUES(1, 'test1');" + "INSERT INTO " + TEST_DATABASE
-            + ".A VALUES(2, 'test2');";
+            "UPDATE " + TEST_DATABASE + ".A SET aa = 'test1updated' WHERE pk = 1;" +
+            "DELETE FROM " + TEST_DATABASE + ".A WHERE pk = 2;" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(5, 'test1');" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(6, 'test2');";
     execute(statements);
     Thread.sleep(Duration.ofSeconds(3).toMillis());
     // Check streaming metrics
     assertThat(mBeanServer.getAttribute(objectName, "Connected")).isEqualTo(true);
-    assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfUpdateEventsSeen")).isEqualTo(0L);
-    assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfDeleteEventsSeen")).isEqualTo(0L);
+    assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfUpdateEventsSeen")).isEqualTo(1L);
+    assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfDeleteEventsSeen")).isEqualTo(1L);
+    assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfCreateEventsSeen")).isEqualTo(6L);//todo fix should be 2 PLAT-6970
     assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfEventsSeen")).isEqualTo(
-        4L);//todo fix should be 2 (create custom metrics SingleStoreDBConnectorTask?)
+        8L);//todo fix should be 4 PLAT-6970
   }
 }

@@ -117,7 +117,7 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
             SingleStoreDBConnector.class,
             connectorConfig,
             new SingleStoreDBChangeEventSourceFactory(connectorConfig, connectionFactory, schema, dispatcher, errorHandler, clock),
-            // TODO create custom metrics
+            // TODO create custom metrics PLAT-6970
             new DefaultChangeEventSourceMetricsFactory<>(),            
             dispatcher,
             schema,
