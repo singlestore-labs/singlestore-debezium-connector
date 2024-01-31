@@ -48,14 +48,14 @@ public class SnapshotIT extends IntegrationTestBase {
   @Test
   public void testSnapshotA() throws Exception {
     final Configuration config = defaultJdbcConfigBuilder()
-        .withDefault(SingleStoreDBConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-        .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "A")
+        .withDefault(SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
+        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
         .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
         .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
         .build();
     ;
 
-    start(SingleStoreDBConnector.class, config);
+    start(SingleStoreConnector.class, config);
     assertConnectorIsRunning();
 
     try {
@@ -94,7 +94,7 @@ public class SnapshotIT extends IntegrationTestBase {
   public void testSnapshotB() throws Exception {
     final Configuration config = defaultJdbcConfigWithTable("B");
 
-    start(SingleStoreDBConnector.class, config);
+    start(SingleStoreConnector.class, config);
     assertConnectorIsRunning();
 
     try {
@@ -127,7 +127,7 @@ public class SnapshotIT extends IntegrationTestBase {
   public void testSnapshotFilter() throws InterruptedException {
     final Configuration config = defaultJdbcConfigWithTable("B");
 
-    start(SingleStoreDBConnector.class, config);
+    start(SingleStoreConnector.class, config);
     assertConnectorIsRunning();
     final SourceRecords recordsB = consumeRecordsByTopic(1);
     final List<SourceRecord> table2 = recordsB.recordsForTopic(
@@ -151,16 +151,16 @@ public class SnapshotIT extends IntegrationTestBase {
 
   @Test
   public void filterColumns() throws SQLException, InterruptedException {
-    try (SingleStoreDBConnection conn = new SingleStoreDBConnection(
+    try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("A"))) {
 
       Configuration config = defaultJdbcConfigWithTable("A");
       config = config.edit()
-          .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "A")
-          .withDefault(SingleStoreDBConnectorConfig.COLUMN_INCLUDE_LIST, "db.A.aa")
+          .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
+          .withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST, "db.A.aa")
           .build();
 
-      start(SingleStoreDBConnector.class, config);
+      start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
       try {
 
@@ -198,12 +198,12 @@ public class SnapshotIT extends IntegrationTestBase {
   @Test
   public void testSnapshotDelay() throws Exception {
     final Configuration config = defaultJdbcConfigBuilder()
-        .withDefault(SingleStoreDBConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-        .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "A")
-        .withDefault(SingleStoreDBConnectorConfig.SNAPSHOT_DELAY_MS, 30000)
+        .withDefault(SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
+        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
+        .withDefault(SingleStoreConnectorConfig.SNAPSHOT_DELAY_MS, 30000)
         .build();
 
-    start(SingleStoreDBConnector.class, config);
+    start(SingleStoreConnector.class, config);
     assertConnectorIsRunning();
 
     try {

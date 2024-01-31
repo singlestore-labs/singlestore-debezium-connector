@@ -13,7 +13,7 @@ import io.debezium.relational.TableId;
  * Information about the source of information, which includes the partitions and offsets within those partitions.
  * 
  * <p>
- * The {@link SingleStoreDBPartition#getSourcePartition() source partition} information describes the cluster whose events are being consumed. 
+ * The {@link SingleStorePartition#getSourcePartition() source partition} information describes the cluster whose events are being consumed. 
  * Typically, the clutser is identified by the host address and the port number. Here's a JSON-like
  * representation of an example cluster:
  *
@@ -23,7 +23,7 @@ import io.debezium.relational.TableId;
  * }
  * </pre>
  * 
- * The {@link SingleStoreDBOffsetContext#getOffset() source offset} information describes a structure containing the position in the server's offset for any
+ * The {@link SingleStoreOffsetContext#getOffset() source offset} information describes a structure containing the position in the server's offset for any
  * particular event for particular partition and transaction id. When performing snapshots, it may also contain a snapshot field which indicates that a particular record
  * is created while a snapshot it taking place.
  * Here's a JSON-like representation of an example:
@@ -47,7 +47,7 @@ import io.debezium.relational.TableId;
  * <p>
  * 
  * The {@link #struct() source} struct appears in each message envelope and contains information about the event. It is
- * a mixture the fields from the {@link SingleStoreDBPartition#getSourcePartition() partition} and {@link SingleStoreDBPartition#getSourcePartition() offset}.
+ * a mixture the fields from the {@link SingleStorePartition#getSourcePartition() partition} and {@link SingleStorePartition#getSourcePartition() offset}.
  * Like with the offset, the "{@code snapshot}" field only appears for events produced when the connector is in the
  * middle of a snapshot. Here's a JSON-like representation of the source for an event that corresponds to the above partition and
  * offset:
@@ -76,7 +76,7 @@ public class SourceInfo extends BaseSourceInfo {
     private Instant timestamp;
 
     
-    public SourceInfo(SingleStoreDBConnectorConfig connectorConfig, Integer numPartitions) {
+    public SourceInfo(SingleStoreConnectorConfig connectorConfig, Integer numPartitions) {
         super(connectorConfig);
 
         offsets = Collections.nCopies(numPartitions, null);
@@ -85,7 +85,7 @@ public class SourceInfo extends BaseSourceInfo {
     /**
      * Updates the source with information about a particular received or read event.
      *
-     * @param partitionId index of the SingleStoreDB partition
+     * @param partitionId index of the SingleStore partition
      * @param txId the ID of the transaction that generated the transaction
      * @param offsets hex strings that represent offset for each database partition
      * @return this instance
@@ -101,7 +101,7 @@ public class SourceInfo extends BaseSourceInfo {
     /**
      * Updates the source with information about a particular received or read event.
      *
-     * @param partitionId index of the SingleStoreDB partition
+     * @param partitionId index of the SingleStore partition
      * @param txId the ID of the transaction that generated the transaction
      * @param offset hex strings that represent offset for given database partition
      * @return this instance

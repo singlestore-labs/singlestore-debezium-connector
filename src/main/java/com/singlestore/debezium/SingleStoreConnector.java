@@ -21,21 +21,21 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 
 /**
- * A Kafka Connect source connector that creates tasks that read the SingleStoreDB change log and generate the corresponding
+ * A Kafka Connect source connector that creates tasks that read the SingleStore change log and generate the corresponding
  * data change events.
  * <h2>Configuration</h2>
  * <p>
- * This connector is configured with the set of properties described in {@link SingleStoreDBConnectorConfig}.
+ * This connector is configured with the set of properties described in {@link SingleStoreConnectorConfig}.
  */
 
-public class SingleStoreDBConnector extends RelationalBaseSourceConnector {
+public class SingleStoreConnector extends RelationalBaseSourceConnector {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreDBConnector.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreConnector.class);
 
     @Immutable
     private Map<String, String> properties;
 
-    public SingleStoreDBConnector() {
+    public SingleStoreConnector() {
     }
 
     @Override
@@ -45,7 +45,7 @@ public class SingleStoreDBConnector extends RelationalBaseSourceConnector {
 
     @Override
     public Class<? extends Task> taskClass() {
-        return SingleStoreDBConnectorTask.class;
+        return SingleStoreConnectorTask.class;
     }
 
     @Override
@@ -69,16 +69,16 @@ public class SingleStoreDBConnector extends RelationalBaseSourceConnector {
 
     @Override
     public ConfigDef config() {
-        return SingleStoreDBConnectorConfig.configDef();
+        return SingleStoreConnectorConfig.configDef();
     }
 
     @Override
     protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
         ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
         // Try to connect to the database ...
-        final SingleStoreDBConnection.SingleStoreDBConnectionConfiguration connectionConfig = 
-            new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(config);
-        try (SingleStoreDBConnection connection = new SingleStoreDBConnection(connectionConfig)) {
+        final SingleStoreConnection.SingleStoreConnectionConfiguration connectionConfig = 
+            new SingleStoreConnection.SingleStoreConnectionConfiguration(config);
+        try (SingleStoreConnection connection = new SingleStoreConnection(connectionConfig)) {
             try {
                 connection.connect();
                 connection.execute("SELECT 1");
@@ -96,15 +96,15 @@ public class SingleStoreDBConnector extends RelationalBaseSourceConnector {
 
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
-        return config.validate(SingleStoreDBConnectorConfig.ALL_FIELDS);
+        return config.validate(SingleStoreConnectorConfig.ALL_FIELDS);
     }
 
     @Override
     public List<TableId> getMatchingCollections(Configuration config) {
-        SingleStoreDBConnectorConfig connectorConfig = new SingleStoreDBConnectorConfig(config);
-        final SingleStoreDBConnection.SingleStoreDBConnectionConfiguration connectionConfig = 
-            new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(config);
-        try (SingleStoreDBConnection connection = new SingleStoreDBConnection(connectionConfig)) {
+        SingleStoreConnectorConfig connectorConfig = new SingleStoreConnectorConfig(config);
+        final SingleStoreConnection.SingleStoreConnectionConfiguration connectionConfig = 
+            new SingleStoreConnection.SingleStoreConnectionConfiguration(config);
+        try (SingleStoreConnection connection = new SingleStoreConnection(connectionConfig)) {
             return connection.readTableNames(connectorConfig.databaseName(), null, null, new String[]{ "TABLE" }).stream()
                     .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
                     .collect(Collectors.toList());

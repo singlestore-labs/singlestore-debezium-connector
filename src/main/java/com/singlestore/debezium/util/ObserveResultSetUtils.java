@@ -9,7 +9,7 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Field;
 
-import com.singlestore.debezium.SingleStoreDBTableSchemaBuilder;
+import com.singlestore.debezium.SingleStoreTableSchemaBuilder;
 
 public final class ObserveResultSetUtils {
 
@@ -21,7 +21,7 @@ public final class ObserveResultSetUtils {
         List<Integer> positions = new ArrayList<>();
         for (int i = 0; i < fields.size(); i++) {
             String columnName = fields.get(i).name();
-            if (populateInternalId && columnName.equals(SingleStoreDBTableSchemaBuilder.INTERNAL_ID)) {
+            if (populateInternalId && columnName.equals(SingleStoreTableSchemaBuilder.INTERNAL_ID)) {
                 columnName = METADATA_COLUMNS[6];
             }
 

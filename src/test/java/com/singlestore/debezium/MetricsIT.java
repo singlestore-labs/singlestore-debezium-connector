@@ -25,7 +25,7 @@ public class MetricsIT extends IntegrationTestBase {
     config = config.edit().withDefault(TOPIC_HEARTBEAT_PREFIX, "__heartbeat")
         .withDefault(HEARTBEAT_ACTION_QUERY, "SELECT 1").withDefault(HEARTBEAT_INTERVAL, 1000)
         .build();
-    start(SingleStoreDBConnector.class, config);
+    start(SingleStoreConnector.class, config);
     assertConnectorIsRunning();
     try {
       List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
@@ -49,13 +49,13 @@ public class MetricsIT extends IntegrationTestBase {
             "SNAPSHOT DATABASE " + TEST_DATABASE + ";";
     execute(statements);
     final Configuration config = defaultJdbcConfigBuilder().withDefault(
-            SingleStoreDBConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-        .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "A")
+            SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
+        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
         .with(CommonConnectorConfig.CUSTOM_METRIC_TAGS, "env=test,bu=bigdata").build();
 
-    Map<String, String> customMetricTags = new SingleStoreDBConnectorConfig(
+    Map<String, String> customMetricTags = new SingleStoreConnectorConfig(
         config).getCustomMetricTags();
-    start(SingleStoreDBConnector.class, config);
+    start(SingleStoreConnector.class, config);
     assertConnectorIsRunning();
     assertSnapshotWithCustomMetrics(customMetricTags);
     assertStreamingWithCustomMetrics(customMetricTags);
@@ -64,7 +64,7 @@ public class MetricsIT extends IntegrationTestBase {
   private void assertSnapshotWithCustomMetrics(Map<String, String> customMetricTags)
       throws Exception {
     final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-    final ObjectName objectName = getSnapshotMetricsObjectName("singlestoredb", "singlestore_topic",
+    final ObjectName objectName = getSnapshotMetricsObjectName("singlestore", "singlestore_topic",
         customMetricTags);
     waitForSnapshotWithCustomMetricsToBeCompleted(customMetricTags);
     assertThat(mBeanServer.getAttribute(objectName, "TotalTableCount")).isEqualTo(1);
@@ -82,7 +82,7 @@ public class MetricsIT extends IntegrationTestBase {
   private void assertStreamingWithCustomMetrics(Map<String, String> customMetricTags)
       throws Exception {
     final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-    final ObjectName objectName = getStreamingMetricsObjectName("singlestoredb",
+    final ObjectName objectName = getStreamingMetricsObjectName("singlestore",
         "singlestore_topic", customMetricTags);
     // Insert for streaming events
     waitForStreamingWithCustomMetricsToStart(customMetricTags);

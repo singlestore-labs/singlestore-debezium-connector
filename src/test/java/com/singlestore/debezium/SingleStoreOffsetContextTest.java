@@ -10,22 +10,22 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.singlestore.debezium.SingleStoreDBOffsetContext.Loader;
+import com.singlestore.debezium.SingleStoreOffsetContext.Loader;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.relational.TableId;
 
-public class SingleStoreDBOffsetContextTest {
+public class SingleStoreOffsetContextTest {
     @Test
     public void saveAndLoad() {
-        SingleStoreDBConnectorConfig conf = new SingleStoreDBConnectorConfig(
+        SingleStoreConnectorConfig conf = new SingleStoreConnectorConfig(
                 Configuration.create()
                         .with(CommonConnectorConfig.TOPIC_PREFIX, "server")
-                        .with(SingleStoreDBConnectorConfig.DATABASE_NAME, "database")
+                        .with(SingleStoreConnectorConfig.DATABASE_NAME, "database")
                         .build());
 
-        SingleStoreDBOffsetContext offsetContext = new SingleStoreDBOffsetContext(conf, null, null, Arrays.asList(null, null, null, null), false, false);
+        SingleStoreOffsetContext offsetContext = new SingleStoreOffsetContext(conf, null, null, Arrays.asList(null, null, null, null), false, false);
 
         offsetContext.event(TableId.parse("db.t", true), Instant.parse("2018-11-30T18:35:24.00Z"));
         offsetContext.update(0, "0", "1");
@@ -35,8 +35,8 @@ public class SingleStoreDBOffsetContextTest {
 
         Map<String, Object> offset = (Map<String, Object>)offsetContext.getOffset();
 
-        Loader loader = new SingleStoreDBOffsetContext.Loader(conf);
-        SingleStoreDBOffsetContext loadedOffsetContext = loader.load(offset);
+        Loader loader = new SingleStoreOffsetContext.Loader(conf);
+        SingleStoreOffsetContext loadedOffsetContext = loader.load(offset);
 
         assertEquals(loadedOffsetContext.partitionId(), (Integer)1);
         assertEquals(loadedOffsetContext.txId(), "3");

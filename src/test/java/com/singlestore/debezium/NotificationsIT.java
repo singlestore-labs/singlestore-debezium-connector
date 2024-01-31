@@ -37,11 +37,11 @@ public class NotificationsIT extends SnapshotIT {
   @Test
   public void notificationCorrectlySentOnItsTopic() {
     final Configuration config = defaultJdbcConfigBuilder().withDefault(
-            SingleStoreDBConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-        .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "A")
+            SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
+        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
         .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
         .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink").build();
-    start(SingleStoreDBConnector.class, config);
+    start(SingleStoreConnector.class, config);
     assertConnectorIsRunning();
     List<SourceRecord> notifications = new ArrayList<>();
     Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
@@ -72,10 +72,10 @@ public class NotificationsIT extends SnapshotIT {
   @Test
   public void notificationNotSentIfNoChannelIsConfigured() {
     final Configuration config = defaultJdbcConfigBuilder().withDefault(
-            SingleStoreDBConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-        .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "A")
+            SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
+        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
         .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification").build();
-    start(SingleStoreDBConnector.class, config);
+    start(SingleStoreConnector.class, config);
     assertConnectorIsRunning();
     waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
     List<SourceRecord> notifications = consumedLines.stream()
@@ -88,11 +88,11 @@ public class NotificationsIT extends SnapshotIT {
       throws ReflectionException, MalformedObjectNameException, InstanceNotFoundException, IntrospectionException, AttributeNotFoundException, MBeanException {
 
     final Configuration config = defaultJdbcConfigBuilder().withDefault(
-            SingleStoreDBConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-        .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, "A")
+            SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
+        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
         .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "jmx").build();
 
-    start(SingleStoreDBConnector.class, config);
+    start(SingleStoreConnector.class, config);
     assertConnectorIsRunning();
 
     Awaitility.await().atMost(60, TimeUnit.SECONDS).pollDelay(1, TimeUnit.SECONDS)
@@ -127,6 +127,6 @@ public class NotificationsIT extends SnapshotIT {
   private ObjectName getObjectName() throws MalformedObjectNameException {
     return new ObjectName(
         String.format("debezium.%s:type=management,context=notifications,server=%s",
-            "singlestoredb", "singlestore_topic"));
+            "singlestore", "singlestore_topic"));
   }
 }

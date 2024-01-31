@@ -22,7 +22,7 @@ import java.sql.SQLException;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoField;
 
-public class SingleStoreDBValueConverters extends JdbcValueConverters {
+public class SingleStoreValueConverters extends JdbcValueConverters {
 
     /**
      * Create a new instance of JdbcValueConverters.
@@ -33,7 +33,7 @@ public class SingleStoreDBValueConverters extends JdbcValueConverters {
      * @param temporalPrecisionMode temporal precision mode based on {@link io.debezium.jdbc.TemporalPrecisionMode}
      * @param binaryMode            how binary columns should be represented
      */
-    public SingleStoreDBValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode,
+    public SingleStoreValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode,
                                         CommonConnectorConfig.BinaryHandlingMode binaryMode) {
         super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, binaryMode);
     }
@@ -162,7 +162,7 @@ public class SingleStoreDBValueConverters extends JdbcValueConverters {
     }
 
     /**
-     * Converts java.sql.Timestamp returned from SingleStoreDB for types: TIMESTAMP, DATETIME, TIMESTAMP(6) and DATETIME(6).
+     * Converts java.sql.Timestamp returned from SingleStore for types: TIMESTAMP, DATETIME, TIMESTAMP(6) and DATETIME(6).
      *
      * @param column    the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
@@ -182,7 +182,7 @@ public class SingleStoreDBValueConverters extends JdbcValueConverters {
     }
 
     /**
-     * Converts returned value from SingleStoreDB for types: TIME and TIME(6)
+     * Converts returned value from SingleStore for types: TIME and TIME(6)
      * <p>
      *
      * @param column    the column definition describing the {@code data} value; never null
@@ -240,12 +240,12 @@ public class SingleStoreDBValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertGeometry(Column column, Field fieldDefn, Object data) throws IllegalArgumentException {
-        SingleStoreDBGeometry empty = SingleStoreDBGeometry.createEmpty();
+        SingleStoreGeometry empty = SingleStoreGeometry.createEmpty();
         return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
             if (data instanceof String) {
-                SingleStoreDBGeometry geometry;
+                SingleStoreGeometry geometry;
                 try {
-                    geometry = SingleStoreDBGeometry.fromEkt((String) data);
+                    geometry = SingleStoreGeometry.fromEkt((String) data);
                 } catch (ParseException e) {
                     throw new IllegalArgumentException(e);
                 }

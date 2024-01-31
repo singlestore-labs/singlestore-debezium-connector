@@ -17,22 +17,22 @@ import io.debezium.data.Envelope;
 import io.debezium.relational.TableId;
 import io.debezium.util.Collect;
 
-public class SingleStoreDBEventMetadataProviderTest {
+public class SingleStoreEventMetadataProviderTest {
     
     TableId table;
-    SingleStoreDBOffsetContext offsetContext;
+    SingleStoreOffsetContext offsetContext;
     Struct value;
-    SingleStoreDBEventMetadataProvider provider = new SingleStoreDBEventMetadataProvider();
+    SingleStoreEventMetadataProvider provider = new SingleStoreEventMetadataProvider();
 
     @Before
     public void init() {
-        SingleStoreDBConnectorConfig conf = new SingleStoreDBConnectorConfig(
+        SingleStoreConnectorConfig conf = new SingleStoreConnectorConfig(
         Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "server")
-                .with(SingleStoreDBConnectorConfig.DATABASE_NAME, "database")
+                .with(SingleStoreConnectorConfig.DATABASE_NAME, "database")
                 .build());
 
-        SingleStoreDBOffsetContext offsetContext = new SingleStoreDBOffsetContext(conf, null, null, Arrays.asList(null, null, null, null), false, false);
+        SingleStoreOffsetContext offsetContext = new SingleStoreOffsetContext(conf, null, null, Arrays.asList(null, null, null, null), false, false);
 
         table = TableId.parse("db.t", true);
         offsetContext.event(table, Instant.parse("2018-11-30T18:35:24.00Z"));

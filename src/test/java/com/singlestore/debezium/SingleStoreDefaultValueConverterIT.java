@@ -23,19 +23,19 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
 
-public class SingleStoreDBDefaultValueConverterIT extends IntegrationTestBase {
+public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
 
-    private static final SingleStoreDBValueConverters CONVERTERS = new SingleStoreDBValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
+    private static final SingleStoreValueConverters CONVERTERS = new SingleStoreValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
             TemporalPrecisionMode.ADAPTIVE, CommonConnectorConfig.BinaryHandlingMode.BYTES);
 
     @Test
     public void testNumberValues() {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
             assertThat(table).isNotNull();
-            SingleStoreDBDefaultValueConverter defaultValueConverter = new SingleStoreDBDefaultValueConverter(CONVERTERS);
+            SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(CONVERTERS);
             testColumn(defaultValueConverter, table, "tinyintColumn", (short) 124);
             testColumn(defaultValueConverter, table, "smallintColumn", (short) 32767);
             testColumn(defaultValueConverter, table, "mediumintColumn", 8388607);
@@ -52,12 +52,12 @@ public class SingleStoreDBDefaultValueConverterIT extends IntegrationTestBase {
 
     @Test
     public void testDefaultTimeAndDateValues() {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
             assertThat(table).isNotNull();
-            SingleStoreDBDefaultValueConverter defaultValueConverter = new SingleStoreDBDefaultValueConverter(CONVERTERS);
+            SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(CONVERTERS);
             testColumn(defaultValueConverter, table, "dateColumn", (int) LocalDate.of(2000, 10, 10).atStartOfDay(ZoneId.of("UTC")).toEpochSecond() / 60 / 60 / 24);//epoch days
             testColumn(defaultValueConverter, table, "timeColumn", (int) Date.from(LocalDate.EPOCH.atTime(22, 59, 59).atZone(ZoneId.of("UTC")).toInstant()).getTime());
             testColumn(defaultValueConverter, table, "time6Column", Date.from(LocalDate.EPOCH.atTime(22, 59, 59, 111111).atZone(ZoneId.of("UTC")).toInstant()).getTime() * 1_000 + 111111);
@@ -77,22 +77,22 @@ public class SingleStoreDBDefaultValueConverterIT extends IntegrationTestBase {
     @Test
     @Ignore //todo enable after PLAT-6817 is resolved
     public void testGeometryValues() throws ParseException {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
             assertThat(table).isNotNull();
-            SingleStoreDBDefaultValueConverter defaultValueConverter = new SingleStoreDBDefaultValueConverter(CONVERTERS);
+            SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(CONVERTERS);
             Column geographyColumn = table.columnWithName("geographyColumn");
             Optional<Object> geographyDefaultValue = defaultValueConverter.parseDefaultValue(geographyColumn, geographyColumn.defaultValueExpression().orElse(null));
             assertTrue(geographyDefaultValue.isPresent());
-            SingleStoreDBGeometry geographyValue = SingleStoreDBGeometry.fromEkt("POLYGON((1 1,2 1,2 2, 1 2, 1 1))");
+            SingleStoreGeometry geographyValue = SingleStoreGeometry.fromEkt("POLYGON((1 1,2 1,2 2, 1 2, 1 1))");
             Struct geographyColumnDefaultValue = (Struct) geographyDefaultValue.get();
             assertArrayEquals(geographyValue.getWkb(), (byte[]) geographyColumnDefaultValue.get("wkb"));
             Column geographypointColumn = table.columnWithName("geographypointColumn");
             Optional<Object> geographypointDefaultValue = defaultValueConverter.parseDefaultValue(geographypointColumn, geographypointColumn.defaultValueExpression().orElse(null));
             assertTrue(geographypointDefaultValue.isPresent());
-            SingleStoreDBGeometry geographyPointValue = SingleStoreDBGeometry.fromEkt("POINT(1.50000003 1.50000000)");
+            SingleStoreGeometry geographyPointValue = SingleStoreGeometry.fromEkt("POINT(1.50000003 1.50000000)");
             Struct geographypointColumnDefaultValue = (Struct) geographypointDefaultValue.get();
             assertArrayEquals(geographyPointValue.getWkb(), (byte[]) geographypointColumnDefaultValue.get("wkb"));
         } catch (SQLException e) {
@@ -102,12 +102,12 @@ public class SingleStoreDBDefaultValueConverterIT extends IntegrationTestBase {
 
     @Test
     public void testStringValues() {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
             assertThat(table).isNotNull();
-            SingleStoreDBDefaultValueConverter defaultValueConverter = new SingleStoreDBDefaultValueConverter(CONVERTERS);
+            SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(CONVERTERS);
             testColumn(defaultValueConverter, table, "jsonColumn", "{}");
             testColumn(defaultValueConverter, table, "enum_f", "val1");
             testColumn(defaultValueConverter, table, "set_f", "v1");
@@ -124,12 +124,12 @@ public class SingleStoreDBDefaultValueConverterIT extends IntegrationTestBase {
 
     @Test
     public void testBlobValues() {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
             assertThat(table).isNotNull();
-            SingleStoreDBDefaultValueConverter defaultValueConverter = new SingleStoreDBDefaultValueConverter(CONVERTERS);
+            SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(CONVERTERS);
             testColumn(defaultValueConverter, table, "blobColumn", ByteBuffer.wrap("abc".getBytes()));
             testColumn(defaultValueConverter, table, "longblobColumn", ByteBuffer.wrap("abc".getBytes()));
             testColumn(defaultValueConverter, table, "mediumblobColumn", ByteBuffer.wrap("abc".getBytes()));
@@ -139,7 +139,7 @@ public class SingleStoreDBDefaultValueConverterIT extends IntegrationTestBase {
         }
     }
 
-    private static void testColumn(SingleStoreDBDefaultValueConverter defaultValueConverter, Table table, String name, Object expectedValue) {
+    private static void testColumn(SingleStoreDefaultValueConverter defaultValueConverter, Table table, String name, Object expectedValue) {
         Column column = table.columnWithName(name);
         Optional<Object> defaultValue = defaultValueConverter.parseDefaultValue(column, column.defaultValueExpression().orElse(null));
         assertTrue(defaultValue.isPresent());

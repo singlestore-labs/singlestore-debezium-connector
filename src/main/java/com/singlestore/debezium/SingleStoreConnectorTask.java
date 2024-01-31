@@ -28,14 +28,14 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
 /**
- * The main task executing streaming from SingleStoreDB.
+ * The main task executing streaming from SingleStore.
  * Responsible for lifecycle management of the streaming code.
  */
-public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPartition, SingleStoreDBOffsetContext> {
+public class SingleStoreConnectorTask extends BaseSourceTask<SingleStorePartition, SingleStoreOffsetContext> {
 
-    private static final String CONTEXT_NAME = "singlestoredb-connector-task";
+    private static final String CONTEXT_NAME = "singlestore-connector-task";
     private volatile ChangeEventQueue<DataChangeEvent> queue;
-    private volatile SingleStoreDBDatabaseSchema schema;
+    private volatile SingleStoreDatabaseSchema schema;
 
     @Override
     public String version() {
@@ -44,30 +44,30 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
 
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
-        return SingleStoreDBConnectorConfig.ALL_FIELDS;
+        return SingleStoreConnectorConfig.ALL_FIELDS;
     }
 
     @Override
-    public ChangeEventSourceCoordinator<SingleStoreDBPartition, SingleStoreDBOffsetContext> start(Configuration config) {
+    public ChangeEventSourceCoordinator<SingleStorePartition, SingleStoreOffsetContext> start(Configuration config) {
         final Clock clock = Clock.system();
-        final SingleStoreDBConnectorConfig connectorConfig = new SingleStoreDBConnectorConfig(config);
+        final SingleStoreConnectorConfig connectorConfig = new SingleStoreConnectorConfig(config);
         final SchemaNameAdjuster schemaNameAdjuster =  connectorConfig.schemaNameAdjuster();
-        final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(SingleStoreDBConnectorConfig.TOPIC_NAMING_STRATEGY);
-        final SingleStoreDBValueConverters valueConverter = new SingleStoreDBValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode(),
+        final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(SingleStoreConnectorConfig.TOPIC_NAMING_STRATEGY);
+        final SingleStoreValueConverters valueConverter = new SingleStoreValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode(),
                 connectorConfig.binaryHandlingMode());
-        final SingleStoreDBDefaultValueConverter defaultValueConverter = new SingleStoreDBDefaultValueConverter(valueConverter);
+        final SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(valueConverter);
 
-        MainConnectionProvidingConnectionFactory<SingleStoreDBConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
-                () -> new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(config)));
+        MainConnectionProvidingConnectionFactory<SingleStoreConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
+                () -> new SingleStoreConnection(new SingleStoreConnection.SingleStoreConnectionConfiguration(config)));
 
-        this.schema = new SingleStoreDBDatabaseSchema(connectorConfig, valueConverter,
+        this.schema = new SingleStoreDatabaseSchema(connectorConfig, valueConverter,
                 defaultValueConverter,
                 topicNamingStrategy,
                 false);
 
-        SingleStoreDBTaskContext taskContext = new SingleStoreDBTaskContext(connectorConfig, schema);
-        SingleStoreDBEventMetadataProvider metadataProvider = new SingleStoreDBEventMetadataProvider();
-        SingleStoreDBErrorHandler errorHandler = new SingleStoreDBErrorHandler(connectorConfig, queue);
+        SingleStoreTaskContext taskContext = new SingleStoreTaskContext(connectorConfig, schema);
+        SingleStoreEventMetadataProvider metadataProvider = new SingleStoreEventMetadataProvider();
+        SingleStoreErrorHandler errorHandler = new SingleStoreErrorHandler(connectorConfig, queue);
 
         this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
             .pollInterval(connectorConfig.getPollInterval())
@@ -77,18 +77,18 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
             .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
             .build();
 
-        Offsets<SingleStoreDBPartition, SingleStoreDBOffsetContext> previousOffsets = getPreviousOffsets(
-            new SingleStoreDBPartition.Provider(connectorConfig, config),
-            new SingleStoreDBOffsetContext.Loader(connectorConfig));
+        Offsets<SingleStorePartition, SingleStoreOffsetContext> previousOffsets = getPreviousOffsets(
+            new SingleStorePartition.Provider(connectorConfig, config),
+            new SingleStoreOffsetContext.Loader(connectorConfig));
 
-        SignalProcessor<SingleStoreDBPartition, SingleStoreDBOffsetContext> signalProcessor = new SignalProcessor<>(
-            SingleStoreDBConnector.class, connectorConfig, Map.of(),
+        SignalProcessor<SingleStorePartition, SingleStoreOffsetContext> signalProcessor = new SignalProcessor<>(
+            SingleStoreConnector.class, connectorConfig, Map.of(),
                     getAvailableSignalChannels(),
                     DocumentReader.defaultReader(),
                     previousOffsets);
 
         final Configuration heartbeatConfig = config;
-        final EventDispatcher<SingleStoreDBPartition, TableId> dispatcher = new EventDispatcher<>(
+        final EventDispatcher<SingleStorePartition, TableId> dispatcher = new EventDispatcher<>(
             connectorConfig,
             topicNamingStrategy,
             schema,
@@ -99,7 +99,7 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
                 connectorConfig.createHeartbeat(
                         topicNamingStrategy,
                         schemaNameAdjuster,
-                        () -> new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(heartbeatConfig)),
+                        () -> new SingleStoreConnection(new SingleStoreConnection.SingleStoreConnectionConfiguration(heartbeatConfig)),
                         exception -> {
                             final String sqlErrorId = exception.getMessage();
                             throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
@@ -108,15 +108,15 @@ public class SingleStoreDBConnectorTask extends BaseSourceTask<SingleStoreDBPart
             schemaNameAdjuster,
             signalProcessor);
         
-        NotificationService<SingleStoreDBPartition, SingleStoreDBOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
+        NotificationService<SingleStorePartition, SingleStoreOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                     connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
-        ChangeEventSourceCoordinator<SingleStoreDBPartition, SingleStoreDBOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
+        ChangeEventSourceCoordinator<SingleStorePartition, SingleStoreOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
             previousOffsets,
             errorHandler,
-            SingleStoreDBConnector.class,
+            SingleStoreConnector.class,
             connectorConfig,
-            new SingleStoreDBChangeEventSourceFactory(connectorConfig, connectionFactory, schema, dispatcher, errorHandler, clock),
+            new SingleStoreChangeEventSourceFactory(connectorConfig, connectionFactory, schema, dispatcher, errorHandler, clock),
             // TODO create custom metrics PLAT-6970
             new DefaultChangeEventSourceMetricsFactory<>(),            
             dispatcher,
