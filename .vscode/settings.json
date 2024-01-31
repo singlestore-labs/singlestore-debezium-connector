@@ -2,5 +2,10 @@
     "java.configuration.updateBuildConfiguration": "interactive",
     "files.watcherExclude": {
         "**/target": true
+    },
+    "java.format.enabled": true,
+    "java.format.settings.url": "./codestyle/eclipse-java-google-style.xml",
+    "[java]": {
+        "editor.defaultFormatter": "redhat.java"
     }
 }
