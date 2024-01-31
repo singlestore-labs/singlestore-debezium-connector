@@ -23,22 +23,22 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
-public class SingleStoreDBStreamingChangeEventSource implements StreamingChangeEventSource<SingleStoreDBPartition, SingleStoreDBOffsetContext>{
+public class SingleStoreStreamingChangeEventSource implements StreamingChangeEventSource<SingleStorePartition, SingleStoreOffsetContext>{
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreDBStreamingChangeEventSource.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreStreamingChangeEventSource.class);
 
-    SingleStoreDBConnectorConfig connectorConfig;
-    SingleStoreDBConnection connection;
-    EventDispatcher<SingleStoreDBPartition, TableId> dispatcher;
+    SingleStoreConnectorConfig connectorConfig;
+    SingleStoreConnection connection;
+    EventDispatcher<SingleStorePartition, TableId> dispatcher;
     ErrorHandler errorHandler;
-    SingleStoreDBDatabaseSchema schema;
+    SingleStoreDatabaseSchema schema;
     Clock clock;
 
-    public SingleStoreDBStreamingChangeEventSource(SingleStoreDBConnectorConfig connectorConfig,
-        SingleStoreDBConnection connection, 
-        EventDispatcher<SingleStoreDBPartition, TableId> dispatcher,
+    public SingleStoreStreamingChangeEventSource(SingleStoreConnectorConfig connectorConfig,
+        SingleStoreConnection connection, 
+        EventDispatcher<SingleStorePartition, TableId> dispatcher,
         ErrorHandler errorHandler,
-        SingleStoreDBDatabaseSchema schema,
+        SingleStoreDatabaseSchema schema,
         Clock clock) {
         this.connectorConfig = connectorConfig;    
         this.connection = connection;
@@ -49,8 +49,8 @@ public class SingleStoreDBStreamingChangeEventSource implements StreamingChangeE
     }
 
     @Override
-    public void execute(ChangeEventSourceContext context, SingleStoreDBPartition partition,
-            SingleStoreDBOffsetContext offsetContext) throws InterruptedException {
+    public void execute(ChangeEventSourceContext context, SingleStorePartition partition,
+            SingleStoreOffsetContext offsetContext) throws InterruptedException {
         if (!connectorConfig.getSnapshotMode().shouldStream()) {
             LOGGER.info("Streaming is disabled for snapshot mode {}", connectorConfig.getSnapshotMode());
             return;
@@ -126,7 +126,7 @@ public class SingleStoreDBStreamingChangeEventSource implements StreamingChangeE
 
                             try {
                                 dispatcher.dispatchDataChangeEvent(partition, table, 
-                                    new SingleStoreDBChangeRecordEmitter(
+                                    new SingleStoreChangeRecordEmitter(
                                         partition, 
                                         offsetContext, 
                                         clock, 

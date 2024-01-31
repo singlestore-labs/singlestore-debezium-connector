@@ -23,12 +23,12 @@ import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
 
-public class SingleStoreDBTableSchemaBuilder extends TableSchemaBuilder {
+public class SingleStoreTableSchemaBuilder extends TableSchemaBuilder {
 
     public static final String INTERNAL_ID = "internalId";
     private final Boolean populateInternalId;
 
-    public SingleStoreDBTableSchemaBuilder(ValueConverterProvider valueConverterProvider,
+    public SingleStoreTableSchemaBuilder(ValueConverterProvider valueConverterProvider,
             DefaultValueConverter defaultValueConverter, SchemaNameAdjuster schemaNameAdjuster,
             CustomConverterRegistry customConverterRegistry, Schema sourceInfoSchema, FieldNamer<Column> fieldNamer,
             boolean multiPartitionMode, Boolean populateInternalId) {

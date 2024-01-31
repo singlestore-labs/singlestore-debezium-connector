@@ -27,7 +27,7 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
 
     @BeforeClass
     public static void init() throws Exception {
-        try (SingleStoreDBConnection conn = create()) {
+        try (SingleStoreConnection conn = create()) {
             conn.connect();
         } catch (SQLException e) {
             // Failed to connect
@@ -56,26 +56,26 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
     /**
      * Obtain a default DB connection.
      *
-     * @return the SingleStoreDBConnection instance; never null
+     * @return the SingleStoreConnection instance; never null
      */
-    public static SingleStoreDBConnection create() {
-        return new SingleStoreDBConnection(defaultJdbcConnectionConfig());
+    public static SingleStoreConnection create() {
+        return new SingleStoreConnection(defaultJdbcConnectionConfig());
     }
 
     protected void waitForSnapshotToBeCompleted() throws InterruptedException {
-        waitForSnapshotToBeCompleted("singlestoredb", "singlestore_topic");
+        waitForSnapshotToBeCompleted("singlestore", "singlestore_topic");
     }
 
     protected void waitForSnapshotWithCustomMetricsToBeCompleted(Map<String, String> props) throws InterruptedException {
-        waitForSnapshotWithCustomMetricsToBeCompleted("singlestoredb", "singlestore_topic", props);
+        waitForSnapshotWithCustomMetricsToBeCompleted("singlestore", "singlestore_topic", props);
     }
 
     protected void waitForStreamingToStart() throws InterruptedException {
-        waitForStreamingRunning("singlestoredb", "singlestore_topic");
+        waitForStreamingRunning("singlestore", "singlestore_topic");
     }
 
     protected void waitForStreamingWithCustomMetricsToStart(Map<String, String> props) throws InterruptedException {
-        waitForStreamingWithCustomMetricsToStart("singlestoredb", "singlestore_topic", props);
+        waitForStreamingWithCustomMetricsToStart("singlestore", "singlestore_topic", props);
     }
 
     /**
@@ -91,7 +91,7 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
             }
         }
 
-        try (SingleStoreDBConnection connection = create()) {
+        try (SingleStoreConnection connection = create()) {
             // TODO: JDBC 1.1.9 doesn't support non-auto commit mode.
             // When we will use newer JDBC driver then this can be rewritten to 
             // don't commit changes if at least one query failed.
@@ -112,7 +112,7 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
      * @throws SQLException if anything fails.
      */
     public static void dropAllTables() throws SQLException {
-        try (SingleStoreDBConnection connection = create()) {
+        try (SingleStoreConnection connection = create()) {
             connection.readAllTableNames(new String[]{"TABLE"}).forEach(table -> {
                 if (table.catalog().equals(TEST_DATABASE)) {
                     execute(String.format("DROP TABLE `%s`.`%s`", table.catalog(), table.table()));
@@ -121,18 +121,18 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
         }
     }
 
-    public static SingleStoreDBConnection.SingleStoreDBConnectionConfiguration defaultJdbcConnectionConfig() {
-        return new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(defaultJdbcConfig());
+    public static SingleStoreConnection.SingleStoreConnectionConfiguration defaultJdbcConnectionConfig() {
+        return new SingleStoreConnection.SingleStoreConnectionConfiguration(defaultJdbcConfig());
     }
 
-    public static SingleStoreDBConnection.SingleStoreDBConnectionConfiguration defaultJdbcConnectionConfigWithTable(String table) {
-        return new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(defaultJdbcConfigWithTable(table));
+    public static SingleStoreConnection.SingleStoreConnectionConfiguration defaultJdbcConnectionConfigWithTable(String table) {
+        return new SingleStoreConnection.SingleStoreConnectionConfiguration(defaultJdbcConfigWithTable(table));
     }
 
     public static JdbcConfiguration defaultJdbcConfigWithTable(String table) {
         return defaultJdbcConfigBuilder()
-                .withDefault(SingleStoreDBConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-                .withDefault(SingleStoreDBConnectorConfig.TABLE_NAME, table)
+                .withDefault(SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
+                .withDefault(SingleStoreConnectorConfig.TABLE_NAME, table)
                 .build();
     }
 
@@ -142,12 +142,12 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
 
     public static JdbcConfiguration.Builder defaultJdbcConfigBuilder() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                .with(SingleStoreDBConnectorConfig.TOPIC_PREFIX, TEST_TOPIC_PREFIX)
-                .withDefault(SingleStoreDBConnectorConfig.HOSTNAME, TEST_SERVER)
-                .withDefault(SingleStoreDBConnectorConfig.PORT, TEST_PORT)
-                .withDefault(SingleStoreDBConnectorConfig.USER, TEST_USER)
-                .withDefault(SingleStoreDBConnectorConfig.PASSWORD, TEST_PASSWORD)
-                .withDefault(SingleStoreDBConnectorConfig.DRIVER_PARAMETERS, "allowMultiQueries=true");
+                .with(SingleStoreConnectorConfig.TOPIC_PREFIX, TEST_TOPIC_PREFIX)
+                .withDefault(SingleStoreConnectorConfig.HOSTNAME, TEST_SERVER)
+                .withDefault(SingleStoreConnectorConfig.PORT, TEST_PORT)
+                .withDefault(SingleStoreConnectorConfig.USER, TEST_USER)
+                .withDefault(SingleStoreConnectorConfig.PASSWORD, TEST_PASSWORD)
+                .withDefault(SingleStoreConnectorConfig.DRIVER_PARAMETERS, "allowMultiQueries=true");
     }
 
     protected static void executeDDL(String ddlFile) throws Exception {
@@ -156,7 +156,7 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
         String statements = java.nio.file.Files.readAllLines(Paths.get(ddlTestFile.toURI()))
                 .stream()
                 .collect(Collectors.joining(System.lineSeparator()));
-        try (SingleStoreDBConnection connection = create()) {
+        try (SingleStoreConnection connection = create()) {
             connection.execute(statements);
         }
     }

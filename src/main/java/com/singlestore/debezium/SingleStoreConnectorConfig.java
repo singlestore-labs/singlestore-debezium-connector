@@ -24,12 +24,12 @@ import org.apache.kafka.common.config.ConfigValue;
 /**
  * The configuration properties.
  */
-public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorConfig {
+public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfig {
 
   protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
 
   public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
-      .withDefault(SingleStoreDBSourceInfoStructMaker.class.getName());
+      .withDefault(SingleStoreSourceInfoStructMaker.class.getName());
 
   public Map<String, ConfigValue> validate() {
     return getConfig().validate(ALL_FIELDS);
@@ -47,10 +47,9 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
       .withWidth(ConfigDef.Width.SHORT)
       .withImportance(ConfigDef.Importance.LOW)
       .withDescription("The criteria for running a snapshot upon startup of the connector. "
-          + "Select one of the following snapshot options: "
-          + "'schema_only': If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures only the schema (table structures), but not any table data. After the snapshot completes, the connector begins to stream changes.; "
-          + "'initial' (default): If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes.; "
-          + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes.");
+        + "Select one of the following snapshot options: "
+        + "'initial' (default): If the connector does not detect any offsets for the logical server name, it performs a full snapshot that captures the current state of the configured tables. After the snapshot completes, the connector begins to stream changes.; "
+        + "'initial_only': Similar to the 'initial' mode, the connector performs a full snapshot. Once the snapshot is complete, the connector stops, and does not stream any changes.");
 
   public static final Field CONNECTION_TIMEOUT_MS = Field.create("connect.timeout.ms")
       .withDisplayName("Connection Timeout (ms)")
@@ -157,7 +156,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
 
   private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION
       .edit()
-      .name("SingleStoreDB")
+      .name("SingleStore")
       .excluding(SNAPSHOT_LOCK_TIMEOUT_MS,
           MSG_KEY_COLUMNS,
           INCLUDE_SCHEMA_COMMENTS,
@@ -198,7 +197,8 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
       .connector(
           CONNECTION_TIMEOUT_MS,
           DRIVER_PARAMETERS,
-          SNAPSHOT_MODE)
+          SNAPSHOT_MODE,
+          BINARY_HANDLING_MODE)
       .events(
           SOURCE_INFO_STRUCT_MAKER,
           POPULATE_INTERNAL_ID)
@@ -215,7 +215,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
   private final RelationalTableFilters tableFilters;
   private final Boolean populateInternalId;
 
-  public SingleStoreDBConnectorConfig(Configuration config) {
+  public SingleStoreConnectorConfig(Configuration config) {
     super(config,
         new SystemTablesPredicate(),
         t -> t.catalog() + "." + t.table(),
@@ -223,13 +223,13 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
         ColumnFilterMode.CATALOG,
         false);
     this.config = config;
-    this.tableFilters = new SingleStoreDBTableFilters(config, new SystemTablesPredicate(),
+    this.tableFilters = new SingleStoreTableFilters(config, new SystemTablesPredicate(),
         getTableIdMapper(), false);
     this.snapshotMode = SnapshotMode
         .parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
     this.connectionTimeout = Duration
-        .ofMillis(config.getLong(SingleStoreDBConnectorConfig.CONNECTION_TIMEOUT_MS));
-    this.populateInternalId = config.getBoolean(SingleStoreDBConnectorConfig.POPULATE_INTERNAL_ID);
+        .ofMillis(config.getLong(SingleStoreConnectorConfig.CONNECTION_TIMEOUT_MS));
+    this.populateInternalId = config.getBoolean(SingleStoreConnectorConfig.POPULATE_INTERNAL_ID);
   }
 
   private static class SystemTablesPredicate implements TableFilter {
@@ -259,7 +259,7 @@ public class SingleStoreDBConnectorConfig extends RelationalDatabaseConnectorCon
 
   @Override
   protected SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version) {
-    return getSourceInfoStructMaker(SingleStoreDBConnectorConfig.SOURCE_INFO_STRUCT_MAKER,
+    return getSourceInfoStructMaker(SingleStoreConnectorConfig.SOURCE_INFO_STRUCT_MAKER,
         Module.name(), Module.version(), this);
   }
 

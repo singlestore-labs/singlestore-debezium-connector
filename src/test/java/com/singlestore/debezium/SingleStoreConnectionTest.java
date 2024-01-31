@@ -18,19 +18,19 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-public class SingleStoreDBConnectionTest {
+public class SingleStoreConnectionTest {
 
     @Test
     public void testJdbcParameters() {
-        SingleStoreDBConnection connection = createConnectionWithParams(Map.of(SingleStoreDBConnectorConfig.DRIVER_PARAMETERS, "param1=value1;param2=value2;param3=value3"));
+        SingleStoreConnection connection = createConnectionWithParams(Map.of(SingleStoreConnectorConfig.DRIVER_PARAMETERS, "param1=value1;param2=value2;param3=value3"));
         assertEquals(Map.of("param1", "value1", "param2", "value2", "param3", "value3"), connection.connectionConfig().driverParameters());
     }
 
     @Test
     public void testSslDisabledParams() {
-        SingleStoreDBConnection connection = createConnectionWithParams(
-                Map.of(SingleStoreDBConnectorConfig.SSL_TRUSTSTORE, "trustStorePath", SingleStoreDBConnectorConfig.SSL_TRUSTSTORE_PASSWORD, "pass",
-                        SingleStoreDBConnectorConfig.SSL_KEYSTORE, "keyStorePath", SingleStoreDBConnectorConfig.SSL_KEYSTORE_PASSWORD, "pass"));
+        SingleStoreConnection connection = createConnectionWithParams(
+                Map.of(SingleStoreConnectorConfig.SSL_TRUSTSTORE, "trustStorePath", SingleStoreConnectorConfig.SSL_TRUSTSTORE_PASSWORD, "pass",
+                        SingleStoreConnectorConfig.SSL_KEYSTORE, "keyStorePath", SingleStoreConnectorConfig.SSL_KEYSTORE_PASSWORD, "pass"));
         assertNull(connection.connectionConfig().config().getString("trustStorePassword"));
         assertNull(connection.connectionConfig().config().getString("keyStorePassword"));
         assertNull(connection.connectionConfig().config().getString("keyStore"));
@@ -39,9 +39,9 @@ public class SingleStoreDBConnectionTest {
 
     @Test
     public void testSslVerifyParams() {
-        SingleStoreDBConnection connection = createConnectionWithParams(
-                Map.of(SingleStoreDBConnectorConfig.SSL_MODE, "verify_ca", SingleStoreDBConnectorConfig.SSL_TRUSTSTORE, "trustStorePath", SingleStoreDBConnectorConfig.SSL_TRUSTSTORE_PASSWORD, "pass",
-                        SingleStoreDBConnectorConfig.SSL_KEYSTORE, "keyStorePath", SingleStoreDBConnectorConfig.SSL_KEYSTORE_PASSWORD, "pass"));
+        SingleStoreConnection connection = createConnectionWithParams(
+                Map.of(SingleStoreConnectorConfig.SSL_MODE, "verify_ca", SingleStoreConnectorConfig.SSL_TRUSTSTORE, "trustStorePath", SingleStoreConnectorConfig.SSL_TRUSTSTORE_PASSWORD, "pass",
+                        SingleStoreConnectorConfig.SSL_KEYSTORE, "keyStorePath", SingleStoreConnectorConfig.SSL_KEYSTORE_PASSWORD, "pass"));
         assertEquals("pass", connection.connectionConfig().config().getString("trustStorePassword"));
         assertEquals("pass", connection.connectionConfig().config().getString("keyStorePassword"));
         assertEquals("file:keyStorePath", connection.connectionConfig().config().getString("keyStore"));
@@ -50,13 +50,13 @@ public class SingleStoreDBConnectionTest {
 
     @Test
     public void testQueryFetchSizeParam() {
-        SingleStoreDBConnection connection = createConnectionWithParams(Collections.emptyMap());
+        SingleStoreConnection connection = createConnectionWithParams(Collections.emptyMap());
         assertEquals("1", connection.connectionConfig().config().getString("defaultFetchSize"));
     }
 
     @Test
     public void testObserveNoParams() throws SQLException {
-        SingleStoreDBConnection connection = spy(createConnectionWithParams(Collections.emptyMap()));
+        SingleStoreConnection connection = spy(createConnectionWithParams(Collections.emptyMap()));
         doReturn(connection).when(connection).query(anyString(), any());
         connection.observe(Collections.emptySet(), rs -> {
         });
@@ -65,7 +65,7 @@ public class SingleStoreDBConnectionTest {
 
     @Test
     public void testObserveWithTableAndColumnFilter() throws SQLException {
-        SingleStoreDBConnection connection = spy(createConnectionWithParams(Collections.emptyMap()));
+        SingleStoreConnection connection = spy(createConnectionWithParams(Collections.emptyMap()));
         doReturn(connection).when(connection).query(anyString(), any());
         connection.observe(
                 Set.of(ColumnId.parse("debezium.table1.field1"), ColumnId.parse("debezium.table2.field1")),
@@ -76,12 +76,12 @@ public class SingleStoreDBConnectionTest {
 
     @Test
     public void testObserveWithFilter() throws SQLException {
-        SingleStoreDBConnection connection = spy(createConnectionWithParams(Collections.emptyMap()));
+        SingleStoreConnection connection = spy(createConnectionWithParams(Collections.emptyMap()));
         doReturn(connection).when(connection).query(anyString(), any());
         connection.observe(
                 Set.of(ColumnId.parse("debezium.table1.field1"), ColumnId.parse("debezium.table2.field1")),
                 Set.of(TableId.parse("debezium.table1"), TableId.parse("debezium.table2")),
-                Optional.of(SingleStoreDBConnection.OBSERVE_OUTPUT_FORMAT.JSON),
+                Optional.of(SingleStoreConnection.OBSERVE_OUTPUT_FORMAT.JSON),
                 Optional.empty(),
                 Optional.of("(1, 2, NULL, 4)"),
                 Optional.of("`table1`.`filed1`=1"),
@@ -90,13 +90,13 @@ public class SingleStoreDBConnectionTest {
         verify(connection).query(matches("OBSERVE `debezium`.`table[12]`.`field1`,`debezium`.`table[21]`.`field1` FROM `debezium`.`table[12]`,`debezium`.`table[12]` AS JSON BEGIN AT \\(1, 2, NULL, 4\\) WHERE `table1`.`filed1`=1"), any());
     }
 
-    private SingleStoreDBConnection createConnectionWithParams(Map<Field, String> fieldMap) {
+    private SingleStoreConnection createConnectionWithParams(Map<Field, String> fieldMap) {
         JdbcConfiguration.Builder builder = JdbcConfiguration.create()
-                .withDefault(SingleStoreDBConnectorConfig.HOSTNAME, "localhost")
-                .withDefault(SingleStoreDBConnectorConfig.PORT, 3306)
-                .withDefault(SingleStoreDBConnectorConfig.USER, "root")
-                .withDefault(SingleStoreDBConnectorConfig.PASSWORD, "");
+                .withDefault(SingleStoreConnectorConfig.HOSTNAME, "localhost")
+                .withDefault(SingleStoreConnectorConfig.PORT, 3306)
+                .withDefault(SingleStoreConnectorConfig.USER, "root")
+                .withDefault(SingleStoreConnectorConfig.PASSWORD, "");
         fieldMap.forEach(builder::with);
-        return new SingleStoreDBConnection(new SingleStoreDBConnection.SingleStoreDBConnectionConfiguration(builder.build()));
+        return new SingleStoreConnection(new SingleStoreConnection.SingleStoreConnectionConfiguration(builder.build()));
     }
 }

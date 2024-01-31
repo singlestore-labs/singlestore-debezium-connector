@@ -10,19 +10,19 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
-public class SingleStoreDBSnapshotChangeRecordEmitter extends SnapshotChangeRecordEmitter<SingleStoreDBPartition> {
+public class SingleStoreSnapshotChangeRecordEmitter extends SnapshotChangeRecordEmitter<SingleStorePartition> {
 
     private static final String INTERNAL_ID = "internalId";
 
     private final long internalId;
 
-    public SingleStoreDBSnapshotChangeRecordEmitter(SingleStoreDBPartition partition, OffsetContext offset, Object[] row, long internalId, Clock clock, RelationalDatabaseConnectorConfig connectorConfig) {
+    public SingleStoreSnapshotChangeRecordEmitter(SingleStorePartition partition, OffsetContext offset, Object[] row, long internalId, Clock clock, RelationalDatabaseConnectorConfig connectorConfig) {
         super(partition, offset, row, clock, connectorConfig);
         this.internalId = internalId;
     }
 
     @Override
-    protected void emitReadRecord(Receiver<SingleStoreDBPartition> receiver, TableSchema tableSchema)
+    protected void emitReadRecord(Receiver<SingleStorePartition> receiver, TableSchema tableSchema)
             throws InterruptedException {
         Object[] newColumnValues = getNewColumnValues();
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);

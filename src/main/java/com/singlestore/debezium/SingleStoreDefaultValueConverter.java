@@ -23,9 +23,9 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class SingleStoreDBDefaultValueConverter implements DefaultValueConverter {
+public class SingleStoreDefaultValueConverter implements DefaultValueConverter {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreDBDefaultValueConverter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreDefaultValueConverter.class);
     private static final String EPOCH_TIMESTAMP = "1970-01-01 00:00:00";
     private static final String EPOCH_DATE = "1970-01-01";
     private static final Pattern TIME_FIELD_PATTERN = Pattern.compile("(\\-?[0-9]*):([0-9]*)(:([0-9]*))?(\\.([0-9]*))?");
@@ -58,9 +58,9 @@ public class SingleStoreDBDefaultValueConverter implements DefaultValueConverter
             .optionalEnd()
             .toFormatter();
 
-    private final SingleStoreDBValueConverters converters;
+    private final SingleStoreValueConverters converters;
 
-    public SingleStoreDBDefaultValueConverter(SingleStoreDBValueConverters converters) {
+    public SingleStoreDefaultValueConverter(SingleStoreValueConverters converters) {
         this.converters = converters;
     }
 

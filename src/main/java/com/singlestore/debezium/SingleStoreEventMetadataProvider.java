@@ -13,7 +13,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
-public class SingleStoreDBEventMetadataProvider implements EventMetadataProvider {
+public class SingleStoreEventMetadataProvider implements EventMetadataProvider {
 
     @Override
     public Instant getEventTimestamp(DataCollectionId source, OffsetContext offset, Object key, Struct value) {

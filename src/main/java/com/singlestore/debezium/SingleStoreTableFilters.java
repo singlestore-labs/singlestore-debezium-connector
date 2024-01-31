@@ -8,18 +8,18 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 
-public class SingleStoreDBTableFilters extends RelationalTableFilters {
+public class SingleStoreTableFilters extends RelationalTableFilters {
 
     private final TableFilter tableFilter;
     private final Predicate<String> databaseFilter;
     private final String tableName;
     private final String databaseName;
 
-    public SingleStoreDBTableFilters(Configuration config, TableFilter systemTablesFilter,
+    public SingleStoreTableFilters(Configuration config, TableFilter systemTablesFilter,
             TableIdToStringMapper tableIdMapper, boolean useCatalogBeforeSchema) {
         super(config, systemTablesFilter, tableIdMapper, useCatalogBeforeSchema);
-        databaseName = config.getString(SingleStoreDBConnectorConfig.DATABASE_NAME);
-        tableName = config.getString(SingleStoreDBConnectorConfig.TABLE_NAME);
+        databaseName = config.getString(SingleStoreConnectorConfig.DATABASE_NAME);
+        tableName = config.getString(SingleStoreConnectorConfig.TABLE_NAME);
 
         tableFilter = TableFilter.fromPredicate(
             table -> 

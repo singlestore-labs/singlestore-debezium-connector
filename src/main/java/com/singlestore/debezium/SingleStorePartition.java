@@ -10,12 +10,12 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.AbstractPartition;
 import io.debezium.util.Collect;
 
-public class SingleStoreDBPartition extends AbstractPartition {
+public class SingleStorePartition extends AbstractPartition {
     private static final String SERVER_PARTITION_KEY = "server";
 
     private final String serverName;
 
-    public SingleStoreDBPartition(String serverName, String databaseName) {
+    public SingleStorePartition(String serverName, String databaseName) {
         super(databaseName);
         this.serverName = serverName;
     }
@@ -33,7 +33,7 @@ public class SingleStoreDBPartition extends AbstractPartition {
         if (obj == null || getClass() != obj.getClass()) {
             return false;
         }
-        final SingleStoreDBPartition other = (SingleStoreDBPartition) obj;
+        final SingleStorePartition other = (SingleStorePartition) obj;
         return Objects.equals(serverName, other.serverName);
     }
 
@@ -47,18 +47,18 @@ public class SingleStoreDBPartition extends AbstractPartition {
         return "SingleStorePartition [sourcePartition=" + getSourcePartition() + "]";
     }
 
-    public static class Provider implements Partition.Provider<SingleStoreDBPartition> {
-        private final SingleStoreDBConnectorConfig connectorConfig;
+    public static class Provider implements Partition.Provider<SingleStorePartition> {
+        private final SingleStoreConnectorConfig connectorConfig;
         private final Configuration taskConfig;
 
-        public Provider(SingleStoreDBConnectorConfig connectorConfig, Configuration taskConfig) {
+        public Provider(SingleStoreConnectorConfig connectorConfig, Configuration taskConfig) {
             this.connectorConfig = connectorConfig;
             this.taskConfig = taskConfig;
         }
 
         @Override
-        public Set<SingleStoreDBPartition> getPartitions() {
-            return Collections.singleton(new SingleStoreDBPartition(
+        public Set<SingleStorePartition> getPartitions() {
+            return Collections.singleton(new SingleStorePartition(
                     connectorConfig.getLogicalName(), connectorConfig.databaseName()));
         }
     }

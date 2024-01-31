@@ -16,14 +16,14 @@ public class ColumnMappingsIT extends IntegrationTestBase {
 
   @Test
   public void testHashMask() throws SQLException, InterruptedException {
-    try (SingleStoreDBConnection conn = new SingleStoreDBConnection(
+    try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("song"))) {
       Configuration config = defaultJdbcConfigWithTable("song");
       config = config.edit()
           .with("column.mask.hash.SHA-256.with.salt.salt123", TEST_DATABASE + ".song.author")
           .with("column.mask.with.10.chars", TEST_DATABASE + ".song.name").build();
 
-      start(SingleStoreDBConnector.class, config);
+      start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
 
       try {
@@ -48,13 +48,13 @@ public class ColumnMappingsIT extends IntegrationTestBase {
 
   @Test
   public void testTruncate() throws SQLException, InterruptedException {
-    try (SingleStoreDBConnection conn = new SingleStoreDBConnection(
+    try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("song"))) {
       Configuration config = defaultJdbcConfigWithTable("song");
       config = config.edit().with("column.truncate.to.10.chars",
           TEST_DATABASE + ".song.author," + TEST_DATABASE + ".song.name").build();
 
-      start(SingleStoreDBConnector.class, config);
+      start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
 
       try {
@@ -78,13 +78,13 @@ public class ColumnMappingsIT extends IntegrationTestBase {
 
   @Test
   public void testColumnPropagate() throws SQLException, InterruptedException {
-    try (SingleStoreDBConnection conn = new SingleStoreDBConnection(
+    try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("person"))) {
       Configuration config = defaultJdbcConfigWithTable("person");
-      config = config.edit().with(SingleStoreDBConnectorConfig.PROPAGATE_COLUMN_SOURCE_TYPE, ".*")
+      config = config.edit().with(SingleStoreConnectorConfig.PROPAGATE_COLUMN_SOURCE_TYPE, ".*")
           .build();
 
-      start(SingleStoreDBConnector.class, config);
+      start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
 
       try {
@@ -133,13 +133,13 @@ public class ColumnMappingsIT extends IntegrationTestBase {
 
   @Test
   public void testDataTypePropagate() throws SQLException, InterruptedException {
-    try (SingleStoreDBConnection conn = new SingleStoreDBConnection(
+    try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("person"))) {
       Configuration config = defaultJdbcConfigWithTable("person");
-      config = config.edit().with(SingleStoreDBConnectorConfig.PROPAGATE_DATATYPE_SOURCE_TYPE,
+      config = config.edit().with(SingleStoreConnectorConfig.PROPAGATE_DATATYPE_SOURCE_TYPE,
           ".+\\.VARCHAR,.+\\.DECIMAL").build();
 
-      start(SingleStoreDBConnector.class, config);
+      start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
 
       try {

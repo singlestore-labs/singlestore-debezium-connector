@@ -24,11 +24,11 @@ public class StreamingIT extends IntegrationTestBase {
 
   @Test
   public void canReadAllTypes() throws SQLException, InterruptedException, ParseException {
-    try (SingleStoreDBConnection conn = new SingleStoreDBConnection(
+    try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
       Configuration config = defaultJdbcConfigWithTable("allTypesTable");
 
-      start(SingleStoreDBConnector.class, config);
+      start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
 
       try {
@@ -113,6 +113,7 @@ public class StreamingIT extends IntegrationTestBase {
         assertEquals(new BigDecimal("1234567890"), after.get("decColumn"));
         assertEquals(new BigDecimal("1234567890"), after.get("fixedColumn"));
         assertEquals(new BigDecimal("1234567890"), after.get("numericColumn"));
+        assertEquals("a", after.get("charColumn"));
         assertEquals("abc", after.get("mediumtextColumn"));
         assertEquals(ByteBuffer.wrap("a".getBytes()), after.get("binaryColumn"));
         assertEquals("abc", after.get("varcharColumn"));
@@ -128,10 +129,10 @@ public class StreamingIT extends IntegrationTestBase {
         assertEquals("val1", after.get("enum_f"));
         assertEquals("v1", after.get("set_f"));
         String geographyPointValue = "POINT(1.50000003 1.50000000)";
-        SingleStoreDBGeometry singleStoreDBgeographyPointValue = SingleStoreDBGeometry.fromEkt(
+        SingleStoreGeometry singleStoregeographyPointValue = SingleStoreGeometry.fromEkt(
             geographyPointValue);
         assertArrayEquals((byte[]) ((Struct) after.get("geographypointColumn")).get("wkb"),
-            singleStoreDBgeographyPointValue.getWkb());
+            singleStoregeographyPointValue.getWkb());
       } finally {
         stopConnector();
       }
@@ -140,11 +141,11 @@ public class StreamingIT extends IntegrationTestBase {
 
   @Test
   public void populatesSourceInfo() throws SQLException, InterruptedException {
-    try (SingleStoreDBConnection conn = new SingleStoreDBConnection(
+    try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("purchased"))) {
       Configuration config = defaultJdbcConfigWithTable("purchased");
 
-      start(SingleStoreDBConnector.class, config);
+      start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
       try {
         conn.execute("INSERT INTO `purchased` VALUES ('archie', 1, NOW())");
@@ -154,7 +155,7 @@ public class StreamingIT extends IntegrationTestBase {
 
         Struct source = (Struct) ((Struct) record.value()).get("source");
         assertEquals(source.get("version"), "1.0-SNAPSHOT");
-        assertEquals(source.get("connector"), "singlestoredb");
+        assertEquals(source.get("connector"), "singlestore");
         assertEquals(source.get("name"), "singlestore_topic");
         assertNotNull(source.get("ts_ms"));
         assertEquals(source.get("snapshot"), "true");
@@ -172,11 +173,11 @@ public class StreamingIT extends IntegrationTestBase {
 
   @Test
   public void noPrimaryKey() throws SQLException, InterruptedException {
-    try (SingleStoreDBConnection conn = new SingleStoreDBConnection(
+    try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("song"))) {
       Configuration config = defaultJdbcConfigWithTable("song");
 
-      start(SingleStoreDBConnector.class, config);
+      start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
 
       try {
@@ -215,12 +216,12 @@ public class StreamingIT extends IntegrationTestBase {
 
   @Test
   public void readSeveralOperations() throws SQLException, InterruptedException {
-    try (SingleStoreDBConnection conn = new SingleStoreDBConnection(
+    try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("product"))) {
       Configuration config = defaultJdbcConfigWithTable("product");
       config = config.edit().withDefault("tombstones.on.delete", "false").build();
 
-      start(SingleStoreDBConnector.class, config);
+      start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
 
       try {
@@ -262,13 +263,13 @@ public class StreamingIT extends IntegrationTestBase {
 
   @Test
   public void filterColumns() throws SQLException, InterruptedException {
-    try (SingleStoreDBConnection conn = new SingleStoreDBConnection(
+    try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("person"))) {
       Configuration config = defaultJdbcConfigWithTable("person");
-      config = config.edit().withDefault(SingleStoreDBConnectorConfig.COLUMN_INCLUDE_LIST,
+      config = config.edit().withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
           "db.person.name,db.person.age").build();
 
-      start(SingleStoreDBConnector.class, config);
+      start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
 
       try {
@@ -311,17 +312,17 @@ public class StreamingIT extends IntegrationTestBase {
 
   @Test
   public void internalId() throws SQLException, InterruptedException {
-    try (SingleStoreDBConnection createTableConn = new SingleStoreDBConnection(
+    try (SingleStoreConnection createTableConn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("product"))) {
       createTableConn.execute("CREATE TABLE internalIdTable(a INT)");
       try {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(
+        try (SingleStoreConnection conn = new SingleStoreConnection(
             defaultJdbcConnectionConfigWithTable("internalIdTable"))) {
           Configuration config = defaultJdbcConfigWithTable("internalIdTable");
           config = config.edit()
-              .withDefault(SingleStoreDBConnectorConfig.POPULATE_INTERNAL_ID, "true").build();
+              .withDefault(SingleStoreConnectorConfig.POPULATE_INTERNAL_ID, "true").build();
 
-          start(SingleStoreDBConnector.class, config);
+          start(SingleStoreConnector.class, config);
           assertConnectorIsRunning();
 
           try {
@@ -347,13 +348,13 @@ public class StreamingIT extends IntegrationTestBase {
 
   @Test
   public void testSkippedOperations() throws SQLException, InterruptedException {
-    try (SingleStoreDBConnection conn = new SingleStoreDBConnection(
+    try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("product"))) {
       Configuration config = defaultJdbcConfigWithTable("product");
-      config = config.edit().withDefault(SingleStoreDBConnectorConfig.SKIPPED_OPERATIONS, "c")
-          .withDefault(SingleStoreDBConnectorConfig.TOMBSTONES_ON_DELETE, "false").build();
+      config = config.edit().withDefault(SingleStoreConnectorConfig.SKIPPED_OPERATIONS, "c")
+          .withDefault(SingleStoreConnectorConfig.TOMBSTONES_ON_DELETE, "false").build();
 
-      start(SingleStoreDBConnector.class, config);
+      start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
 
       try {
@@ -382,13 +383,13 @@ public class StreamingIT extends IntegrationTestBase {
 
   @Test
   public void testStreamAfterInitialOnlySnapshot() throws SQLException, InterruptedException {
-    try (SingleStoreDBConnection conn = new SingleStoreDBConnection(
+    try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("product"))) {
       Configuration config = defaultJdbcConfigWithTable("product");
-      config = config.edit().withDefault(SingleStoreDBConnectorConfig.SNAPSHOT_MODE,
-          SingleStoreDBConnectorConfig.SnapshotMode.INITIAL_ONLY).build();
+      config = config.edit().withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE,
+          SingleStoreConnectorConfig.SnapshotMode.INITIAL_ONLY).build();
 
-      start(SingleStoreDBConnector.class, config);
+      start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
 
       try {

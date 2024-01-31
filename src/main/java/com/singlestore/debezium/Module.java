@@ -18,14 +18,14 @@ public class Module {
      * @return symbolic name of the connector plugin
      */
     public static String name() {
-        return "singlestoredb";
+        return "singlestore";
     }
 
     /**
      * @return context name used in log MDC and JMX metrics
      */
     public static String contextName() {
-        return "SingleStoreDB";
+        return "SingleStore";
     }
 
 }

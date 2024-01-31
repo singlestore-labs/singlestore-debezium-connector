@@ -46,23 +46,23 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<SingleStoreDBPartition, SingleStoreDBOffsetContext> {
+public class SingleStoreSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<SingleStorePartition, SingleStoreOffsetContext> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreDBSnapshotChangeEventSource.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreSnapshotChangeEventSource.class);
 
     private final Set<String> OFFSET_SET = new HashSet<>();
     private volatile boolean offsetIsWrong;
-    private final SingleStoreDBConnectorConfig connectorConfig;
-    private final SingleStoreDBConnection jdbcConnection;
-    private final SingleStoreDBDatabaseSchema schema;
-    private final SnapshotProgressListener<SingleStoreDBPartition> snapshotProgressListener;
+    private final SingleStoreConnectorConfig connectorConfig;
+    private final SingleStoreConnection jdbcConnection;
+    private final SingleStoreDatabaseSchema schema;
+    private final SnapshotProgressListener<SingleStorePartition> snapshotProgressListener;
     private final MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory;
 
-    public SingleStoreDBSnapshotChangeEventSource(SingleStoreDBConnectorConfig connectorConfig,
-                                                  MainConnectionProvidingConnectionFactory<SingleStoreDBConnection> jdbcConnectionFactory,
-                                                  SingleStoreDBDatabaseSchema schema, EventDispatcher<SingleStoreDBPartition, TableId> dispatcher, Clock clock,
-                                                  SnapshotProgressListener<SingleStoreDBPartition> snapshotProgressListener,
-                                                  NotificationService<SingleStoreDBPartition, SingleStoreDBOffsetContext> notificationService) {
+    public SingleStoreSnapshotChangeEventSource(SingleStoreConnectorConfig connectorConfig,
+                                                  MainConnectionProvidingConnectionFactory<SingleStoreConnection> jdbcConnectionFactory,
+                                                  SingleStoreDatabaseSchema schema, EventDispatcher<SingleStorePartition, TableId> dispatcher, Clock clock,
+                                                  SnapshotProgressListener<SingleStorePartition> snapshotProgressListener,
+                                                  NotificationService<SingleStorePartition, SingleStoreOffsetContext> notificationService) {
         super(connectorConfig, jdbcConnectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnectionFactory.mainConnection();
@@ -72,10 +72,10 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
     }
 
     @Override
-    public SnapshotResult<SingleStoreDBOffsetContext> doExecute(ChangeEventSourceContext context, SingleStoreDBOffsetContext previousOffset,
-                                                                SnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> snapshotContext, SnapshottingTask snapshottingTask)
+    public SnapshotResult<SingleStoreOffsetContext> doExecute(ChangeEventSourceContext context, SingleStoreOffsetContext previousOffset,
+                                                                SnapshotContext<SingleStorePartition, SingleStoreOffsetContext> snapshotContext, SnapshottingTask snapshottingTask)
             throws Exception {
-        final RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> ctx = (RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext>) snapshotContext;
+        final RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> ctx = (RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext>) snapshotContext;
 
         Connection connection = null;
         Exception exceptionWhileSnapshot = null;
@@ -138,17 +138,17 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
     }
 
     private void createDataEvents(ChangeEventSource.ChangeEventSourceContext sourceContext,
-                                  RelationalSnapshotChangeEventSource.RelationalSnapshotContext<SingleStoreDBPartition,
-                                          SingleStoreDBOffsetContext> snapshotContext,
+                                  RelationalSnapshotChangeEventSource.RelationalSnapshotContext<SingleStorePartition,
+                                          SingleStoreOffsetContext> snapshotContext,
                                   Queue<JdbcConnection> connectionPool) throws Exception {
         tryStartingSnapshot(snapshotContext);
 
-        EventDispatcher.SnapshotReceiver<SingleStoreDBPartition> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
+        EventDispatcher.SnapshotReceiver<SingleStorePartition> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         int snapshotMaxThreads = connectionPool.size();
         LOGGER.info("Creating snapshot with {} worker thread(s)", snapshotMaxThreads);
         ExecutorService executorService = Executors.newFixedThreadPool(snapshotMaxThreads);
-        CompletionService<SingleStoreDBOffsetContext> completionService = new ExecutorCompletionService<>(executorService);
-        Queue<SingleStoreDBOffsetContext> offsets = new ConcurrentLinkedQueue<>();
+        CompletionService<SingleStoreOffsetContext> completionService = new ExecutorCompletionService<>(executorService);
+        Queue<SingleStoreOffsetContext> offsets = new ConcurrentLinkedQueue<>();
         for (int i = 0; i < snapshotMaxThreads; i++) {
             offsets.add(copyOffset(snapshotContext));
         }
@@ -164,7 +164,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
         }
 
         int tableCount = rowCountTables.size();
-        List<Callable<SingleStoreDBOffsetContext>> dataEventTasks = new ArrayList<>(tableCount);
+        List<Callable<SingleStoreOffsetContext>> dataEventTasks = new ArrayList<>(tableCount);
         CyclicBarrier barrier = new CyclicBarrier(tableCount);
         int tableOrder = 1;
         for (TableId tableId : rowCountTables.keySet()) {
@@ -172,14 +172,14 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
             boolean lastTable = tableOrder == tableCount && snapshotMaxThreads == 1;
             String selectStatement = queryTables.get(tableId);
             OptionalLong rowCount = rowCountTables.get(tableId);
-            Callable<SingleStoreDBOffsetContext> callable = createDataEventsForTableCallable(sourceContext, snapshotContext, snapshotReceiver,
+            Callable<SingleStoreOffsetContext> callable = createDataEventsForTableCallable(sourceContext, snapshotContext, snapshotReceiver,
                     snapshotContext.tables.forTable(tableId), firstTable, lastTable, tableOrder++, tableCount, selectStatement,
                     rowCount, offsets, connectionPool, barrier);
             dataEventTasks.add(callable);
         }
-        List<SingleStoreDBOffsetContext> commitSnapshotOffsetList = new ArrayList<>(tableCount);
+        List<SingleStoreOffsetContext> commitSnapshotOffsetList = new ArrayList<>(tableCount);
         try {
-            for (Callable<SingleStoreDBOffsetContext> callable : dataEventTasks) {
+            for (Callable<SingleStoreOffsetContext> callable : dataEventTasks) {
                 completionService.submit(callable);
             }
             for (int i = 0; i < dataEventTasks.size(); i++) {
@@ -206,22 +206,22 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
             }
         });
 
-        for (SingleStoreDBOffsetContext offset : offsets) {
+        for (SingleStoreOffsetContext offset : offsets) {
             offset.preSnapshotCompletion();
         }
         snapshotReceiver.completeSnapshot();
-        for (SingleStoreDBOffsetContext offset : offsets) {
+        for (SingleStoreOffsetContext offset : offsets) {
             offset.postSnapshotCompletion();
         }
     }
 
-    private Callable<SingleStoreDBOffsetContext> createDataEventsForTableCallable(ChangeEventSource.ChangeEventSourceContext sourceContext, RelationalSnapshotChangeEventSource.RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> snapshotContext,
-                                                                                  EventDispatcher.SnapshotReceiver<SingleStoreDBPartition> snapshotReceiver, Table table, boolean firstTable, boolean lastTable, int tableOrder,
+    private Callable<SingleStoreOffsetContext> createDataEventsForTableCallable(ChangeEventSource.ChangeEventSourceContext sourceContext, RelationalSnapshotChangeEventSource.RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> snapshotContext,
+                                                                                  EventDispatcher.SnapshotReceiver<SingleStorePartition> snapshotReceiver, Table table, boolean firstTable, boolean lastTable, int tableOrder,
                                                                                   int tableCount, String selectStatement, OptionalLong rowCount,
-                                                                                  Queue<SingleStoreDBOffsetContext> offsets, Queue<JdbcConnection> connectionPool, CyclicBarrier barrier) {
+                                                                                  Queue<SingleStoreOffsetContext> offsets, Queue<JdbcConnection> connectionPool, CyclicBarrier barrier) {
         return () -> {
             JdbcConnection connection = connectionPool.poll();
-            SingleStoreDBOffsetContext offset = offsets.poll();
+            SingleStoreOffsetContext offset = offsets.poll();
             try {
                 return doCreateDataEventsForTable(sourceContext, snapshotContext, offset, snapshotReceiver, table,
                         firstTable, lastTable, tableOrder, tableCount, selectStatement, rowCount, connection, barrier);
@@ -232,19 +232,19 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
         };
     }
 
-    private SingleStoreDBOffsetContext doCreateDataEventsForTable(
+    private SingleStoreOffsetContext doCreateDataEventsForTable(
             ChangeEventSource.ChangeEventSourceContext sourceContext,
-            RelationalSnapshotChangeEventSource.RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> snapshotContext,
-            SingleStoreDBOffsetContext offset,
-            EventDispatcher.SnapshotReceiver<SingleStoreDBPartition> snapshotReceiver, Table table,
+            RelationalSnapshotChangeEventSource.RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> snapshotContext,
+            SingleStoreOffsetContext offset,
+            EventDispatcher.SnapshotReceiver<SingleStorePartition> snapshotReceiver, Table table,
             boolean firstTable, boolean lastTable, int tableOrder, int tableCount,
             String selectStatement, OptionalLong rowCount, JdbcConnection jdbcConnection, CyclicBarrier barrier)
             throws InterruptedException {
-        SingleStoreDBPartition partition = snapshotContext.partition;
+        SingleStorePartition partition = snapshotContext.partition;
         if (!sourceContext.isRunning()) {
             throw new InterruptedException("Interrupted while snapshotting table " + table.id());
         }
-        SingleStoreDBOffsetContext commitOffset = copyOffset(snapshotContext);
+        SingleStoreOffsetContext commitOffset = copyOffset(snapshotContext);
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("Exporting data from table '{}' ({} of {} tables)", table.id(), tableOrder, tableCount);
         Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(jdbcConnection, offset, table.id());
@@ -328,7 +328,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
         }
     }
 
-    private void setSnapshotMarker(SingleStoreDBOffsetContext offset, boolean firstTable, boolean lastTable, boolean firstRecordInTable,
+    private void setSnapshotMarker(SingleStoreOffsetContext offset, boolean firstTable, boolean lastTable, boolean firstRecordInTable,
                                    boolean lastRecordInTable) {
         if (lastRecordInTable && lastTable) {
             offset.markSnapshotRecord(SnapshotRecord.LAST);
@@ -343,7 +343,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
         }
     }
 
-    private void updateSnapshotOffset(SingleStoreDBOffsetContext offset, ResultSet rs) throws SQLException {
+    private void updateSnapshotOffset(SingleStoreOffsetContext offset, ResultSet rs) throws SQLException {
         final String offsetValue = ObserveResultSetUtils.offset(rs);
         final String txId = ObserveResultSetUtils.txId(rs);
         final Integer partitionId = ObserveResultSetUtils.partitionId(rs);
@@ -353,17 +353,17 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
     /**
      * Returns a {@link ChangeRecordEmitter} producing the change records for the given table row.
      */
-    protected ChangeRecordEmitter<SingleStoreDBPartition> getChangeRecordEmitter(SingleStoreDBPartition partition, SingleStoreDBOffsetContext offset, TableId tableId,
+    protected ChangeRecordEmitter<SingleStorePartition> getChangeRecordEmitter(SingleStorePartition partition, SingleStoreOffsetContext offset, TableId tableId,
                                                                                  Object[] row, long internalId, Instant timestamp) {
         offset.event(tableId, timestamp);
-        return new SingleStoreDBSnapshotChangeRecordEmitter(partition, offset, row, internalId, getClock(), connectorConfig);
+        return new SingleStoreSnapshotChangeRecordEmitter(partition, offset, row, internalId, getClock(), connectorConfig);
     }
 
     private Threads.Timer getTableScanLogTimer() {
         return Threads.timer(clock, LOG_INTERVAL);
     }
 
-    private void determineCapturedTables(RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> ctx, Set<Pattern> dataCollectionsToBeSnapshotted) throws Exception {
+    private void determineCapturedTables(RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> ctx, Set<Pattern> dataCollectionsToBeSnapshotted) throws Exception {
         Set<TableId> allTableIds = getAllTableIds(ctx);
         Set<TableId> snapshottedTableIds = determineDataCollectionsToBeSnapshotted(allTableIds, dataCollectionsToBeSnapshotted).collect(Collectors.toSet());
 
@@ -422,7 +422,7 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
                 .sorted();
     }
 
-    private Queue<JdbcConnection> createConnectionPool(final RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> ctx) throws SQLException {
+    private Queue<JdbcConnection> createConnectionPool(final RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> ctx) throws SQLException {
         Queue<JdbcConnection> connectionPool = new ConcurrentLinkedQueue<>();
         connectionPool.add(jdbcConnection);
 
@@ -454,26 +454,26 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
 
     @Override
     protected Set<TableId> getAllTableIds(
-            RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> ctx)
+            RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> ctx)
             throws Exception {
         return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[]{"TABLE"});
     }
 
     @Override
     protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext,
-                                               RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> snapshotContext) {
+                                               RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> snapshotContext) {
     }
 
     @Override
     protected void determineSnapshotOffset(
-            RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> ctx,
-            SingleStoreDBOffsetContext previousOffset) {
+            RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> ctx,
+            SingleStoreOffsetContext previousOffset) {
         if (previousOffset != null) {
             ctx.offset = previousOffset;
             tryStartingSnapshot(ctx);
             return;
         }
-        ctx.offset = SingleStoreDBOffsetContext.initial(connectorConfig, () -> readNumberOfPartitions(ctx.catalogName));
+        ctx.offset = SingleStoreOffsetContext.initial(connectorConfig, () -> readNumberOfPartitions(ctx.catalogName));
     }
 
     private int readNumberOfPartitions(String database) {
@@ -491,8 +491,8 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
 
     @Override
     protected void readTableStructure(ChangeEventSourceContext sourceContext,
-                                      RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> snapshotContext,
-                                      SingleStoreDBOffsetContext offsetContext,
+                                      RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> snapshotContext,
+                                      SingleStoreOffsetContext offsetContext,
                                       SnapshottingTask snapshottingTask) throws Exception {
         Set<String> catalogs = snapshotContext.capturedTables.stream()
                 .map(TableId::catalog)
@@ -519,20 +519,20 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
 
     @Override
     protected void releaseSchemaSnapshotLocks(
-            RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> snapshotContext)
+            RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> snapshotContext)
             throws Exception {
     }
 
     @Override
     protected SchemaChangeEvent getCreateTableEvent(
-            RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> snapshotContext, Table table) {
+            RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> snapshotContext, Table table) {
         return SchemaChangeEvent.ofSnapshotCreate(snapshotContext.partition, snapshotContext.offset, snapshotContext.catalogName, table);
     }
 
     @Override
-    protected SingleStoreDBOffsetContext copyOffset(
-            RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> snapshotContext) {
-        return new SingleStoreDBOffsetContext.Loader(connectorConfig).load(snapshotContext.offset.getOffset());
+    protected SingleStoreOffsetContext copyOffset(
+            RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> snapshotContext) {
+        return new SingleStoreOffsetContext.Loader(connectorConfig).load(snapshotContext.offset.getOffset());
     }
 
     /**
@@ -542,14 +542,14 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
      * @param tableId the table to generate a query for
      * @return a valid query string or empty if table will not be snapshotted
      */
-    private String determineSnapshotSelect(RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> snapshotContext, TableId tableId) {
+    private String determineSnapshotSelect(RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> snapshotContext, TableId tableId) {
         List<String> columns = getPreparedColumnNames(snapshotContext.partition, schema.tableFor(tableId));
         return getSnapshotSelect(snapshotContext, tableId, columns).orElseThrow(() -> new IllegalArgumentException("Snapshot select query was not provided."));
     }
 
     @Override
     protected Optional<String> getSnapshotSelect(
-            RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> snapshotContext,
+            RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> snapshotContext,
             TableId tableId, List<String> columns) {
         String snapshotSelectColumns = columns.stream()
                 .collect(Collectors.joining(", "));//todo use in observe query
@@ -557,8 +557,8 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
     }
 
     @Override
-    public SnapshottingTask getSnapshottingTask(SingleStoreDBPartition partition,
-                                                   SingleStoreDBOffsetContext previousOffset) {
+    public SnapshottingTask getSnapshottingTask(SingleStorePartition partition,
+                                                   SingleStoreOffsetContext previousOffset) {
         List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
         Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
         .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
@@ -583,8 +583,8 @@ public class SingleStoreDBSnapshotChangeEventSource extends RelationalSnapshotCh
     }
 
     @Override
-    protected RelationalSnapshotContext<SingleStoreDBPartition, SingleStoreDBOffsetContext> prepare(
-            SingleStoreDBPartition partition) throws Exception {
+    protected RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> prepare(
+            SingleStorePartition partition) throws Exception {
         return new RelationalSnapshotContext<>(partition, connectorConfig.databaseName());
     }
 }

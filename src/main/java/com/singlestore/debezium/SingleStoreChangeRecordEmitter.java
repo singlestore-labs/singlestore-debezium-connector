@@ -15,9 +15,9 @@ import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.Clock;
 
-public class SingleStoreDBChangeRecordEmitter extends RelationalChangeRecordEmitter<SingleStoreDBPartition> {
+public class SingleStoreChangeRecordEmitter extends RelationalChangeRecordEmitter<SingleStorePartition> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreDBSnapshotChangeRecordEmitter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreSnapshotChangeRecordEmitter.class);
     private final Envelope.Operation operation;
     private final OffsetContext offset;
     private final Object[] before;
@@ -26,8 +26,8 @@ public class SingleStoreDBChangeRecordEmitter extends RelationalChangeRecordEmit
     
     private static final String INTERNAL_ID = "internalId";
 
-    public SingleStoreDBChangeRecordEmitter(SingleStoreDBPartition partition, OffsetContext offset, Clock clock, Operation operation, Object[] before,
-                                    Object[] after, long internalId, SingleStoreDBConnectorConfig connectorConfig) {
+    public SingleStoreChangeRecordEmitter(SingleStorePartition partition, OffsetContext offset, Clock clock, Operation operation, Object[] before,
+                                    Object[] after, long internalId, SingleStoreConnectorConfig connectorConfig) {
         super(partition, offset, clock, connectorConfig);
         this.offset = offset;
         this.operation = operation;
@@ -37,7 +37,7 @@ public class SingleStoreDBChangeRecordEmitter extends RelationalChangeRecordEmit
     }
 
     @Override
-    protected void emitCreateRecord(Receiver<SingleStoreDBPartition> receiver, TableSchema tableSchema)
+    protected void emitCreateRecord(Receiver<SingleStorePartition> receiver, TableSchema tableSchema)
             throws InterruptedException {
         Object[] newColumnValues = getNewColumnValues();
         Struct newKey = keyFromInternalId();
@@ -53,7 +53,7 @@ public class SingleStoreDBChangeRecordEmitter extends RelationalChangeRecordEmit
     }
 
     @Override
-    protected void emitUpdateRecord(Receiver<SingleStoreDBPartition> receiver, TableSchema tableSchema)
+    protected void emitUpdateRecord(Receiver<SingleStorePartition> receiver, TableSchema tableSchema)
             throws InterruptedException {
         Object[] oldColumnValues = getOldColumnValues();
         Object[] newColumnValues = getNewColumnValues();
@@ -84,7 +84,7 @@ public class SingleStoreDBChangeRecordEmitter extends RelationalChangeRecordEmit
     }
 
     @Override
-    protected void emitDeleteRecord(Receiver<SingleStoreDBPartition> receiver, TableSchema tableSchema) throws InterruptedException {
+    protected void emitDeleteRecord(Receiver<SingleStorePartition> receiver, TableSchema tableSchema) throws InterruptedException {
         Object[] oldColumnValues = getOldColumnValues();
         Struct newKey = keyFromInternalId();
 

@@ -26,13 +26,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
-public class SingleStoreDBValueConvertersIT extends IntegrationTestBase {
+public class SingleStoreValueConvertersIT extends IntegrationTestBase {
 
-    private static final SingleStoreDBValueConverters CONVERTERS = new SingleStoreDBValueConverters(JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT, CommonConnectorConfig.BinaryHandlingMode.BYTES);
+    private static final SingleStoreValueConverters CONVERTERS = new SingleStoreValueConverters(JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT, CommonConnectorConfig.BinaryHandlingMode.BYTES);
 
     @Test
     public void testNumberValues() {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
@@ -66,8 +66,8 @@ public class SingleStoreDBValueConvertersIT extends IntegrationTestBase {
     }
 
     private void testDecimalModeValues(JdbcValueConverters.DecimalMode mode) {
-        SingleStoreDBValueConverters converters = new SingleStoreDBValueConverters(mode, TemporalPrecisionMode.CONNECT, CommonConnectorConfig.BinaryHandlingMode.BYTES);
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        SingleStoreValueConverters converters = new SingleStoreValueConverters(mode, TemporalPrecisionMode.CONNECT, CommonConnectorConfig.BinaryHandlingMode.BYTES);
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
@@ -91,18 +91,18 @@ public class SingleStoreDBValueConvertersIT extends IntegrationTestBase {
     public void testGeometry() throws ParseException {
         String geographyValue = "POLYGON ((1 1, 2 1, 2 2, 1 2, 1 1))";
         String geographyPointValue = "POINT(1.50000003 1.50000000)";
-        SingleStoreDBGeometry singleStoreDBgeographyValue = SingleStoreDBGeometry.fromEkt(geographyValue);
-        SingleStoreDBGeometry singleStoreDBgeographyPointValue = SingleStoreDBGeometry.fromEkt(geographyPointValue);
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        SingleStoreGeometry singleStoregeographyValue = SingleStoreGeometry.fromEkt(geographyValue);
+        SingleStoreGeometry singleStoregeographyPointValue = SingleStoreGeometry.fromEkt(geographyPointValue);
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
             assertThat(table).isNotNull();
             // TODO: PLAT-6907
             // Struct convertedPolygon = (Struct) convertColumnValue(CONVERTERS, table, "geographyColumn", geographyValue);
-            // assertArrayEquals((byte[]) convertedPolygon.get("wkb"), singleStoreDBgeographyValue.getWkb());
+            // assertArrayEquals((byte[]) convertedPolygon.get("wkb"), singleStoregeographyValue.getWkb());
             Struct convertedPoint = (Struct) convertColumnValue(CONVERTERS, table, "geographypointColumn", geographyPointValue);
-            assertArrayEquals((byte[]) convertedPoint.get("wkb"), singleStoreDBgeographyPointValue.getWkb());
+            assertArrayEquals((byte[]) convertedPoint.get("wkb"), singleStoregeographyPointValue.getWkb());
         } catch (SQLException e) {
             Assert.fail(e.getMessage());
         }
@@ -116,8 +116,8 @@ public class SingleStoreDBValueConvertersIT extends IntegrationTestBase {
     }
 
     private void testTimeAndDateValues(TemporalPrecisionMode mode) {
-        SingleStoreDBValueConverters converters = new SingleStoreDBValueConverters(JdbcValueConverters.DecimalMode.DOUBLE, mode, CommonConnectorConfig.BinaryHandlingMode.BYTES);
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        SingleStoreValueConverters converters = new SingleStoreValueConverters(JdbcValueConverters.DecimalMode.DOUBLE, mode, CommonConnectorConfig.BinaryHandlingMode.BYTES);
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
@@ -154,7 +154,7 @@ public class SingleStoreDBValueConvertersIT extends IntegrationTestBase {
 
     @Test
     public void testStringValues() {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
@@ -173,7 +173,7 @@ public class SingleStoreDBValueConvertersIT extends IntegrationTestBase {
 
     @Test
     public void testBlobValues() {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
@@ -198,8 +198,8 @@ public class SingleStoreDBValueConvertersIT extends IntegrationTestBase {
     }
 
     private void testBinaryMode(CommonConnectorConfig.BinaryHandlingMode mode) {
-        SingleStoreDBValueConverters converters = new SingleStoreDBValueConverters(JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT, mode);
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        SingleStoreValueConverters converters = new SingleStoreValueConverters(JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT, mode);
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
@@ -225,11 +225,11 @@ public class SingleStoreDBValueConvertersIT extends IntegrationTestBase {
         }
     }
 
-    private static void testColumn(SingleStoreDBValueConverters converters, Table table, String name, Object valueToConvert, Object expectedConvertedValue) {
+    private static void testColumn(SingleStoreValueConverters converters, Table table, String name, Object valueToConvert, Object expectedConvertedValue) {
         assertEquals(expectedConvertedValue, convertColumnValue(converters, table, name, valueToConvert));
     }
 
-    private static Object convertColumnValue(SingleStoreDBValueConverters converters, Table table, String name, Object valueToConvert) {
+    private static Object convertColumnValue(SingleStoreValueConverters converters, Table table, String name, Object valueToConvert) {
         Column column = table.columnWithName(name);
         Field field = new Field(column.name(), -1, converters.schemaBuilder(column).build());
         return converters.converter(column, field).convert(valueToConvert);

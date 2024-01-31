@@ -23,19 +23,19 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * {@link JdbcConnection} extension to be used with SingleStoreDB
+ * {@link JdbcConnection} extension to be used with SingleStore
  */
-public class SingleStoreDBConnection extends JdbcConnection {
+public class SingleStoreConnection extends JdbcConnection {
 
   private static final String QUOTED_CHARACTER = "`";
   protected static final String URL_PATTERN = "jdbc:singlestore://${hostname}:${port}/?connectTimeout=${connectTimeout}";
   protected static final String URL_PATTERN_DATABASE = "jdbc:singlestore://${hostname}:${port}/${dbname}?connectTimeout=${connectTimeout}";
 
-  private final SingleStoreDBConnectionConfiguration connectionConfig;
+  private final SingleStoreConnectionConfiguration connectionConfig;
 
-  public SingleStoreDBConnection(SingleStoreDBConnectionConfiguration connectionConfig) {
+  public SingleStoreConnection(SingleStoreConnectionConfiguration connectionConfig) {
     super(connectionConfig.jdbcConfig, connectionConfig.factory,
-        SingleStoreDBConnection::validateServerVersion, QUOTED_CHARACTER, QUOTED_CHARACTER);
+        SingleStoreConnection::validateServerVersion, QUOTED_CHARACTER, QUOTED_CHARACTER);
     this.connectionConfig = connectionConfig;
   }
 
@@ -118,7 +118,7 @@ public class SingleStoreDBConnection extends JdbcConnection {
     return query(query.toString(), resultSetConsumer);
   }
 
-  public SingleStoreDBConnectionConfiguration connectionConfig() {
+  public SingleStoreConnectionConfiguration connectionConfig() {
     return connectionConfig;
   }
 
@@ -156,19 +156,19 @@ public class SingleStoreDBConnection extends JdbcConnection {
     SQL, JSON;
   }
 
-  public static class SingleStoreDBConnectionConfiguration {
+  public static class SingleStoreConnectionConfiguration {
 
     private final JdbcConfiguration jdbcConfig;
     private final ConnectionFactory factory;
     private final Configuration config;
 
-    public SingleStoreDBConnectionConfiguration(Configuration config) {
+    public SingleStoreConnectionConfiguration(Configuration config) {
       this.config = config;
       final boolean useSSL = sslModeEnabled();
       final Configuration dbConfig = config
           .edit()
-          .withDefault(SingleStoreDBConnectorConfig.PORT,
-              SingleStoreDBConnectorConfig.PORT.defaultValue())
+          .withDefault(SingleStoreConnectorConfig.PORT,
+              SingleStoreConnectorConfig.PORT.defaultValue())
           .build()
           .subset(DATABASE_CONFIG_PREFIX, true)
           .merge(config.subset(DRIVER_CONFIG_PREFIX, true));
@@ -200,8 +200,8 @@ public class SingleStoreDBConnection extends JdbcConnection {
       driverParameters().forEach(jdbcConfigBuilder::with);
       this.jdbcConfig = JdbcConfiguration.adapt(jdbcConfigBuilder.build());
       factory = JdbcConnection.patternBasedFactory(
-          databaseName() != null ? SingleStoreDBConnection.URL_PATTERN_DATABASE
-              : SingleStoreDBConnection.URL_PATTERN,
+          databaseName() != null ? SingleStoreConnection.URL_PATTERN_DATABASE
+              : SingleStoreConnection.URL_PATTERN,
           com.singlestore.jdbc.Driver.class.getName(),
           getClass().getClassLoader());
     }
@@ -219,63 +219,63 @@ public class SingleStoreDBConnection extends JdbcConnection {
     }
 
     public String username() {
-      return config.getString(SingleStoreDBConnectorConfig.USER);
+      return config.getString(SingleStoreConnectorConfig.USER);
     }
 
     public String password() {
-      return config.getString(SingleStoreDBConnectorConfig.PASSWORD);
+      return config.getString(SingleStoreConnectorConfig.PASSWORD);
     }
 
     public String hostname() {
-      return config.getString(SingleStoreDBConnectorConfig.HOSTNAME);
+      return config.getString(SingleStoreConnectorConfig.HOSTNAME);
     }
 
     public int port() {
-      return config.getInteger(SingleStoreDBConnectorConfig.PORT);
+      return config.getInteger(SingleStoreConnectorConfig.PORT);
     }
 
     public String databaseName() {
-      return config.getString(SingleStoreDBConnectorConfig.DATABASE_NAME);
+      return config.getString(SingleStoreConnectorConfig.DATABASE_NAME);
     }
 
-    public SingleStoreDBConnectorConfig.SecureConnectionMode sslMode() {
-      String mode = config.getString(SingleStoreDBConnectorConfig.SSL_MODE);
-      return SingleStoreDBConnectorConfig.SecureConnectionMode.parse(mode);
+    public SingleStoreConnectorConfig.SecureConnectionMode sslMode() {
+      String mode = config.getString(SingleStoreConnectorConfig.SSL_MODE);
+      return SingleStoreConnectorConfig.SecureConnectionMode.parse(mode);
     }
 
     public boolean sslModeEnabled() {
-      return sslMode() != SingleStoreDBConnectorConfig.SecureConnectionMode.DISABLE;
+      return sslMode() != SingleStoreConnectorConfig.SecureConnectionMode.DISABLE;
     }
 
     public String sslKeyStore() {
-      return config.getString(SingleStoreDBConnectorConfig.SSL_KEYSTORE);
+      return config.getString(SingleStoreConnectorConfig.SSL_KEYSTORE);
     }
 
     public char[] sslKeyStorePassword() {
-      String password = config.getString(SingleStoreDBConnectorConfig.SSL_KEYSTORE_PASSWORD);
+      String password = config.getString(SingleStoreConnectorConfig.SSL_KEYSTORE_PASSWORD);
       return Strings.isNullOrBlank(password) ? null : password.toCharArray();
     }
 
     public String sslTrustStore() {
-      return config.getString(SingleStoreDBConnectorConfig.SSL_TRUSTSTORE);
+      return config.getString(SingleStoreConnectorConfig.SSL_TRUSTSTORE);
     }
 
     public char[] sslTrustStorePassword() {
-      String password = config.getString(SingleStoreDBConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
+      String password = config.getString(SingleStoreConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
       return Strings.isNullOrBlank(password) ? null : password.toCharArray();
     }
 
     public String sslServerCertificate() {
-      return config.getString(SingleStoreDBConnectorConfig.SSL_SERVER_CERT);
+      return config.getString(SingleStoreConnectorConfig.SSL_SERVER_CERT);
     }
 
     public Duration getConnectionTimeout() {
-      return Duration.ofMillis(config.getLong(SingleStoreDBConnectorConfig.CONNECTION_TIMEOUT_MS));
+      return Duration.ofMillis(config.getLong(SingleStoreConnectorConfig.CONNECTION_TIMEOUT_MS));
     }
 
     public Map<String, String> driverParameters() {
       final String driverParametersString = config
-          .getString(SingleStoreDBConnectorConfig.DRIVER_PARAMETERS);
+          .getString(SingleStoreConnectorConfig.DRIVER_PARAMETERS);
       return driverParametersString == null ? Collections.emptyMap() :
           Arrays.stream(driverParametersString.split(";"))
               .map(s -> s.split("=")).collect(Collectors.toMap(s -> s[0].trim(), s -> s[1].trim()));

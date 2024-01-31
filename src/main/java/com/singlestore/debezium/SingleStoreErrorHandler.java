@@ -9,10 +9,10 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.util.Collect;
 
-public class SingleStoreDBErrorHandler extends ErrorHandler {
+public class SingleStoreErrorHandler extends ErrorHandler {
     
-    public SingleStoreDBErrorHandler(SingleStoreDBConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
-        super(SingleStoreDBConnector.class, connectorConfig, queue, null);
+    public SingleStoreErrorHandler(SingleStoreConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
+        super(SingleStoreConnector.class, connectorConfig, queue, null);
     }
 
     @Override

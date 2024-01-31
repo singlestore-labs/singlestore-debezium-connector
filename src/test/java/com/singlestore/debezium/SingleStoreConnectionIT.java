@@ -22,11 +22,11 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
 
-public class SingleStoreDBConnectionIT extends IntegrationTestBase {
+public class SingleStoreConnectionIT extends IntegrationTestBase {
 
     @Test
     public void testConnection() {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             conn.connect();
             assertTrue(conn.isConnected());
             assertTrue(conn.isValid());
@@ -40,7 +40,7 @@ public class SingleStoreDBConnectionIT extends IntegrationTestBase {
 
     @Test
     public void testPrepareQuery() {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             conn.execute("use " + TEST_DATABASE);
             conn.prepareQuery("insert into person values(?, ?, ?, ?, ?)", ps -> {
                 ps.setString(1, "product4");
@@ -63,7 +63,7 @@ public class SingleStoreDBConnectionIT extends IntegrationTestBase {
 
     @Test
     public void testGetCurrentTimeStamp() {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Optional<Instant> timeStamp = conn.getCurrentTimestamp();
             assertTrue(timeStamp.isPresent());
         } catch (SQLException e) {
@@ -73,7 +73,7 @@ public class SingleStoreDBConnectionIT extends IntegrationTestBase {
 
     @Test
     public void testMetadata() {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Set<TableId> tableIds = conn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream().filter(t -> t.catalog().equals(TEST_DATABASE)).collect(Collectors.toSet());
             Set<String> tableNames = tableIds.stream().map(TableId::table).collect(Collectors.toSet());
             assertEquals("readAllTableNames returns a wrong number of tables", 5, tableIds.size());
@@ -96,7 +96,7 @@ public class SingleStoreDBConnectionIT extends IntegrationTestBase {
 
     @Test
     public void testReadSchemaMetadata() {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             assertThat(tables.size()).isEqualTo(5);
@@ -224,7 +224,7 @@ public class SingleStoreDBConnectionIT extends IntegrationTestBase {
 
     @Test
     public void testObserve() {
-        try (SingleStoreDBConnection conn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             String tempTableName = "person_temporary";
             conn.execute("USE " + TEST_DATABASE,
                     "DROP TABLE IF EXISTS " + tempTableName,
@@ -243,7 +243,7 @@ public class SingleStoreDBConnectionIT extends IntegrationTestBase {
             CountDownLatch latch1 = new CountDownLatch(1);
             CountDownLatch latch2 = new CountDownLatch(1);
             Thread observer = new Thread(() -> {
-                try (SingleStoreDBConnection observerConn = new SingleStoreDBConnection(defaultJdbcConnectionConfig())) {
+                try (SingleStoreConnection observerConn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
                     Set<TableId> tableIds = observerConn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream().filter(t -> t.catalog().equals(TEST_DATABASE)).collect(Collectors.toSet());
                     Set<TableId> person = tableIds.stream().filter(t -> t.table().equals(tempTableName)).collect(Collectors.toSet());
                     observerConn.observe(person, rs -> {

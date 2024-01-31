@@ -7,7 +7,7 @@ import org.locationtech.jts.io.WKBWriter;
 import org.locationtech.jts.io.WKTReader;
 import org.locationtech.jts.geom.Geometry;
 
-public class SingleStoreDBGeometry {
+public class SingleStoreGeometry {
 
     private static final WKBWriter wkbWriter = new WKBWriter();
     private static final WKTReader wktReader = new WKTReader();
@@ -34,46 +34,46 @@ public class SingleStoreDBGeometry {
     private final Integer srid;
 
     /**
-     * Create a SingleStoreDBGeometry using the supplied Hex EWKB string.
+     * Create a SingleStoreGeometry using the supplied Hex EWKB string.
      */
-    public static SingleStoreDBGeometry fromHexEwkb(String hexEwkb) {
+    public static SingleStoreGeometry fromHexEwkb(String hexEwkb) {
         byte[] ewkb = HexConverter.convertFromHex(hexEwkb);
         return fromWkb(ewkb);
     }
 
     /**
-     * Create a SingleStoreDBGeometry using the supplied WKT.
+     * Create a SingleStoreGeometry using the supplied WKT.
      * srid is null as not specified by Single Store.
      */
-    public static SingleStoreDBGeometry fromEkt(String wkt) throws ParseException {
+    public static SingleStoreGeometry fromEkt(String wkt) throws ParseException {
         final Geometry geometry = wktReader.read(wkt);
         final byte[] wkb = wkbWriter.write(geometry);
-        return new SingleStoreDBGeometry(wkb, null);
+        return new SingleStoreGeometry(wkb, null);
     }
 
     /**
-     * Create a SingleStoreDBGeometry using the supplied WKB.
+     * Create a SingleStoreGeometry using the supplied WKB.
      */
-    public static SingleStoreDBGeometry fromWkb(byte[] wkb) {
-        return new SingleStoreDBGeometry(wkb, null);
+    public static SingleStoreGeometry fromWkb(byte[] wkb) {
+        return new SingleStoreGeometry(wkb, null);
     }
 
     /**
-     * Create a GEOMETRYCOLLECTION EMPTY SingleStoreDBGeometry
+     * Create a GEOMETRYCOLLECTION EMPTY SingleStoreGeometry
      *
-     * @return a {@link SingleStoreDBGeometry} which represents a PostgisGeometry API
+     * @return a {@link SingleStoreGeometry} which represents a PostgisGeometry API
      */
-    public static SingleStoreDBGeometry createEmpty() {
-        return SingleStoreDBGeometry.fromHexEwkb(HEXEWKB_EMPTY_GEOMETRYCOLLECTION);
+    public static SingleStoreGeometry createEmpty() {
+        return SingleStoreGeometry.fromHexEwkb(HEXEWKB_EMPTY_GEOMETRYCOLLECTION);
     }
 
     /**
-     * Create a SingleStoreDBGeometry using the supplied EWKB and SRID.
+     * Create a SingleStoreGeometry using the supplied EWKB and SRID.
      *
      * @param ewkb the Extended Well-Known binary representation of the coordinate in the standard format
      * @param srid the coordinate system identifier (SRID); null if unset/unknown
      */
-    private SingleStoreDBGeometry(byte[] ewkb, Integer srid) {
+    private SingleStoreGeometry(byte[] ewkb, Integer srid) {
         this.wkb = ewkb;
         this.srid = srid;
     }
