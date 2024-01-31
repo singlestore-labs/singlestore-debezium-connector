@@ -85,12 +85,11 @@ The SingleStore Debezium connector writes change events for all `INSERT`, `UPDAT
 topicPrefix.databaseName.tableName
 ```
 The following list provides definitions for the components of the default name:
-
- * `topicPrefix` - the topic prefix as specified by the `topic.prefix` connector configuration property.
-
- * `databaseName` - the name of the database in which the operation occurred (`database.dbname` connector configuration property).
-
- * `tableName` - the name of the table in which the operation occurred (`database.table` connector configuration property).
+| Component      | Description |
+|-----           |-----        |
+| `topicPrefix`  | Specified by the `topic.prefix` connector configuration property. |
+| `databaseName` | The name of the database that contains the table. Specified using the `database.dbname` connector configuration property.        |
+| `tableName`    |  The name of the table in which the operation occurred. Specified using the `database.table` connector configuration property.
 
 For example, if the topic prefix is `fulfillment`, database name is `inventory`, and the table where the operation occurred is `orders`, the connector writes events to the `fulfillment.inventory.orders` Kafka topic.
 
@@ -352,43 +351,43 @@ The SingleStore Debezium connector supports the following configuration properti
 | -                                       | -          | -
 | name                                    |  | Unique name for the connector. Any attempts to register again with the same name will fail. This property is required by all Kafka Connect connectors.
 | connector.class                         |  | The name of the Java Class for the connector. For the SingleStore connector specify `com.singlestore.debezium.SingleStoreConnector`.
-| tasks.max                               | 1          | The maximum number of tasks that should be created for this connector. The SingleStore connector always uses a single task and therefore does not use this value, so the default is always acceptable.
+| tasks.max                               | 1          | The maximum number of tasks that can be created for this connector. The SingleStoreDB connector only uses a single task and fails if more is specified. Hence, the default is always acceptable.
 
 ### Connection properties
 | Property                                | Default    | Description
 | -                                       | -          | -
-| database.hostname                       | No default | Resolvable hostname or IP address of the database server.
+| database.hostname                       |            | Resolvable hostname or IP address of the database server.
 | database.port                           | 3306       | Port of the database server.
-| database.user                           | No default | Name of the database user to be used when connecting to the database.
-| database.password                       | No default | Password of the database user to be used when connecting to the database.
-| database.dbname                         | No default | The name of the database from which the connector should capture changes.
-| database.table                          | No default | The name of the table from which the connector should capture changes.
+| database.user                           |            | Name of the database user to be used when connecting to the database.
+| database.password                       |            | Password of the database user to be used when connecting to the database.
+| database.dbname                         |            | The name of the database from which the connector should capture changes.
+| database.table                          |            | The name of the table from which the connector should capture changes.
 | database.ssl.mode                       | disable    | Whether to use an encrypted connection to SingleStore. Options include: 'disable' to use an unencrypted connection (the default), 'trust' to use a secure (encrypted) connection (no certificate and hostname validation), 'verify_ca' to use a secure (encrypted) connection but additionally verify the server TLS certificate against the configured Certificate Authority (CA) certificates, or fail if no valid matching CA certificates are found, or 'verify-full' like 'verify-ca' but additionally verify that the server certificate matches the host to which the connection is attempted.
-| database.ssl.keystore                   | No default | The location of the key store file. This is optional and can be used for two-way authentication between the client and the SingleStore server.
-| database.ssl.keystore.password          | No default | The password for the key store file. This is optional and only needed if 'database.ssl.keystore' is configured.
-| database.ssl.truststore                 | No default | The location of the trust store file for the server certificate verification.
-| database.ssl.truststore.password        | No default | The password for the trust store file. Used to check the integrity of the truststore and unlock the truststore.
-| database.ssl.server.cert                | No default | Server's certificate in DER format or the server's CA certificate. The certificate is added to the trust store, which allows the connection to trust a self-signed certificate.
+| database.ssl.keystore                   |            | The location of the key store file. This is optional and can be used for two-way authentication between the client and the SingleStore server.
+| database.ssl.keystore.password          |            | The password for the key store file. This is optional and only needed if 'database.ssl.keystore' is configured.
+| database.ssl.truststore                 |            | The location of the trust store file for the server certificate verification.
+| database.ssl.truststore.password        |            | The password for the trust store file. Used to check the integrity of the truststore and unlock the truststore.
+| database.ssl.server.cert                |            | Server's certificate in DER format or the server's CA certificate. The certificate is added to the trust store, which allows the connection to trust a self-signed certificate.
 | connect.timeout.ms                      | 30000      | Maximum time to wait after trying to connect to the database before timing out, specified in milliseconds.
-| driver.parameters                       | no default    | Additional JDBC parameters to use in the connection string to connect to the SingleStore server in the following format: 'param1=value1; param2 = value2; ...'. Refer to [SingleStore Connection String Parameters](https://docs.singlestore.com/cloud/developer-resources/connect-with-application-development-tools/connect-with-java-jdbc/the-singlestore-jdbc-driver/#connection-string-parameters) for more information.
+| driver.parameters                       |               | Additional JDBC parameters to use in the connection string to connect to the SingleStore server in the following format: 'param1=value1; param2 = value2; ...'. Refer to [SingleStore Connection String Parameters](https://docs.singlestore.com/cloud/developer-resources/connect-with-application-development-tools/connect-with-java-jdbc/the-singlestore-jdbc-driver/#connection-string-parameters) for more information.
 
 ### Required connector configuration properties
 The following configuration properties are required unless a default value is available.
 
 | Property                                | Default       | Description
 | -                                       | -             | -
-| topic.prefix                            | No default    | Specifies the topic prefix that identifies and provides a namespace for the particular database server/cluster that is capturing the changes. The topic prefix should be unique across all other connectors, since it is used as a prefix for all Kafka topic names that receive events generated by this connector. Only alphanumeric characters, hyphens, dots, and underscores are accepted.
+| topic.prefix                            |               | Specifies the topic prefix that identifies and provides a namespace for the particular database server/cluster that is capturing the changes. The topic prefix should be unique across all other connectors, since it is used as a prefix for all Kafka topic names that receive events generated by this connector. Only alphanumeric characters, hyphens, dots, and underscores are accepted.
 | <span id="decimal-handling-mode">decimal.handling.mode</span>                   | precise       | Specifies how DECIMAL and NUMERIC columns are represented in change events. Values include: 'precise' - uses `java.math.BigDecimal` to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; 'string' - uses string to represent values; 'double' - represents values using Java's 'double', which may not offer the precision, but it is easier to use in consumers.
 | <span id="binary-handling-mode">binary.handling.mode</span> | bytes | Specifies how binary (blob, binary, etc.) columns are represented in change events. Values include: 'bytes' - represents binary data as byte array (default); 'base64' - represents binary data as base64-encoded string; 'base64-url-safe' - represents binary data as base64-url-safe-encoded string; 'hex' - represents binary data as hex-encoded (base16) string.
 | <span id="time-precision-mode">time.precision.mode</span>                     | advanced      | Specifies the precision type for time, date, and timestamps. Values include: 'adaptive' - bases the precision of time, date, and timestamp values on the database column's precision; 'adaptive_time_microseconds' - similar to 'adaptive' mode, but TIME fields always use microseconds precision; 'connect' - always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision.
 | tombstones.on.delete                    | true          | Whether delete operations should be represented by a delete event and a subsequent tombstone event ('true') or only by a delete event ('false'). Generating the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record is deleted.
-| column.include.list                     | no default    | Regular expressions matching columns to include in change events.
-| column.exclude.list                     | no default    | Regular expressions matching columns to exclude from change events.
-| column.mask.hash.([^.]+).with.salt.(.+) | no default    | A comma-separated list of regular expressions matching fully-qualified names of columns that should be masked by hashing the input, using the specified hash algorithms and salt.
-| column.mask.with.(d+).chars             | no default    | A comma-separated list of regular expressions matching fully-qualified names of columns that should be masked with the specified number of asterisks ('*').
-| column.truncate.to.(d+).chars           | no default    | A comma-separated list of regular expressions matching fully-qualified names of columns that should be truncated to the configured amount of characters.
-| column.propagate.source.type            | no default    | A comma-separated list of regular expressions matching fully-qualified names of columns that adds the column’s original type and original length as parameters to the corresponding field schemas in the emitted change records.
-| datatype.propagate.source.type          | no default    | A comma-separated list of regular expressions matching the database-specific data type names that adds the data type's original type and original length as parameters to the corresponding field schemas in the generated change records.
+| column.include.list                     |               | Regular expressions matching columns to include in change events.
+| column.exclude.list                     |               | Regular expressions matching columns to exclude from change events.
+| column.mask.hash.([^.]+).with.salt.(.+) |               | A comma-separated list of regular expressions matching fully-qualified names of columns that should be masked by hashing the input, using the specified hash algorithms and salt.
+| column.mask.with.(d+).chars             |               | A comma-separated list of regular expressions matching fully-qualified names of columns that should be masked with the specified number of asterisks ('*').
+| column.truncate.to.(d+).chars           |               | A comma-separated list of regular expressions matching fully-qualified names of columns that should be truncated to the configured amount of characters.
+| column.propagate.source.type            |               | A comma-separated list of regular expressions matching fully-qualified names of columns that adds the column’s original type and original length as parameters to the corresponding field schemas in the emitted change records.
+| datatype.propagate.source.type          |               | A comma-separated list of regular expressions matching the database-specific data type names that adds the data type's original type and original length as parameters to the corresponding field schemas in the generated change records.
 | populate.internal.id                    | false         | Specifies whether to add `internalId` to the `after` field of the event message.
 
 ### Advanced connector configuration properties
@@ -396,7 +395,7 @@ The following advanced configuration properties have defaults that work in most 
 
 | Property                                | Default       | Description
 | -                                       | -             | -
-| converters                              | no default    | Optional list of custom converters to use instead of default ones. The converters are defined using the `<converter.prefix>.type` option and configured using `<converter.prefix>.<option>`.
+| converters                              |               | Optional list of custom converters to use instead of default ones. The converters are defined using the `<converter.prefix>.type` option and configured using `<converter.prefix>.<option>`.
 | snapshot.mode                           | initial       | Specifies the snapshot strategy to use on connector startup. Supported modes: 'initial' (default) - If the connector does not detect any offsets for the logical server name, it performs a full snapshot that captures the current state of the configured tables. After the snapshot completes, the connector begins to stream changes.; 'initial_only' - Similar to the 'initial' mode, the connector performs a full snapshot. Once the snapshot is complete, the connector stops, and does not stream any changes.
 | event.processing.failure.handling.mode  | fail          | Specifies how failures that may occur during event processing should be handled, for example, failures because of a corrupted event. Supported modes: 'fail' (Default) - An exception indicating the problematic event and its position is raised and the connector is stopped; 'warn' - The problematic event and its position are logged and the event is skipped; 'ignore' - The problematic event is skipped.
 | max.batch.size                          | 2048          | Maximum size of each batch of source records.
@@ -404,15 +403,15 @@ The following advanced configuration properties have defaults that work in most 
 | max.queue.size.in.bytes                 | 0 (disabled)  | Maximum size of the queue in bytes for change events read from the database log but not yet recorded or forwarded.
 | poll.interval.ms                        | 500           | Time (in milliseconds) that the connector waits for new change events to appear after receiving no events.
 | heartbeat.topics.prefix                 | __debezium-heartbeat | The prefix that is used to name heartbeat topics.
-| heartbeat.action.query                  | no default    | An optional query to execute with every heartbeat.
+| heartbeat.action.query                  |            | An optional query to execute with every heartbeat.
 | heartbeat.interval.ms                   | 0 (disabled)  | The time interval in milliseconds at which the connector periodically sends heartbeat messages to a heartbeat topic.
 | snapshot.delay.ms                       | 0             | Number of milliseconds to wait before a snapshot begins.
-| retriable.restart.connector.wait.ms     | 10000         | Time to wait before restarting connector after retriable exception occurs.
+| retriable.restart.connector.wait.ms     | 10000         | Number of milliseconds to wait before restarting connector after a retriable exception occurs.
 | skipped.operations                      | t             | The comma-separated list of operations to skip during streaming, defined as: 'c' for inserts/create; 'u' for updates; 'd' for deletes, 't' for truncates, and 'none' to indicate that nothing is skipped.
-| notification.enabled.channels           | no default    | List of notification channels names that are enabled.
-| topic.naming.strategy                   | no default    | The name of the TopicNamingStrategy Class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event, etc.
-| custom.metric.tags                      | no default    | The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended at the end of the regular name. Each key represents a tag for the MBean object name, and the corresponding value represents the value of that key. For example: k1=v1,k2=v2.
+| notification.enabled.channels           |               | List of notification channels names that are enabled.
+| topic.naming.strategy                   |               | The name of the TopicNamingStrategy Class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event, etc.
+| custom.metric.tags                      |               | The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended at the end of the regular name. Each key represents a tag for the MBean object name, and the corresponding value represents the value of that key. For example: k1=v1,k2=v2.
 | errors.max.retries                      | -1 (no limit) | The maximum number of retries on connection errors before failing.
 | sourceinfo.struct.maker                 | SingleStoreSourceInfoStructMaker | The name of the SourceInfoStructMaker Class that returns the SourceInfo schema and struct.
-| notification.sink.topic.name            | no default    | The name of the topic for the notifications. This property is required if the 'sink' is in the list of enabled channels.
-| post.processors                         | no default    | Optional list of post processors. The processors are defined using the `<post.processor.prefix>.type` option and configured using `<post.processor.prefix.<option>`.
+| notification.sink.topic.name            |               | The name of the topic for the notifications. This property is required if the 'sink' is in the list of enabled channels.
+| post.processors                         |               | Optional list of post processors. The processors are defined using the `<post.processor.prefix>.type` option and configured using `<post.processor.prefix.<option>`.
