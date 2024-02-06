@@ -1,12 +1,7 @@
 package com.singlestore.debezium;
 
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
+import com.singlestore.debezium.metrics.SingleStoreChangeEventSourceMetricsFactory;
 import io.debezium.DebeziumException;
-import org.apache.kafka.connect.source.SourceRecord;
-
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -17,7 +12,6 @@ import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
@@ -26,6 +20,10 @@ import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.apache.kafka.connect.source.SourceRecord;
 
 /**
  * The main task executing streaming from SingleStore.
@@ -111,14 +109,13 @@ public class SingleStoreConnectorTask extends BaseSourceTask<SingleStorePartitio
         NotificationService<SingleStorePartition, SingleStoreOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                     connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
-        ChangeEventSourceCoordinator<SingleStorePartition, SingleStoreOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
+      SingleStoreChangeEventSourceCoordinator coordinator = new SingleStoreChangeEventSourceCoordinator(
             previousOffsets,
             errorHandler,
             SingleStoreConnector.class,
             connectorConfig,
             new SingleStoreChangeEventSourceFactory(connectorConfig, connectionFactory, schema, dispatcher, errorHandler, clock),
-            // TODO create custom metrics PLAT-6970
-            new DefaultChangeEventSourceMetricsFactory<>(),            
+            new SingleStoreChangeEventSourceMetricsFactory(),
             dispatcher,
             schema,
             signalProcessor,

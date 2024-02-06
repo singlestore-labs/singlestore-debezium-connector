@@ -11,21 +11,22 @@
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
-        
-        <version.debezium>2.5.0.Final</version.debezium>
+
+        <version.debezium>2.5.1.Final</version.debezium>
         <version.kafka>3.6.1</version.kafka>
         <version.singlestore.jdbc.driver>1.2.0</version.singlestore.jdbc.driver>
         <version.jts.io>1.19.0</version.jts.io>
-        
+
         <version.kafka-connect-avro-converter>7.5.1</version.kafka-connect-avro-converter>
         <version.connect-json>3.6.1</version.connect-json>
+        <version.org.slf4j>2.0.4</version.org.slf4j>
         <version.logback-classic>1.4.14</version.logback-classic>
         <version.testcontainers>1.19.3</version.testcontainers>
         <version.awaitility>4.2.0</version.awaitility>
         <version.mockito>3.0.0</version.mockito>
         <version.junit>4.13.2</version.junit>
         <version.assertj-core>3.11.1</version.assertj-core>
-        
+
         <version.assembly.plugin>3.6.0</version.assembly.plugin>
         <version.failsafe.plugin>3.2.3</version.failsafe.plugin>
 
@@ -34,11 +35,13 @@
           Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
           work on all platforms. We'll set some of these as system properties during integration testing.
         -->
-        <singlestoredb.image>adalbertsinglestore/singlestore-poc-observe</singlestoredb.image>
-        <singlestoredb.host>127.0.0.1</singlestoredb.host>
-        <singlestoredb.port>3306</singlestoredb.port>
-        <singlestoredb.user>root</singlestoredb.user>
-        <singlestoredb.password></singlestoredb.password>
+        <singlestore.image>ghcr.io/singlestore-labs/singlestoredb-dev:latest</singlestore.image>
+        <singlestore.version>${env.DEBEZIUM_SINGLESTORE_VERSION}</singlestore.version>
+        <singlestore.license>${env.SINGLESTORE_LICENSE}</singlestore.license>
+        <singlestore.host>127.0.0.1</singlestore.host>
+        <singlestore.port>3306</singlestore.port>
+        <singlestore.user>root</singlestore.user>
+        <singlestore.password>root</singlestore.password>
     </properties>
 
     <repositories>
@@ -75,7 +78,13 @@
             <artifactId>jts-io-common</artifactId>
             <version>${version.jts.io}</version>
         </dependency>
-
+        <!--logging-->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${version.org.slf4j}</version>
+            <optional>true</optional>
+        </dependency>
         <!-- Testing -->
         <dependency>
             <groupId>io.debezium</groupId>
@@ -159,12 +168,17 @@
                     <images>
                         <image>
                             <!-- A Docker image with SingleStoreDB cluster -->
-                            <name>${singlestoredb.image}</name>
+                            <name>${singlestore.image}</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <ports>
-                                    <port>${singlestoredb.port}:3306</port>
+                                    <port>${singlestore.port}:3306</port>
                                 </ports>
+                                <env>
+                                    <SINGLESTORE_LICENSE>${singlestore.license}</SINGLESTORE_LICENSE>
+                                    <ROOT_PASSWORD>${singlestore.password}</ROOT_PASSWORD>
+                                    <SINGLESTORE_VERSION>dev:ebb4bb6d-a7e8-438e-809f-3cb290f88d2b</SINGLESTORE_VERSION>
+                                </env>
                                 <!-- Uncomment this to see database logs in the test output
                                 <log>
                                     <prefix>SingleStoreDB &gt;&gt;&gt; </prefix>
@@ -173,8 +187,9 @@
                                 </log>
                                 -->
                                 <wait>
-                                    <time>60000</time> <!-- 60 seconds max -->
-                                    <log>MemSqlAcceptLoop: Starting the accept loop.</log>
+                                    <time>300000</time> <!-- 300 seconds max -->
+                                    <log>Log Opened</log>
+                                    <!--<log>MemSqlAcceptLoop: Starting the accept loop.</log>-->
                                 </wait>
                             </run>
                         </image>
@@ -231,10 +246,11 @@
                     <enableAssertions>true</enableAssertions>
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
-                        <database.hostname>${singlestoredb.host}</database.hostname>
-                        <database.port>${singlestoredb.port}</database.port>
-                        <database.user>${singlestoredb.user}</database.user>
-                        <database.password>${singlestoredb.password}</database.password>
+                        <singlestore.hostname>${singlestore.host}</singlestore.hostname>
+                        <singlestore.port>${singlestore.port}</singlestore.port>
+                        <singlestore.user>${singlestore.user}</singlestore.user>
+                        <singlestore.password>${singlestore.password}</singlestore.password>
+                        <singlestore.version>${singlestore.version}</singlestore.version>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -288,16 +304,6 @@
                                 </configuration>
                             </execution>
                         </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>${version.failsafe.plugin}</version>
-                        <configuration>
-                            <systemPropertyVariables>
-                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
-                            </systemPropertyVariables>
-                        </configuration>
                     </plugin>
                 </plugins>
             </build>

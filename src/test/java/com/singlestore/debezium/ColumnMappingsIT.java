@@ -25,6 +25,7 @@ public class ColumnMappingsIT extends IntegrationTestBase {
 
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
+      waitForStreamingToStart();
 
       try {
         conn.execute("INSERT INTO `song` VALUES ('test1', 'test1')");
@@ -56,6 +57,7 @@ public class ColumnMappingsIT extends IntegrationTestBase {
 
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
+      waitForStreamingToStart();
 
       try {
         conn.execute("INSERT INTO `song` VALUES ('12345678901234567890', '12345678901234567890')");
@@ -86,6 +88,7 @@ public class ColumnMappingsIT extends IntegrationTestBase {
 
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
+      waitForStreamingToStart();
 
       try {
         conn.execute("INSERT INTO `person` (`name`, `birthdate`, `age`, `salary`, `bitStr`) "
@@ -141,10 +144,11 @@ public class ColumnMappingsIT extends IntegrationTestBase {
 
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
+      waitForStreamingToStart();
 
       try {
         conn.execute("INSERT INTO `person` (`name`, `birthdate`, `age`, `salary`, `bitStr`) "
-            + "VALUES ('Mike', '1999-01-01', 10, 100, 'a')");
+            + "VALUES ('Kevin', '1999-01-01', 10, 100, 'a')");
         List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
         assertEquals(1, records.size());
         SourceRecord record = records.get(0);

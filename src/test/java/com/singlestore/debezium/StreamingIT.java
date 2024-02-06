@@ -27,10 +27,9 @@ public class StreamingIT extends IntegrationTestBase {
     try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
       Configuration config = defaultJdbcConfigWithTable("allTypesTable");
-
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
-
+      waitForStreamingToStart();
       try {
         conn.execute("INSERT INTO `allTypesTable` VALUES (\n" + "TRUE, " + // boolColumn
                 "TRUE, " + // booleanColumn
@@ -74,7 +73,7 @@ public class StreamingIT extends IntegrationTestBase {
                 "'{}', " + // jsonColumn
                 "'val1', " + // enum_f
                 "'v1', " + // set_f
-//                       "'POLYGON((1 1,2 1,2 2, 1 2, 1 1))', " + // geographyColumn TODO: PLAT-6907 test GEOGRAPHY datatype
+//              "'POLYGON((1 1,2 1,2 2, 1 2, 1 1))', " + // geographyColumn TODO: PLAT-6907 test GEOGRAPHY datatype
                 "'POINT(1.50000003 1.50000000)')" // geographypointColumn
         );
 
@@ -144,9 +143,9 @@ public class StreamingIT extends IntegrationTestBase {
     try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("purchased"))) {
       Configuration config = defaultJdbcConfigWithTable("purchased");
-
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
+      waitForStreamingToStart();
       try {
         conn.execute("INSERT INTO `purchased` VALUES ('archie', 1, NOW())");
         List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
@@ -164,7 +163,7 @@ public class StreamingIT extends IntegrationTestBase {
         assertNotNull(source.get("txId"));
         assertEquals(source.get("partitionId"), 0);
         assertNotNull(source.get("offsets"));
-        assertEquals(1, ((List) source.get("offsets")).size());
+        assertEquals(3, ((List) source.get("offsets")).size());
       } finally {
         stopConnector();
       }
@@ -176,10 +175,9 @@ public class StreamingIT extends IntegrationTestBase {
     try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("song"))) {
       Configuration config = defaultJdbcConfigWithTable("song");
-
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
-
+      waitForStreamingToStart();
       try {
         conn.execute("INSERT INTO `song` VALUES ('Metallica', 'Enter Sandman')");
         conn.execute("INSERT INTO `song` VALUES ('AC/DC', 'Back In Black')");
@@ -220,9 +218,10 @@ public class StreamingIT extends IntegrationTestBase {
         defaultJdbcConnectionConfigWithTable("product"))) {
       Configuration config = defaultJdbcConfigWithTable("product");
       config = config.edit().withDefault("tombstones.on.delete", "false").build();
-
+      conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
+      waitForStreamingToStart();
 
       try {
         conn.execute("INSERT INTO `product` (`id`) VALUES (1)");
@@ -268,9 +267,9 @@ public class StreamingIT extends IntegrationTestBase {
       Configuration config = defaultJdbcConfigWithTable("person");
       config = config.edit().withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
           "db.person.name,db.person.age").build();
-
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
+      waitForStreamingToStart();
 
       try {
         conn.execute("INSERT INTO `person` (`name`, `birthdate`, `age`, `salary`, `bitStr`) "
@@ -314,16 +313,18 @@ public class StreamingIT extends IntegrationTestBase {
   public void internalId() throws SQLException, InterruptedException {
     try (SingleStoreConnection createTableConn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("product"))) {
-      createTableConn.execute("CREATE TABLE internalIdTable(a INT)");
+      createTableConn.execute("CREATE TABLE IF NOT EXISTS internalIdTable(a INT);"
+          + "DELETE FROM internalIdTable WHERE 1 = 1;");
       try {
         try (SingleStoreConnection conn = new SingleStoreConnection(
             defaultJdbcConnectionConfigWithTable("internalIdTable"))) {
           Configuration config = defaultJdbcConfigWithTable("internalIdTable");
           config = config.edit()
               .withDefault(SingleStoreConnectorConfig.POPULATE_INTERNAL_ID, "true").build();
-
+          conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
           start(SingleStoreConnector.class, config);
           assertConnectorIsRunning();
+          waitForStreamingToStart();
 
           try {
             conn.execute("INSERT INTO internalIdTable VALUES (1)");
@@ -353,9 +354,9 @@ public class StreamingIT extends IntegrationTestBase {
       Configuration config = defaultJdbcConfigWithTable("product");
       config = config.edit().withDefault(SingleStoreConnectorConfig.SKIPPED_OPERATIONS, "c")
           .withDefault(SingleStoreConnectorConfig.TOMBSTONES_ON_DELETE, "false").build();
-
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
+      waitForStreamingToStart();
 
       try {
         conn.execute("INSERT INTO `product` (`id`) VALUES (1)");
@@ -388,9 +389,9 @@ public class StreamingIT extends IntegrationTestBase {
       Configuration config = defaultJdbcConfigWithTable("product");
       config = config.edit().withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE,
           SingleStoreConnectorConfig.SnapshotMode.INITIAL_ONLY).build();
-
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
+      waitForSnapshotToBeCompleted();
 
       try {
         conn.execute("INSERT INTO `product` (`id`) VALUES (1)");

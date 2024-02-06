@@ -50,10 +50,7 @@ public class SnapshotIT extends IntegrationTestBase {
     final Configuration config = defaultJdbcConfigBuilder()
         .withDefault(SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
         .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
-        .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
-        .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
         .build();
-    ;
 
     start(SingleStoreConnector.class, config);
     assertConnectorIsRunning();

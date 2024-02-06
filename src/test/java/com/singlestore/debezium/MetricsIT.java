@@ -9,7 +9,6 @@ import static org.junit.Assert.assertEquals;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import java.lang.management.ManagementFactory;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import javax.management.MBeanServer;
@@ -92,13 +91,11 @@ public class MetricsIT extends IntegrationTestBase {
             "INSERT INTO " + TEST_DATABASE + ".A VALUES(5, 'test1');" +
             "INSERT INTO " + TEST_DATABASE + ".A VALUES(6, 'test2');";
     execute(statements);
-    Thread.sleep(Duration.ofSeconds(3).toMillis());
     // Check streaming metrics
     assertThat(mBeanServer.getAttribute(objectName, "Connected")).isEqualTo(true);
     assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfUpdateEventsSeen")).isEqualTo(1L);
     assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfDeleteEventsSeen")).isEqualTo(1L);
-    assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfCreateEventsSeen")).isEqualTo(6L);//todo fix should be 2 PLAT-6970
-    assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfEventsSeen")).isEqualTo(
-        8L);//todo fix should be 4 PLAT-6970
+    assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfCreateEventsSeen")).isEqualTo(2L);
+    assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfEventsSeen")).isEqualTo(4L);
   }
 }

@@ -43,7 +43,7 @@ public final class ObserveResultSetUtils {
     }
 
     public static Integer partitionId(ResultSet rs) throws SQLException {
-        return rs.getInt(METADATA_COLUMNS[1]) - 1;
+        return rs.getInt(METADATA_COLUMNS[1]);
     }
 
     private static String bytesToHex(byte[] bytes) {

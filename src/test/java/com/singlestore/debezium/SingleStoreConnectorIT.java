@@ -157,6 +157,7 @@ public class SingleStoreConnectorIT extends IntegrationTestBase {
 
             start(SingleStoreConnector.class, config);
             assertConnectorIsRunning();
+            waitForStreamingToStart();
 
             try {
                 conn.execute("INSERT INTO `product` (`id`) VALUES (1)");
@@ -177,11 +178,11 @@ public class SingleStoreConnectorIT extends IntegrationTestBase {
             Configuration config = defaultJdbcConfigWithTable("product");
             config = config.edit()
                 .with(SingleStoreConnectorConfig.TOPIC_NAMING_STRATEGY, DefaultUnicodeTopicNamingStrategy.class.getName())
-
                 .build();
 
             start(SingleStoreConnector.class, config);
             assertConnectorIsRunning();
+            waitForStreamingToStart();
 
             try {
                 conn.execute("INSERT INTO `product` (`id`) VALUES (1)");

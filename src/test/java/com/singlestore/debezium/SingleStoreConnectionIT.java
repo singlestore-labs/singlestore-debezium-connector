@@ -1,5 +1,6 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.util.ObserveResultSetUtils;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -30,7 +31,7 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
             conn.connect();
             assertTrue(conn.isConnected());
             assertTrue(conn.isValid());
-            assertEquals("jdbc:singlestore://localhost:" + TEST_PORT + "/?connectTimeout=30000", conn.connectionString());
+            assertEquals("jdbc:singlestore://" + TEST_SERVER + ":" + TEST_PORT + "/?connectTimeout=30000", conn.connectionString());
             conn.close();
             assertFalse(conn.isConnected());
         } catch (SQLException e) {
@@ -159,9 +160,9 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
             assertThat(product.primaryKeyColumnNames()).containsOnly("id");
             assertThat(product.retrieveColumnNames()).containsExactly("id", "createdByDate", "modifiedDate");
             assertThat(product.columnWithName("id").name()).isEqualTo("id");
-            assertThat(product.columnWithName("id").typeName()).isEqualTo("INT");
-            assertThat(product.columnWithName("id").jdbcType()).isEqualTo(Types.INTEGER);
-            assertThat(product.columnWithName("id").length()).isEqualTo(10);
+            assertThat(product.columnWithName("id").typeName()).isEqualTo("BIGINT");
+            assertThat(product.columnWithName("id").jdbcType()).isEqualTo(Types.BIGINT);
+            assertThat(product.columnWithName("id").length()).isEqualTo(19);
             assertThat(!product.columnWithName("id").scale().isPresent()
                     || product.columnWithName("id").scale().get() == 0);
             assertThat(product.columnWithName("id").position()).isEqualTo(1);
@@ -225,9 +226,9 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
     @Test
     public void testObserve() {
         try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
-            String tempTableName = "person_temporary";
+            String tempTableName = "person_temporary1";
             conn.execute("USE " + TEST_DATABASE,
-                    "DROP TABLE IF EXISTS " + tempTableName,
+//                    "DROP TABLE IF EXISTS " + tempTableName,
                     "CREATE TABLE " + tempTableName + " ("
                             + "  name VARCHAR(255) primary key,"
                             + "  birthdate DATE NULL,"
@@ -235,8 +236,12 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
                             + "  salary DECIMAL(5,2),"
                             + "  bitStr BIT(18)"
                             + ")");
-            String[] expectedTypesOrder = {"BeginSnapshot", "CommitSnapshot", 
-                "BeginTransaction", "Insert", "CommitTransaction", 
+            //3 partitions BeginSnapshot/CommitSnapshot
+            String[] expectedTypesOrder = {
+                "BeginSnapshot", "CommitSnapshot",
+                "BeginSnapshot", "CommitSnapshot",
+                "BeginSnapshot", "CommitSnapshot",
+                "BeginTransaction", "Insert", "CommitTransaction",
                 "BeginTransaction", "Insert", "CommitTransaction", 
                 "BeginTransaction", "Delete", "CommitTransaction"};
             List<String> actualTypes = new CopyOnWriteArrayList<>();
@@ -246,11 +251,13 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
                 try (SingleStoreConnection observerConn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
                     Set<TableId> tableIds = observerConn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream().filter(t -> t.catalog().equals(TEST_DATABASE)).collect(Collectors.toSet());
                     Set<TableId> person = tableIds.stream().filter(t -> t.table().equals(tempTableName)).collect(Collectors.toSet());
+                    //todo remove
+                    observerConn.execute("DROP ALL FROM PLANCACHE");
                     observerConn.observe(person, rs -> {
                         int counter = 0;
                         latch1.countDown();
                         while (counter < expectedTypesOrder.length && rs.next()) {
-                            actualTypes.add(rs.getString(3));
+                            actualTypes.add(ObserveResultSetUtils.snapshotType(rs));
                             counter++;
                         }
                         ((com.singlestore.jdbc.Connection)rs.getStatement().getConnection()).cancelCurrentQuery();

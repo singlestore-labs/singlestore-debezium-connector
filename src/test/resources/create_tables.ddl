@@ -1,4 +1,4 @@
-CREATE TABLE db.person (
+CREATE TABLE IF NOT EXISTS db.person (
     name VARCHAR(255) primary key,
     birthdate DATE NULL,
     age INTEGER NULL DEFAULT 10,
@@ -6,24 +6,24 @@ CREATE TABLE db.person (
     bitStr BIT(18),
     sort key(name)
 );
-CREATE TABLE db.product (
+CREATE TABLE IF NOT EXISTS db.product (
     id INT NOT NULL AUTO_INCREMENT,
     createdByDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     modifiedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY(id)
 );
-CREATE TABLE db.purchased (
+CREATE TABLE IF NOT EXISTS db.purchased (
     purchaser VARCHAR(255) NOT NULL,
     productId INT NOT NULL,
     purchaseDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(productId,purchaser)
 );
-CREATE TABLE db.song (
+CREATE TABLE IF NOT EXISTS db.song (
     author TEXT,
     name TEXT
 );
 
-CREATE ROWSTORE TABLE db.allTypesTable (
+CREATE ROWSTORE TABLE IF NOT EXISTS db.allTypesTable (
     `boolColumn` BOOL DEFAULT true,
     `booleanColumn` BOOLEAN DEFAULT true,
     `bitColumn` BIT(64) DEFAULT '01234567',
@@ -65,5 +65,6 @@ CREATE ROWSTORE TABLE db.allTypesTable (
     `set_f` SET('v1','v2','v3') default 'v1',
 --    `geographyColumn` GEOGRAPHY DEFAULT 'POLYGON((1 1,2 1,2 2, 1 2, 1 1))',
     `geographypointColumn` GEOGRAPHYPOINT DEFAULT 'POINT(1.50000003 1.50000000)',
-     unique key(intColumn)
+     unique key(intColumn),
+     shard key(intColumn)
  );
