@@ -315,34 +315,30 @@ public class StreamingIT extends IntegrationTestBase {
         defaultJdbcConnectionConfigWithTable("product"))) {
       createTableConn.execute("CREATE TABLE IF NOT EXISTS internalIdTable(a INT);"
           + "DELETE FROM internalIdTable WHERE 1 = 1;");
-      try {
-        try (SingleStoreConnection conn = new SingleStoreConnection(
-            defaultJdbcConnectionConfigWithTable("internalIdTable"))) {
-          Configuration config = defaultJdbcConfigWithTable("internalIdTable");
-          config = config.edit()
-              .withDefault(SingleStoreConnectorConfig.POPULATE_INTERNAL_ID, "true").build();
-          conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
-          start(SingleStoreConnector.class, config);
-          assertConnectorIsRunning();
-          waitForStreamingToStart();
+      try (SingleStoreConnection conn = new SingleStoreConnection(
+          defaultJdbcConnectionConfigWithTable("internalIdTable"))) {
+        Configuration config = defaultJdbcConfigWithTable("internalIdTable");
+        config = config.edit()
+            .withDefault(SingleStoreConnectorConfig.POPULATE_INTERNAL_ID, "true").build();
+        conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
+        start(SingleStoreConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
 
-          try {
-            conn.execute("INSERT INTO internalIdTable VALUES (1)");
+        try {
+          conn.execute("INSERT INTO internalIdTable VALUES (1)");
 
-            List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
-            assertEquals(1, records.size());
-            for (SourceRecord record : records) {
-              Struct value = (Struct) record.value();
-              Struct key = (Struct) record.key();
-              Long internalId = value.getStruct("after").getInt64("internalId");
-              assertEquals(key.getInt64("internalId"), internalId);
-            }
-          } finally {
-            stopConnector();
+          List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+          assertEquals(1, records.size());
+          for (SourceRecord record : records) {
+            Struct value = (Struct) record.value();
+            Struct key = (Struct) record.key();
+            Long internalId = value.getStruct("after").getInt64("internalId");
+            assertEquals(key.getInt64("internalId"), internalId);
           }
+        } finally {
+          stopConnector();
         }
-      } finally {
-        createTableConn.execute("DROP TABLE internalIdTable");
       }
     }
   }

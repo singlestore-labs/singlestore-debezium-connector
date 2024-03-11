@@ -35,20 +35,20 @@ public class NotificationsIT extends IntegrationTestBase {
 
   @Before
   public void initTestData() {
-    String statements = "DROP DATABASE IF EXISTS " + TEST_DATABASE + ";" +
-        "CREATE DATABASE " + TEST_DATABASE + ";" +
-        "DROP TABLE IF EXISTS " + TEST_DATABASE + ".A;" +
-        "DROP TABLE IF EXISTS " + TEST_DATABASE + ".B;" +
-        "CREATE TABLE " + TEST_DATABASE + ".A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
-        "CREATE TABLE " + TEST_DATABASE + ".B (aa INT, bb VARCHAR(20));" +
-        "INSERT INTO " + TEST_DATABASE + ".B VALUES(0, 'test0');" +
-        "INSERT INTO " + TEST_DATABASE + ".A VALUES(0, 'test0');" +
-        "INSERT INTO " + TEST_DATABASE + ".A VALUES(4, 'test4');" +
-        "INSERT INTO " + TEST_DATABASE + ".A VALUES(1, 'test1');" +
-        "INSERT INTO " + TEST_DATABASE + ".A VALUES(2, 'test2');" +
-        "UPDATE " + TEST_DATABASE + ".B SET bb = 'testUpdated' WHERE aa = 0;" +
-        "DELETE FROM " + TEST_DATABASE + ".A WHERE pk = 4;" +
-        "SNAPSHOT DATABASE " + TEST_DATABASE + ";";
+    String statements =
+        "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE
+            + ".AN (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
+            "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE + ".BN (aa INT, bb VARCHAR(20));" +
+            "DELETE FROM " + TEST_DATABASE + ".AN WHERE 1 = 1;" +
+            "DELETE FROM " + TEST_DATABASE + ".BN WHERE 1 = 1;" +
+            "INSERT INTO " + TEST_DATABASE + ".BN VALUES(0, 'test0');" +
+            "INSERT INTO " + TEST_DATABASE + ".AN VALUES(0, 'test0');" +
+            "INSERT INTO " + TEST_DATABASE + ".AN VALUES(4, 'test4');" +
+            "INSERT INTO " + TEST_DATABASE + ".AN VALUES(1, 'test1');" +
+            "INSERT INTO " + TEST_DATABASE + ".AN VALUES(2, 'test2');" +
+            "UPDATE " + TEST_DATABASE + ".BN SET bb = 'testUpdated' WHERE aa = 0;" +
+            "DELETE FROM " + TEST_DATABASE + ".AN WHERE pk = 4;" +
+            "SNAPSHOT DATABASE " + TEST_DATABASE + ";";
     execute(statements);
   }
 
@@ -56,7 +56,7 @@ public class NotificationsIT extends IntegrationTestBase {
   public void notificationCorrectlySentOnItsTopic() {
     final Configuration config = defaultJdbcConfigBuilder().withDefault(
             SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
+        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "AN")
         .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
         .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink").build();
     start(SingleStoreConnector.class, config);
@@ -91,7 +91,7 @@ public class NotificationsIT extends IntegrationTestBase {
   public void notificationNotSentIfNoChannelIsConfigured() {
     final Configuration config = defaultJdbcConfigBuilder().withDefault(
             SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
+        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "AN")
         .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification").build();
     start(SingleStoreConnector.class, config);
     assertConnectorIsRunning();
@@ -106,7 +106,7 @@ public class NotificationsIT extends IntegrationTestBase {
 
     final Configuration config = defaultJdbcConfigBuilder().withDefault(
             SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
+        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "AN")
         .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "jmx").build();
 
     start(SingleStoreConnector.class, config);

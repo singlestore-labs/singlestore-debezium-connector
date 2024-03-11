@@ -36,7 +36,7 @@
           work on all platforms. We'll set some of these as system properties during integration testing.
         -->
         <singlestore.image>ghcr.io/singlestore-labs/singlestoredb-dev:latest</singlestore.image>
-        <singlestore.version>${env.DEBEZIUM_SINGLESTORE_VERSION}</singlestore.version>
+        <singlestore.version>dev:37501638-668e-443b-be3d-2011d68be441</singlestore.version>
         <singlestore.license>${env.SINGLESTORE_LICENSE}</singlestore.license>
         <singlestore.host>127.0.0.1</singlestore.host>
         <singlestore.port>3306</singlestore.port>
@@ -177,7 +177,7 @@
                                 <env>
                                     <SINGLESTORE_LICENSE>${singlestore.license}</SINGLESTORE_LICENSE>
                                     <ROOT_PASSWORD>${singlestore.password}</ROOT_PASSWORD>
-                                    <SINGLESTORE_VERSION>dev:ebb4bb6d-a7e8-438e-809f-3cb290f88d2b</SINGLESTORE_VERSION>
+                                    <SINGLESTORE_VERSION>${singlestore.version}</SINGLESTORE_VERSION>
                                 </env>
                                 <!-- Uncomment this to see database logs in the test output
                                 <log>
@@ -189,7 +189,6 @@
                                 <wait>
                                     <time>300000</time> <!-- 300 seconds max -->
                                     <log>Log Opened</log>
-                                    <!--<log>MemSqlAcceptLoop: Starting the accept loop.</log>-->
                                 </wait>
                             </run>
                         </image>

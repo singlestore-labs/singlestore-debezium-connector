@@ -157,7 +157,6 @@ public class SingleStoreConnectorIT extends IntegrationTestBase {
 
             start(SingleStoreConnector.class, config);
             assertConnectorIsRunning();
-            waitForStreamingToStart();
 
             try {
                 conn.execute("INSERT INTO `product` (`id`) VALUES (1)");

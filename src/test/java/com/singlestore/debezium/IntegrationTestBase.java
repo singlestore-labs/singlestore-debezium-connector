@@ -73,6 +73,7 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
     @Before
     public void refreshTables() throws Exception {
         deleteAllDataTables();
+        clearConsumedEvents();
     }
 
     /**
@@ -82,6 +83,10 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
      */
     public static SingleStoreConnection create() {
         return new SingleStoreConnection(defaultJdbcConnectionConfig());
+    }
+
+    protected void clearConsumedEvents() {
+      consumedLines.clear();
     }
 
     protected void waitForSnapshotToBeCompleted() throws InterruptedException {

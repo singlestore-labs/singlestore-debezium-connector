@@ -39,17 +39,17 @@ public class MetricsIT extends IntegrationTestBase {
   public void testCustomMetrics() throws Exception {
     //create snapshot
     String statements =
-        "DROP TABLE IF EXISTS " + TEST_DATABASE + ".A;" +
-            "CREATE TABLE " + TEST_DATABASE + ".A (pk INT, aa VARCHAR(50), PRIMARY KEY(pk));" +
-            "INSERT INTO " + TEST_DATABASE + ".A VALUES(0, 'test0');" +
-            "INSERT INTO " + TEST_DATABASE + ".A VALUES(1, 'test1');" +
-            "INSERT INTO " + TEST_DATABASE + ".A VALUES(2, 'test2');" +
-            "INSERT INTO " + TEST_DATABASE + ".A VALUES(4, 'test4');" +
+        "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE + ".AM (pk INT, aa VARCHAR(50), PRIMARY KEY(pk));" +
+            "DELETE FROM " + TEST_DATABASE + ".AM WHERE 1 = 1;" +
+            "INSERT INTO " + TEST_DATABASE + ".AM VALUES(0, 'test0');" +
+            "INSERT INTO " + TEST_DATABASE + ".AM VALUES(1, 'test1');" +
+            "INSERT INTO " + TEST_DATABASE + ".AM VALUES(2, 'test2');" +
+            "INSERT INTO " + TEST_DATABASE + ".AM VALUES(4, 'test4');" +
             "SNAPSHOT DATABASE " + TEST_DATABASE + ";";
     execute(statements);
     final Configuration config = defaultJdbcConfigBuilder().withDefault(
             SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
+        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "AM")
         .with(CommonConnectorConfig.CUSTOM_METRIC_TAGS, "env=test,bu=bigdata").build();
 
     Map<String, String> customMetricTags = new SingleStoreConnectorConfig(
@@ -68,7 +68,7 @@ public class MetricsIT extends IntegrationTestBase {
     waitForSnapshotWithCustomMetricsToBeCompleted(customMetricTags);
     assertThat(mBeanServer.getAttribute(objectName, "TotalTableCount")).isEqualTo(1);
     assertThat(mBeanServer.getAttribute(objectName, "CapturedTables")).isEqualTo(
-        new String[]{"db.A"});
+        new String[]{"db.AM"});
     assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfEventsSeen")).isEqualTo(4L);
     assertThat(mBeanServer.getAttribute(objectName, "SnapshotRunning")).isEqualTo(false);
     assertThat(mBeanServer.getAttribute(objectName, "SnapshotAborted")).isEqualTo(false);
@@ -86,11 +86,12 @@ public class MetricsIT extends IntegrationTestBase {
     // Insert for streaming events
     waitForStreamingWithCustomMetricsToStart(customMetricTags);
     String statements =
-            "UPDATE " + TEST_DATABASE + ".A SET aa = 'test1updated' WHERE pk = 1;" +
-            "DELETE FROM " + TEST_DATABASE + ".A WHERE pk = 2;" +
-            "INSERT INTO " + TEST_DATABASE + ".A VALUES(5, 'test1');" +
-            "INSERT INTO " + TEST_DATABASE + ".A VALUES(6, 'test2');";
+            "UPDATE " + TEST_DATABASE + ".AM SET aa = 'test1updated' WHERE pk = 1;" +
+            "DELETE FROM " + TEST_DATABASE + ".AM WHERE pk = 2;" +
+            "INSERT INTO " + TEST_DATABASE + ".AM VALUES(5, 'test1');" +
+            "INSERT INTO " + TEST_DATABASE + ".AM VALUES(6, 'test2');";
     execute(statements);
+    Thread.sleep(2000);
     // Check streaming metrics
     assertThat(mBeanServer.getAttribute(objectName, "Connected")).isEqualTo(true);
     assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfUpdateEventsSeen")).isEqualTo(1L);
