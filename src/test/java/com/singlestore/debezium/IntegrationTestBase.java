@@ -17,11 +17,22 @@ import org.testcontainers.containers.GenericContainer;
 abstract class IntegrationTestBase extends AbstractConnectorTest {
 
     public static GenericContainer<?> SINGLESTORE_SERVER;
+<<<<<<< Updated upstream
     protected static final String TEST_IMAGE = System.getProperty("singlestoredb.image", "adalbertsinglestore/singlestore-poc-observe");
     protected static Integer TEST_PORT = Integer.parseInt(System.getProperty("singlestoredb.port", "3306"));
     protected static final String TEST_SERVER = System.getProperty("singlestoredb.host", "localhost");
     protected static final String TEST_USER = System.getProperty("singlestoredb.user", "root");
     protected static final String TEST_PASSWORD = System.getProperty("singlestoredb.password", "");
+=======
+    protected static final String TEST_IMAGE = System.getProperty("singlestore.image",
+            "adalbertsinglestore/singlestore-poc-observe-v2");
+    protected static Integer TEST_PORT = Integer.parseInt(System.getProperty("singlestore.port",
+            "3306"));
+    protected static final String TEST_SERVER = System.getProperty("singlestore.hostname",
+            "localhost");
+    protected static final String TEST_USER = System.getProperty("singlestore.user", "root");
+    protected static final String TEST_PASSWORD = System.getProperty("singlestore.password", "1");
+>>>>>>> Stashed changes
     protected static final String TEST_DATABASE = "db";
     protected static final String TEST_TOPIC_PREFIX = "singlestore_topic";
 
@@ -33,7 +44,7 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
             // Failed to connect
             // Assume that docker container is not running and start it
             SINGLESTORE_SERVER = new GenericContainer<>(TEST_IMAGE)
-                .withExposedPorts(3306);
+                    .withExposedPorts(3306);
             SINGLESTORE_SERVER.start();
             TEST_PORT = SINGLESTORE_SERVER.getFirstMappedPort();
         }
@@ -66,7 +77,8 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted("singlestore", "singlestore_topic");
     }
 
-    protected void waitForSnapshotWithCustomMetricsToBeCompleted(Map<String, String> props) throws InterruptedException {
+    protected void waitForSnapshotWithCustomMetricsToBeCompleted(
+            Map<String, String> props) throws InterruptedException {
         waitForSnapshotWithCustomMetricsToBeCompleted("singlestore", "singlestore_topic", props);
     }
 
@@ -74,14 +86,15 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
         waitForStreamingRunning("singlestore", "singlestore_topic");
     }
 
-    protected void waitForStreamingWithCustomMetricsToStart(Map<String, String> props) throws InterruptedException {
+    protected void waitForStreamingWithCustomMetricsToStart(
+            Map<String, String> props) throws InterruptedException {
         waitForStreamingWithCustomMetricsToStart("singlestore", "singlestore_topic", props);
     }
 
     /**
      * Executes a JDBC statement using the default jdbc config
      *
-     * @param statement A SQL statement
+     * @param statement         A SQL statement
      * @param furtherStatements Further SQL statement(s)
      */
     public static void execute(String statement, String... furtherStatements) {
@@ -96,11 +109,9 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
             // When we will use newer JDBC driver then this can be rewritten to 
             // don't commit changes if at least one query failed.
             connection.execute(statement);
-        }
-        catch (RuntimeException e) {
+        } catch (RuntimeException e) {
             throw e;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -121,12 +132,31 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
         }
     }
 
+<<<<<<< Updated upstream
+=======
+    /**
+     *
+     * Delete data from all tables in TEST_DATABASE.
+     *
+     *
+     * @throws SQLException if anything fails.
+     */
+    public static void deleteAllDataTables() throws SQLException {
+        try (SingleStoreConnection connection = create()) {
+            connection.execute("DELETE FROM db.product WHERE id >= 0");
+            connection.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
+        }
+    }
+
+>>>>>>> Stashed changes
     public static SingleStoreConnection.SingleStoreConnectionConfiguration defaultJdbcConnectionConfig() {
         return new SingleStoreConnection.SingleStoreConnectionConfiguration(defaultJdbcConfig());
     }
 
-    public static SingleStoreConnection.SingleStoreConnectionConfiguration defaultJdbcConnectionConfigWithTable(String table) {
-        return new SingleStoreConnection.SingleStoreConnectionConfiguration(defaultJdbcConfigWithTable(table));
+    public static SingleStoreConnection.SingleStoreConnectionConfiguration defaultJdbcConnectionConfigWithTable(
+            String table) {
+        return new SingleStoreConnection.SingleStoreConnectionConfiguration(
+                defaultJdbcConfigWithTable(table));
     }
 
     public static JdbcConfiguration defaultJdbcConfigWithTable(String table) {
@@ -147,7 +177,8 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
                 .withDefault(SingleStoreConnectorConfig.PORT, TEST_PORT)
                 .withDefault(SingleStoreConnectorConfig.USER, TEST_USER)
                 .withDefault(SingleStoreConnectorConfig.PASSWORD, TEST_PASSWORD)
-                .withDefault(SingleStoreConnectorConfig.DRIVER_PARAMETERS, "allowMultiQueries=true");
+                .withDefault(SingleStoreConnectorConfig.DRIVER_PARAMETERS,
+                        "allowMultiQueries=true");
     }
 
     protected static void executeDDL(String ddlFile) throws Exception {

@@ -34,11 +34,21 @@
           Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
           work on all platforms. We'll set some of these as system properties during integration testing.
         -->
+<<<<<<< Updated upstream
         <singlestoredb.image>adalbertsinglestore/singlestore-poc-observe</singlestoredb.image>
         <singlestoredb.host>127.0.0.1</singlestoredb.host>
         <singlestoredb.port>3306</singlestoredb.port>
         <singlestoredb.user>root</singlestoredb.user>
         <singlestoredb.password></singlestoredb.password>
+=======
+        <singlestore.image>ghcr.io/singlestore-labs/singlestoredb-dev:latest</singlestore.image>
+        <singlestore.version>${env.DEBEZIUM_SINGLESTORE_VERSION}</singlestore.version>
+        <singlestore.license>${env.SINGLESTORE_LICENSE}</singlestore.license>
+        <singlestore.host>127.0.0.1</singlestore.host>
+        <singlestore.port>3306</singlestore.port>
+        <singlestore.user>root</singlestore.user>
+        <singlestore.password>1</singlestore.password>
+>>>>>>> Stashed changes
     </properties>
 
     <repositories>

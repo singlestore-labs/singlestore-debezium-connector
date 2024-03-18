@@ -26,11 +26,17 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
 
     @Test
     public void testConnection() {
-        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(
+                defaultJdbcConnectionConfig())) {
             conn.connect();
             assertTrue(conn.isConnected());
             assertTrue(conn.isValid());
+<<<<<<< Updated upstream
             assertEquals("jdbc:singlestore://localhost:" + TEST_PORT + "/?connectTimeout=30000", conn.connectionString());
+=======
+            assertEquals("jdbc:singlestore://" + TEST_SERVER + ":" + TEST_PORT
+                    + "/?connectTimeout=30000", conn.connectionString());
+>>>>>>> Stashed changes
             conn.close();
             assertFalse(conn.isConnected());
         } catch (SQLException e) {
@@ -40,7 +46,8 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
 
     @Test
     public void testPrepareQuery() {
-        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(
+                defaultJdbcConnectionConfig())) {
             conn.execute("use " + TEST_DATABASE);
             conn.prepareQuery("insert into person values(?, ?, ?, ?, ?)", ps -> {
                 ps.setString(1, "product4");
@@ -63,7 +70,8 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
 
     @Test
     public void testGetCurrentTimeStamp() {
-        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(
+                defaultJdbcConnectionConfig())) {
             Optional<Instant> timeStamp = conn.getCurrentTimestamp();
             assertTrue(timeStamp.isPresent());
         } catch (SQLException e) {
@@ -73,21 +81,30 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
 
     @Test
     public void testMetadata() {
-        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
-            Set<TableId> tableIds = conn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream().filter(t -> t.catalog().equals(TEST_DATABASE)).collect(Collectors.toSet());
-            Set<String> tableNames = tableIds.stream().map(TableId::table).collect(Collectors.toSet());
+        try (SingleStoreConnection conn = new SingleStoreConnection(
+                defaultJdbcConnectionConfig())) {
+            Set<TableId> tableIds = conn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream()
+                    .filter(t -> t.catalog().equals(TEST_DATABASE)).collect(Collectors.toSet());
+            Set<String> tableNames = tableIds.stream().map(TableId::table).collect(Collectors
+                    .toSet());
             assertEquals("readAllTableNames returns a wrong number of tables", 5, tableIds.size());
-            assertTrue("readAllTableNames doesn't contain correct table names", tableNames.containsAll(Arrays.asList("person", "product", "purchased")));
+            assertTrue("readAllTableNames doesn't contain correct table names", tableNames
+                    .containsAll(Arrays.asList("person", "product", "purchased")));
             Set<String> catalogNames = conn.readAllCatalogNames();
-            assertTrue("readAllCatalogNames returns a wrong catalog name", catalogNames.contains(TEST_DATABASE));
-            tableNames = conn.readTableNames(TEST_DATABASE, "", "person", new String[]{"TABLE", "VIEW"})
+            assertTrue("readAllCatalogNames returns a wrong catalog name", catalogNames.contains(
+                    TEST_DATABASE));
+            tableNames = conn.readTableNames(TEST_DATABASE, "", "person", new String[]{"TABLE",
+                    "VIEW"})
                     .stream().map(TableId::table).collect(Collectors.toSet());
             assertTrue("readTableNames returns a wrong table name", tableNames.contains("person"));
-            TableId person = tableIds.stream().filter(t -> t.table().equals("person")).findFirst().orElseThrow();
+            TableId person = tableIds.stream().filter(t -> t.table().equals("person")).findFirst()
+                    .orElseThrow();
             List<String> pkList = conn.readPrimaryKeyNames(conn.connection().getMetaData(), person);
             assertTrue(pkList.contains("name"));
-            TableId allTypes = tableIds.stream().filter(t -> t.table().equals("allTypesTable")).findFirst().orElseThrow();
-            List<String> uniqueList = conn.readTableUniqueIndices(conn.connection().getMetaData(), allTypes);
+            TableId allTypes = tableIds.stream().filter(t -> t.table().equals("allTypesTable"))
+                    .findFirst().orElseThrow();
+            List<String> uniqueList = conn.readTableUniqueIndices(conn.connection().getMetaData(),
+                    allTypes);
             assertTrue(uniqueList.contains("intColumn"));
         } catch (SQLException e) {
             Assert.fail(e.getMessage());
@@ -96,7 +113,8 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
 
     @Test
     public void testReadSchemaMetadata() {
-        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
+        try (SingleStoreConnection conn = new SingleStoreConnection(
+                defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
             assertThat(tables.size()).isEqualTo(5);
@@ -104,7 +122,8 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
             assertThat(person).isNotNull();
             assertThat(person.filterColumns(col -> col.isAutoIncremented())).isEmpty();
             assertThat(person.primaryKeyColumnNames()).containsOnly("name");
-            assertThat(person.retrieveColumnNames()).containsExactly("name", "birthdate", "age", "salary", "bitStr");
+            assertThat(person.retrieveColumnNames()).containsExactly("name", "birthdate", "age",
+                    "salary", "bitStr");
             assertThat(person.columnWithName("name").name()).isEqualTo("name");
             assertThat(person.columnWithName("name").typeName()).isEqualTo("VARCHAR");
             assertThat(person.columnWithName("name").jdbcType()).isEqualTo(Types.VARCHAR);
@@ -157,7 +176,8 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
             List<Column> autoIncColumns = product.filterColumns(Column::isAutoIncremented);
             assertThat(autoIncColumns.get(0).name()).isEqualTo("id");
             assertThat(product.primaryKeyColumnNames()).containsOnly("id");
-            assertThat(product.retrieveColumnNames()).containsExactly("id", "createdByDate", "modifiedDate");
+            assertThat(product.retrieveColumnNames()).containsExactly("id", "createdByDate",
+                    "modifiedDate");
             assertThat(product.columnWithName("id").name()).isEqualTo("id");
             assertThat(product.columnWithName("id").typeName()).isEqualTo("INT");
             assertThat(product.columnWithName("id").jdbcType()).isEqualTo(Types.INTEGER);
@@ -170,7 +190,8 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
             assertThat(product.columnWithName("id").isOptional()).isFalse();
             assertThat(product.columnWithName("createdByDate").name()).isEqualTo("createdByDate");
             assertThat(product.columnWithName("createdByDate").typeName()).isEqualTo("DATETIME");
-            assertThat(product.columnWithName("createdByDate").jdbcType()).isEqualTo(Types.TIMESTAMP);
+            assertThat(product.columnWithName("createdByDate").jdbcType()).isEqualTo(
+                    Types.TIMESTAMP);
             assertThat(product.columnWithName("createdByDate").length()).isEqualTo(19);
             assertFalse(product.columnWithName("createdByDate").scale().isPresent());
             assertThat(product.columnWithName("createdByDate").position()).isEqualTo(2);
@@ -178,7 +199,8 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
             assertThat(product.columnWithName("createdByDate").isOptional()).isFalse();
             assertThat(product.columnWithName("modifiedDate").name()).isEqualTo("modifiedDate");
             assertThat(product.columnWithName("modifiedDate").typeName()).isEqualTo("DATETIME");
-            assertThat(product.columnWithName("modifiedDate").jdbcType()).isEqualTo(Types.TIMESTAMP);
+            assertThat(product.columnWithName("modifiedDate").jdbcType()).isEqualTo(
+                    Types.TIMESTAMP);
             assertThat(product.columnWithName("modifiedDate").length()).isEqualTo(19);
             assertFalse(product.columnWithName("modifiedDate").scale().isPresent());
             assertThat(product.columnWithName("modifiedDate").position()).isEqualTo(3);
@@ -190,7 +212,8 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
             assertThat(purchased).isNotNull();
             assertThat(person.filterColumns(col -> col.isAutoIncremented())).isEmpty();
             assertThat(purchased.primaryKeyColumnNames()).containsOnly("productId", "purchaser");
-            assertThat(purchased.retrieveColumnNames()).containsExactly("purchaser", "productId", "purchaseDate");
+            assertThat(purchased.retrieveColumnNames()).containsExactly("purchaser", "productId",
+                    "purchaseDate");
             assertThat(purchased.columnWithName("purchaser").name()).isEqualTo("purchaser");
             assertThat(purchased.columnWithName("purchaser").typeName()).isEqualTo("VARCHAR");
             assertThat(purchased.columnWithName("purchaser").jdbcType()).isEqualTo(Types.VARCHAR);
@@ -211,7 +234,8 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
             assertThat(purchased.columnWithName("productId").isOptional()).isFalse();
             assertThat(purchased.columnWithName("purchaseDate").name()).isEqualTo("purchaseDate");
             assertThat(purchased.columnWithName("purchaseDate").typeName()).isEqualTo("DATETIME");
-            assertThat(purchased.columnWithName("purchaseDate").jdbcType()).isEqualTo(Types.TIMESTAMP);
+            assertThat(purchased.columnWithName("purchaseDate").jdbcType()).isEqualTo(
+                    Types.TIMESTAMP);
             assertThat(purchased.columnWithName("purchaseDate").length()).isEqualTo(19);
             assertFalse(purchased.columnWithName("purchaseDate").scale().isPresent());
             assertThat(purchased.columnWithName("purchaseDate").position()).isEqualTo(3);
@@ -224,10 +248,18 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
 
     @Test
     public void testObserve() {
+<<<<<<< Updated upstream
         try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             String tempTableName = "person_temporary";
             conn.execute("USE " + TEST_DATABASE,
                     "DROP TABLE IF EXISTS " + tempTableName,
+=======
+        try (SingleStoreConnection conn = new SingleStoreConnection(
+                defaultJdbcConnectionConfig())) {
+            String tempTableName = "person_temporary1";
+            conn.execute("USE " + TEST_DATABASE,
+                    //                    "DROP TABLE IF EXISTS " + tempTableName,
+>>>>>>> Stashed changes
                     "CREATE TABLE " + tempTableName + " ("
                             + "  name VARCHAR(255) primary key,"
                             + "  birthdate DATE NULL,"
@@ -235,17 +267,38 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
                             + "  salary DECIMAL(5,2),"
                             + "  bitStr BIT(18)"
                             + ")");
+<<<<<<< Updated upstream
             String[] expectedTypesOrder = {"BeginSnapshot", "CommitSnapshot", 
                 "BeginTransaction", "Insert", "CommitTransaction", 
                 "BeginTransaction", "Insert", "CommitTransaction", 
                 "BeginTransaction", "Delete", "CommitTransaction"};
+=======
+            //3 partitions BeginSnapshot/CommitSnapshot
+            String[] expectedTypesOrder = {
+                    "BeginSnapshot", "CommitSnapshot",
+                    "BeginSnapshot", "CommitSnapshot",
+                    "BeginSnapshot", "CommitSnapshot",
+                    "BeginTransaction", "Insert", "CommitTransaction",
+                    "BeginTransaction", "Insert", "CommitTransaction",
+                    "BeginTransaction", "Delete", "CommitTransaction"};
+>>>>>>> Stashed changes
             List<String> actualTypes = new CopyOnWriteArrayList<>();
             CountDownLatch latch1 = new CountDownLatch(1);
             CountDownLatch latch2 = new CountDownLatch(1);
             Thread observer = new Thread(() -> {
+<<<<<<< Updated upstream
                 try (SingleStoreConnection observerConn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
                     Set<TableId> tableIds = observerConn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream().filter(t -> t.catalog().equals(TEST_DATABASE)).collect(Collectors.toSet());
                     Set<TableId> person = tableIds.stream().filter(t -> t.table().equals(tempTableName)).collect(Collectors.toSet());
+=======
+                try (SingleStoreConnection observerConn = new SingleStoreConnection(
+                        defaultJdbcConnectionConfig())) {
+                    Set<TableId> tableIds = observerConn.readAllTableNames(new String[]{"TABLE",
+                            "VIEW"}).stream().filter(t -> t.catalog().equals(TEST_DATABASE))
+                            .collect(Collectors.toSet());
+                    Set<TableId> person = tableIds.stream().filter(t -> t.table().equals(
+                            tempTableName)).collect(Collectors.toSet());
+>>>>>>> Stashed changes
                     observerConn.observe(person, rs -> {
                         int counter = 0;
                         latch1.countDown();
@@ -253,7 +306,8 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
                             actualTypes.add(rs.getString(3));
                             counter++;
                         }
-                        ((com.singlestore.jdbc.Connection)rs.getStatement().getConnection()).cancelCurrentQuery();
+                        ((com.singlestore.jdbc.Connection) rs.getStatement().getConnection())
+                                .cancelCurrentQuery();
                         latch2.countDown();
                     });
                 } catch (Exception e) {
