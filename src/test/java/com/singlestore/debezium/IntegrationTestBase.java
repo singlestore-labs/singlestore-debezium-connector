@@ -7,43 +7,60 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import java.net.URL;
 import java.nio.file.Paths;
+import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 
 abstract class IntegrationTestBase extends AbstractConnectorTest {
 
-    public static GenericContainer<?> SINGLESTORE_SERVER;
-    protected static final String TEST_IMAGE = System.getProperty("singlestoredb.image", "adalbertsinglestore/singlestore-poc-observe");
-    protected static Integer TEST_PORT = Integer.parseInt(System.getProperty("singlestoredb.port", "3306"));
-    protected static final String TEST_SERVER = System.getProperty("singlestoredb.host", "localhost");
-    protected static final String TEST_USER = System.getProperty("singlestoredb.user", "root");
-    protected static final String TEST_PASSWORD = System.getProperty("singlestoredb.password", "");
-    protected static final String TEST_DATABASE = "db";
-    protected static final String TEST_TOPIC_PREFIX = "singlestore_topic";
+  private static final Logger LOGGER = LoggerFactory.getLogger(IntegrationTestBase.class);
+  private static GenericContainer<?> SINGLESTORE_SERVER;
+  private static final String TEST_IMAGE = System.getProperty("singlestore.image", "ghcr.io/singlestore-labs/singlestoredb-dev:latest");
+  static Integer TEST_PORT = Integer.parseInt(System.getProperty("singlestore.port", "3306"));
+  static final String TEST_SERVER = System.getProperty("singlestore.hostname", "localhost");
+  private static final String TEST_SERVER_VERSION = System.getProperty("singlestore.version", "");
+  private static final String TEST_USER = System.getProperty("singlestore.user", "root");
+  private static final String TEST_PASSWORD = System.getProperty("singlestore.password", "root");
+  static final String TEST_DATABASE = "db";
+  static final String TEST_TOPIC_PREFIX = "singlestore_topic";
+    private static final String SINGLESTORE_LICENSE = System.getenv("SINGLESTORE_LICENSE");
 
     @BeforeClass
     public static void init() throws Exception {
-        try (SingleStoreConnection conn = create()) {
-            conn.connect();
-        } catch (SQLException e) {
-            // Failed to connect
-            // Assume that docker container is not running and start it
-            SINGLESTORE_SERVER = new GenericContainer<>(TEST_IMAGE)
-                .withExposedPorts(3306);
-            SINGLESTORE_SERVER.start();
-            TEST_PORT = SINGLESTORE_SERVER.getFirstMappedPort();
-        }
+      try (SingleStoreConnection conn = create()) {
+        conn.connect();
+      } catch (SQLException e) {
+        LOGGER.error(e.getSQLState(), e);
+        // Failed to connect
+        // Assume that docker container is not running and start it
+        LOGGER.info("Starting test container: {}, version: {}", TEST_IMAGE, TEST_SERVER_VERSION);
+        assert SINGLESTORE_LICENSE != null;
+        SINGLESTORE_SERVER = new GenericContainer<>(TEST_IMAGE)
+            .waitingFor(Wait.forLogMessage(".*Log Opened.*", 1))
+            .withExposedPorts(TEST_PORT)
+            .withStartupTimeout(Duration.of(10, ChronoUnit.MINUTES))
+            .withEnv(Map.of(
+                "SINGLESTORE_LICENSE",  SINGLESTORE_LICENSE,
+                "ROOT_PASSWORD", TEST_PASSWORD,
+                "SINGLESTORE_VERSION", TEST_SERVER_VERSION));
 
-        // Create database if it doesn't exist
-        executeDDL("create_database.ddl");
+        SINGLESTORE_SERVER.start();
+        TEST_PORT = SINGLESTORE_SERVER.getFirstMappedPort();
+      }
 
-        // Refresh tables
-        dropAllTables();
-        executeDDL("create_tables.ddl");
+      // Create database if it doesn't exist
+      executeDDL("create_database.ddl");
+      executeDDL("create_tables.ddl");
     }
 
     @AfterClass
@@ -53,6 +70,12 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
         }
     }
 
+    @Before
+    public void refreshTables() throws Exception {
+        deleteAllDataTables();
+        clearConsumedEvents();
+    }
+
     /**
      * Obtain a default DB connection.
      *
@@ -60,6 +83,10 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
      */
     public static SingleStoreConnection create() {
         return new SingleStoreConnection(defaultJdbcConnectionConfig());
+    }
+
+    protected void clearConsumedEvents() {
+      consumedLines.clear();
     }
 
     protected void waitForSnapshotToBeCompleted() throws InterruptedException {
@@ -85,18 +112,24 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
      * @param furtherStatements Further SQL statement(s)
      */
     public static void execute(String statement, String... furtherStatements) {
-        if (furtherStatements != null) {
-            for (String further : furtherStatements) {
-                statement = statement + further;
+      StringBuilder statementBuilder = new StringBuilder(statement);
+      if (furtherStatements != null) {
+          for (String further : furtherStatements) {
+                statementBuilder.append(further);
             }
         }
 
-        try (SingleStoreConnection connection = create()) {
-            // TODO: JDBC 1.1.9 doesn't support non-auto commit mode.
-            // When we will use newer JDBC driver then this can be rewritten to 
-            // don't commit changes if at least one query failed.
-            connection.execute(statement);
+      try (SingleStoreConnection connection = create()) {
+        connection.setAutoCommit(false);
+        connection.executeWithoutCommitting(statementBuilder.toString());
+        Connection jdbcConn = connection.connection();
+        if (!statement.endsWith("ROLLBACK;")) {
+          jdbcConn.commit();
         }
+        else {
+          jdbcConn.rollback();
+        }
+      }
         catch (RuntimeException e) {
             throw e;
         }
@@ -118,6 +151,24 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
                     execute(String.format("DROP TABLE `%s`.`%s`", table.catalog(), table.table()));
                 }
             });
+        }
+    }
+
+    /**
+     *
+     * Delete data from all tables in TEST_DATABASE.
+     *
+     *
+     * @throws SQLException if anything fails.
+     */
+    public static void deleteAllDataTables() throws SQLException {
+        try (SingleStoreConnection connection = create()) {
+            connection.readAllTableNames(new String[]{"TABLE"}).forEach(table -> {
+                if (table.catalog().equals(TEST_DATABASE)) {
+                    execute(String.format("DELETE FROM `%s`.`%s` WHERE 1 = 1", table.catalog(), table.table()));
+                }
+            });
+            connection.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
         }
     }
 

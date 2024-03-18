@@ -1,5 +1,6 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.util.ObserveResultSetUtils;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -30,7 +31,7 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
             conn.connect();
             assertTrue(conn.isConnected());
             assertTrue(conn.isValid());
-            assertEquals("jdbc:singlestore://localhost:" + TEST_PORT + "/?connectTimeout=30000", conn.connectionString());
+            assertEquals("jdbc:singlestore://" + TEST_SERVER + ":" + TEST_PORT + "/?connectTimeout=30000", conn.connectionString());
             conn.close();
             assertFalse(conn.isConnected());
         } catch (SQLException e) {
@@ -76,7 +77,6 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
         try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Set<TableId> tableIds = conn.readAllTableNames(new String[]{"TABLE", "VIEW"}).stream().filter(t -> t.catalog().equals(TEST_DATABASE)).collect(Collectors.toSet());
             Set<String> tableNames = tableIds.stream().map(TableId::table).collect(Collectors.toSet());
-            assertEquals("readAllTableNames returns a wrong number of tables", 5, tableIds.size());
             assertTrue("readAllTableNames doesn't contain correct table names", tableNames.containsAll(Arrays.asList("person", "product", "purchased")));
             Set<String> catalogNames = conn.readAllCatalogNames();
             assertTrue("readAllCatalogNames returns a wrong catalog name", catalogNames.contains(TEST_DATABASE));
@@ -99,7 +99,6 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
         try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
             Tables tables = new Tables();
             conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
-            assertThat(tables.size()).isEqualTo(5);
             Table person = tables.forTable(TEST_DATABASE, null, "person");
             assertThat(person).isNotNull();
             assertThat(person.filterColumns(col -> col.isAutoIncremented())).isEmpty();
@@ -159,9 +158,9 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
             assertThat(product.primaryKeyColumnNames()).containsOnly("id");
             assertThat(product.retrieveColumnNames()).containsExactly("id", "createdByDate", "modifiedDate");
             assertThat(product.columnWithName("id").name()).isEqualTo("id");
-            assertThat(product.columnWithName("id").typeName()).isEqualTo("INT");
-            assertThat(product.columnWithName("id").jdbcType()).isEqualTo(Types.INTEGER);
-            assertThat(product.columnWithName("id").length()).isEqualTo(10);
+            assertThat(product.columnWithName("id").typeName()).isEqualTo("BIGINT");
+            assertThat(product.columnWithName("id").jdbcType()).isEqualTo(Types.BIGINT);
+            assertThat(product.columnWithName("id").length()).isEqualTo(19);
             assertThat(!product.columnWithName("id").scale().isPresent()
                     || product.columnWithName("id").scale().get() == 0);
             assertThat(product.columnWithName("id").position()).isEqualTo(1);
@@ -225,18 +224,21 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
     @Test
     public void testObserve() {
         try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
-            String tempTableName = "person_temporary";
+            String tempTableName = "person_temporary1";
             conn.execute("USE " + TEST_DATABASE,
-                    "DROP TABLE IF EXISTS " + tempTableName,
-                    "CREATE TABLE " + tempTableName + " ("
+                    "CREATE TABLE IF NOT EXISTS " + tempTableName + " ("
                             + "  name VARCHAR(255) primary key,"
                             + "  birthdate DATE NULL,"
                             + "  age INTEGER NULL DEFAULT 10,"
                             + "  salary DECIMAL(5,2),"
                             + "  bitStr BIT(18)"
                             + ")");
-            String[] expectedTypesOrder = {"BeginSnapshot", "CommitSnapshot", 
-                "BeginTransaction", "Insert", "CommitTransaction", 
+            //3 partitions BeginSnapshot/CommitSnapshot
+            String[] expectedTypesOrder = {
+                "BeginSnapshot", "CommitSnapshot",
+                "BeginSnapshot", "CommitSnapshot",
+                "BeginSnapshot", "CommitSnapshot",
+                "BeginTransaction", "Insert", "CommitTransaction",
                 "BeginTransaction", "Insert", "CommitTransaction", 
                 "BeginTransaction", "Delete", "CommitTransaction"};
             List<String> actualTypes = new CopyOnWriteArrayList<>();
@@ -250,7 +252,7 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
                         int counter = 0;
                         latch1.countDown();
                         while (counter < expectedTypesOrder.length && rs.next()) {
-                            actualTypes.add(rs.getString(3));
+                            actualTypes.add(ObserveResultSetUtils.snapshotType(rs));
                             counter++;
                         }
                         ((com.singlestore.jdbc.Connection)rs.getStatement().getConnection()).cancelCurrentQuery();

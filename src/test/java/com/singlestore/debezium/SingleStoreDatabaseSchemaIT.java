@@ -42,7 +42,7 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
         schema = getSchema(new SingleStoreConnectorConfig(defaultJdbcConfigWithTable("allTypesTable")));
         try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
             schema.refresh(conn);
-            assertKeySchema("db.allTypesTable", "intColumn", SchemaBuilder.int32().defaultValue(2147483647).optional().build());//as unique index
+            assertKeySchema("db.allTypesTable");
         } catch (SQLException e) {
             Assert.fail(e.getMessage());
         }
@@ -50,24 +50,7 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
         schema = getSchema(new SingleStoreConnectorConfig(defaultJdbcConfigWithTable("person")));
         try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfigWithTable("person"))) {
             schema.refresh(conn);
-            assertKeySchema("db.person", "name", SchemaBuilder.string().required().build());
-        } catch (SQLException e) {
-            Assert.fail(e.getMessage());
-        }
-
-        schema = getSchema(new SingleStoreConnectorConfig(defaultJdbcConfigWithTable("product")));
-        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfigWithTable("product"))) {
-            schema.refresh(conn);
-            assertKeySchema("db.product", "id", SchemaBuilder.int32().required().build());
-        } catch (SQLException e) {
-            Assert.fail(e.getMessage());
-        }
-
-        schema = getSchema(new SingleStoreConnectorConfig(defaultJdbcConfigWithTable("purchased")));
-        try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfigWithTable("purchased"))) {
-            schema.refresh(conn);
-            assertKeySchema("db.purchased", "productId,purchaser",
-                    SchemaBuilder.int32().required().build(), SchemaBuilder.string().required().build());
+            assertKeySchema("db.person");
         } catch (SQLException e) {
             Assert.fail(e.getMessage());
         }
@@ -95,7 +78,7 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
             schema.refresh(conn);
             assertTablesIncluded("db.product");
             assertTableSchema("db.product", "id, createdByDate, modifiedDate",
-                    SchemaBuilder.int32().required().build(),//id
+                    SchemaBuilder.int64().required().build(),//id
                     org.apache.kafka.connect.data.Timestamp.builder()
                             .defaultValue(Date.from(LocalDateTime.of(1970, 1, 1, 0, 0, 0).toInstant(ZoneOffset.UTC))).required().build(), //createdByDate epoch timestamp
                     org.apache.kafka.connect.data.Timestamp.builder()
@@ -260,15 +243,15 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
         Arrays.stream(fullyQualifiedTableNames).forEach(fullyQualifiedTableName -> {
             TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
             assertNotNull(fullyQualifiedTableName + " not included", tableSchema);
-            assertThat(tableSchema.keySchema().name()).isEqualTo(validFullName(fullyQualifiedTableName, ".Key"));
             assertThat(tableSchema.valueSchema().name()).isEqualTo(validFullName(fullyQualifiedTableName, ".Value"));
         });
     }
 
-    protected void assertKeySchema(String fullyQualifiedTableName, String fields, Schema... expectedSchemas) {
+    protected void assertKeySchema(String fullyQualifiedTableName) {
         TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
         Schema keySchema = tableSchema.keySchema();
-        assertSchemaContent(keySchema, fields.split(","), expectedSchemas);
+        assertSchemaContent(keySchema, new String[]{"internalId"},
+            new Schema[]{SchemaBuilder.int64().required().build()});
     }
 
     protected void assertTableSchema(String fullyQualifiedTableName, String fields, Schema... expectedSchemas) {

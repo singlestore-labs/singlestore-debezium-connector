@@ -1,19 +1,7 @@
 package com.singlestore.debezium;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.apache.kafka.connect.data.Field;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.singlestore.debezium.events.ObserveStreamingStartedEvent;
 import com.singlestore.debezium.util.ObserveResultSetUtils;
-
 import io.debezium.DebeziumException;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.jdbc.JdbcConnection.ResultSetConsumer;
@@ -22,6 +10,15 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SingleStoreStreamingChangeEventSource implements StreamingChangeEventSource<SingleStorePartition, SingleStoreOffsetContext>{
 
@@ -77,6 +74,7 @@ public class SingleStoreStreamingChangeEventSource implements StreamingChangeEve
             connection.observe(null, tables, Optional.empty(), Optional.empty(), offset, Optional.empty(), new ResultSetConsumer() {
                 @Override
                 public void accept(ResultSet rs) throws SQLException {
+                    dispatcher.dispatchConnectorEvent(partition, ObserveStreamingStartedEvent.INSTANCE);
                     Thread t = new Thread(new Runnable() {
                         @Override
                         public void run() {
@@ -99,6 +97,12 @@ public class SingleStoreStreamingChangeEventSource implements StreamingChangeEve
                         ObserveResultSetUtils.columnPositions(rs, schema.schemaFor(table).valueSchema().fields(), connectorConfig.populateInternalId());
                     try {
                         while (rs.next() && context.isRunning()) {
+                            LOGGER.trace("Streaming record, type: {}, internalId: {}, partitionId: {}, offset: {} values: {}",
+                                ObserveResultSetUtils.snapshotType(rs),
+                                ObserveResultSetUtils.internalId(rs),
+                                ObserveResultSetUtils.partitionId(rs),
+                                ObserveResultSetUtils.offset(rs),
+                                ObserveResultSetUtils.rowToArray(rs, columnPositions));
                             Operation operation;
                             switch (rs.getString("Type")) {
                                 case "Insert":

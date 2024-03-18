@@ -6,7 +6,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Tests
+name: Build
 
 on:
   push:
@@ -21,27 +21,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
+    - uses: actions/checkout@v4
+    - name: Set up JDK 11
+      uses: actions/setup-java@v4
       with:
-        java-version: '17'
+        java-version: '11'
         distribution: 'temurin'
         cache: maven
-    - name: Docker Login
-      # You may pin to the exact commit or the version.
-      # uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d
-      uses: docker/login-action@v3.0.0
-      with:
-        # Username used to log against the Docker registry
-        username: ${{ secrets.DOCKER_USERNAME }}
-        # Password or personal access token used to log against the Docker registry
-        password: ${{ secrets.DOCKER_PASSWORD }}
     - name: Build with Maven
-      run: mvn -B package --file pom.xml -P assembly
+      run: mvn -B package -DskipTests --file pom.xml -P assembly
+    - name: Run tests with Maven
+      run: mvn -B verify --file pom.xml --fail-at-end
+      env:
+        SINGLESTORE_LICENSE: ${{ secrets.SINGLESTORE_LICENSE }}
+    - name: Publish Test Report
+      if: success() || failure()
+      uses: scacap/action-surefire-report@v1.7.3
+      with:
+        report_paths: '**/**-reports/TEST-*.xml'
     - name: Release
       uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
+      if: success() && startsWith(github.ref, 'refs/tags/')
       with:
         files: target/singlestore-debezium-connector-*-plugin.tar.gz
 

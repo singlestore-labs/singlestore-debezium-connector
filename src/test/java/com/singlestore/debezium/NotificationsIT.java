@@ -14,12 +14,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import javax.management.AttributeNotFoundException;
 import javax.management.InstanceNotFoundException;
 import javax.management.IntrospectionException;
 import javax.management.JMX;
 import javax.management.MBeanAttributeInfo;
-import javax.management.MBeanException;
 import javax.management.MBeanInfo;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
@@ -30,15 +28,35 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.data.Percentage;
 import org.awaitility.Awaitility;
+import org.junit.Before;
 import org.junit.Test;
 
-public class NotificationsIT extends SnapshotIT {
+public class NotificationsIT extends IntegrationTestBase {
+
+  @Before
+  public void initTestData() {
+    String statements =
+        "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE
+            + ".AN (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
+            "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE + ".BN (aa INT, bb VARCHAR(20));" +
+            "DELETE FROM " + TEST_DATABASE + ".AN WHERE 1 = 1;" +
+            "DELETE FROM " + TEST_DATABASE + ".BN WHERE 1 = 1;" +
+            "INSERT INTO " + TEST_DATABASE + ".BN VALUES(0, 'test0');" +
+            "INSERT INTO " + TEST_DATABASE + ".AN VALUES(0, 'test0');" +
+            "INSERT INTO " + TEST_DATABASE + ".AN VALUES(4, 'test4');" +
+            "INSERT INTO " + TEST_DATABASE + ".AN VALUES(1, 'test1');" +
+            "INSERT INTO " + TEST_DATABASE + ".AN VALUES(2, 'test2');" +
+            "UPDATE " + TEST_DATABASE + ".BN SET bb = 'testUpdated' WHERE aa = 0;" +
+            "DELETE FROM " + TEST_DATABASE + ".AN WHERE pk = 4;" +
+            "SNAPSHOT DATABASE " + TEST_DATABASE + ";";
+    execute(statements);
+  }
 
   @Test
   public void notificationCorrectlySentOnItsTopic() {
     final Configuration config = defaultJdbcConfigBuilder().withDefault(
             SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
+        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "AN")
         .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
         .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink").build();
     start(SingleStoreConnector.class, config);
@@ -73,7 +91,7 @@ public class NotificationsIT extends SnapshotIT {
   public void notificationNotSentIfNoChannelIsConfigured() {
     final Configuration config = defaultJdbcConfigBuilder().withDefault(
             SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
+        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "AN")
         .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification").build();
     start(SingleStoreConnector.class, config);
     assertConnectorIsRunning();
@@ -84,16 +102,16 @@ public class NotificationsIT extends SnapshotIT {
   }
 
   @Test
-  public void notificationCorrectlySentOnJmx()
-      throws ReflectionException, MalformedObjectNameException, InstanceNotFoundException, IntrospectionException, AttributeNotFoundException, MBeanException {
+  public void notificationCorrectlySentOnJmx() throws Exception {
 
     final Configuration config = defaultJdbcConfigBuilder().withDefault(
             SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "A")
+        .withDefault(SingleStoreConnectorConfig.TABLE_NAME, "AN")
         .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "jmx").build();
 
     start(SingleStoreConnector.class, config);
     assertConnectorIsRunning();
+    waitForSnapshotToBeCompleted();
 
     Awaitility.await().atMost(60, TimeUnit.SECONDS).pollDelay(1, TimeUnit.SECONDS)
         .pollInterval(1, TimeUnit.SECONDS).until(() -> !readNotificationFromJmx().isEmpty());
