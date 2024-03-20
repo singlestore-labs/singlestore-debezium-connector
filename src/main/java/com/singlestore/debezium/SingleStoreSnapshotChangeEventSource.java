@@ -276,7 +276,7 @@ public class SingleStoreSnapshotChangeEventSource extends
       ResultSet rs = rsWrapper.getResultSet();
       List<Integer> columnPostitions =
           ObserveResultSetUtils
-              .columnPositions(rs, schema.schemaFor(table.id()).valueSchema().fields(),
+              .columnPositions(rs, table.columns(),
                   connectorConfig.populateInternalId());
       long rows = 0;
       Threads.Timer logTimer = getTableScanLogTimer();

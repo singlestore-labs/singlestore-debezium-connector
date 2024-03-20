@@ -28,8 +28,8 @@ public class SnapshotIT extends IntegrationTestBase {
 
   @Before
   public void initTestData() {
-    String statements =
-        "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE + ".A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
+    String statements = "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE
+        + ".A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
         "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE + ".B (aa INT, bb VARCHAR(20));" +
         "DELETE FROM " + TEST_DATABASE + ".A WHERE pk > -1;" +
         "DELETE FROM " + TEST_DATABASE + ".B WHERE aa > -1;" +
@@ -57,7 +57,7 @@ public class SnapshotIT extends IntegrationTestBase {
     try {
       final SourceRecords recordsA = consumeRecordsByTopic(3);
       final List<SourceRecord> table1 = recordsA.recordsForTopic(
-              TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
+          TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
           .stream().sorted(Comparator.comparingInt(
               v -> (Integer) ((Struct) ((Struct) v.value()).get("after")).get("pk")))
           .collect(Collectors.toList());
@@ -77,8 +77,8 @@ public class SnapshotIT extends IntegrationTestBase {
         assertRecord((Struct) value1.get("after"), expectedRow1);
         assertThat(record1.sourceOffset())
             .extracting("snapshot").containsExactly(true);
-//              assertThat(record1.sourceOffset())
-//                        .extracting("snapshot_completed").containsExactly(i == 2);
+        //              assertThat(record1.sourceOffset())
+        //                        .extracting("snapshot_completed").containsExactly(i == 2);
         assertNull(value1.get("before"));
       }
     } finally {
@@ -107,8 +107,8 @@ public class SnapshotIT extends IntegrationTestBase {
       assertRecord((Struct) value1.get("after"), expectedRow1);
       assertThat(record1.sourceOffset())
           .extracting("snapshot").containsExactly(true);
-//          assertThat(record1.sourceOffset())
-//                  .extracting("snapshot_completed").containsExactly(false);
+      //          assertThat(record1.sourceOffset())
+      //                  .extracting("snapshot_completed").containsExactly(false);
       assertNull(value1.get("before"));
       assertNotNull(key1.get("internalId"));
       assertEquals(Schema.Type.STRUCT, key1.schema().type());
@@ -139,8 +139,8 @@ public class SnapshotIT extends IntegrationTestBase {
   }
 
   @Override
-  protected int consumeRecords(int numberOfRecords, Consumer<SourceRecord> recordConsumer)
-      throws InterruptedException {
+  protected int consumeRecords(int numberOfRecords,
+      Consumer<SourceRecord> recordConsumer) throws InterruptedException {
     int breakAfterNulls = waitTimeForRecordsAfterNulls();
     return this.consumeRecords(numberOfRecords, breakAfterNulls, recordConsumer, false);
   }
@@ -160,7 +160,10 @@ public class SnapshotIT extends IntegrationTestBase {
       assertConnectorIsRunning();
       try {
 
-        List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
+        List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder()
+            .stream().sorted(
+                    Comparator.comparing(v -> (String) ((Struct) ((Struct) v.value()).get("after")).get("aa"),String.CASE_INSENSITIVE_ORDER))
+            .collect(Collectors.toList());
 
         List<String> values = Arrays.asList(new String[]{"test0", "test1", "test2"});
         List<String> operations = Arrays.asList(new String[]{"r", "r", "r"});
@@ -207,7 +210,7 @@ public class SnapshotIT extends IntegrationTestBase {
       assertThat(recordsA.allRecordsInOrder()).isEmpty();
       recordsA = consumeRecordsByTopic(3);
       final List<SourceRecord> table1 = recordsA.recordsForTopic(
-              TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
+          TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
           .stream().sorted(Comparator.comparingInt(
               v -> (Integer) ((Struct) ((Struct) v.value()).get("after")).get("pk")))
           .collect(Collectors.toList());
