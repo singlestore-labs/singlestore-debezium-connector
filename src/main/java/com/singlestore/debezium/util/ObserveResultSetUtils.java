@@ -1,5 +1,6 @@
 package com.singlestore.debezium.util;
 
+import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 
 import java.sql.ResultSet;
@@ -17,16 +18,17 @@ public final class ObserveResultSetUtils {
     private static final String BEGIN_SNAPSHOT = "BeginSnapshot";
     private static final String COMMIT_SNAPSHOT = "CommitSnapshot";
 
-    public static List<Integer> columnPositions(ResultSet resultSet, List<Field> fields, Boolean populateInternalId) throws SQLException {
+    public static List<Integer> columnPositions(ResultSet resultSet, List<Column> columns, Boolean populateInternalId) throws SQLException {
         List<Integer> positions = new ArrayList<>();
-        for (int i = 0; i < fields.size(); i++) {
-            String columnName = fields.get(i).name();
-            if (populateInternalId && columnName.equals(SingleStoreTableSchemaBuilder.INTERNAL_ID)) {
-                columnName = METADATA_COLUMNS[6];
-            }
-
+        for (int i = 0; i < columns.size(); i++) {
+            String columnName = columns.get(i).name();
             positions.add(resultSet.findColumn(columnName));
         }
+
+        if (populateInternalId) {
+            positions.add(resultSet.findColumn(METADATA_COLUMNS[6]));
+        }
+
         return positions;
     }
 

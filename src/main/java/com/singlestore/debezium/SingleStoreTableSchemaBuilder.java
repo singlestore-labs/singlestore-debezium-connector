@@ -1,6 +1,7 @@
 package com.singlestore.debezium;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.kafka.common.protocol.types.Field.Bool;

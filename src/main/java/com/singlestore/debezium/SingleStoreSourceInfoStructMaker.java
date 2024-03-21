@@ -7,6 +7,8 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 
+import java.util.ArrayList;
+
 public class SingleStoreSourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
 
     private Schema schema;
@@ -39,7 +41,7 @@ public class SingleStoreSourceInfoStructMaker extends AbstractSourceInfoStructMa
         result.put(SourceInfo.TABLE_NAME_KEY, sourceInfo.table());
         result.put(SourceInfo.TXID_KEY, sourceInfo.txId());
         result.put(SourceInfo.PARTITIONID_KEY, sourceInfo.partitionId());
-        result.put(SourceInfo.OFFSETS_KEY, sourceInfo.offsets());
+        result.put(SourceInfo.OFFSETS_KEY, new ArrayList(sourceInfo.offsets()));
         
         return result;
     }    

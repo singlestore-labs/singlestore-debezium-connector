@@ -94,7 +94,7 @@ public class SingleStoreStreamingChangeEventSource implements StreamingChangeEve
                     t.start();
 
                     List<Integer> columnPositions = 
-                        ObserveResultSetUtils.columnPositions(rs, schema.schemaFor(table).valueSchema().fields(), connectorConfig.populateInternalId());
+                        ObserveResultSetUtils.columnPositions(rs, schema.tableFor(table).columns(), connectorConfig.populateInternalId());
                     try {
                         while (rs.next() && context.isRunning()) {
                             LOGGER.trace("Streaming record, type: {}, internalId: {}, partitionId: {}, offset: {} values: {}",
