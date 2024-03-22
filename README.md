@@ -159,7 +159,7 @@ The following example demonstrates the value of a change event that the connecto
          "a":33
       },
       "source":{
-         "version":"0.1.0",
+         "version":"1.0.0",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197043473,
@@ -190,7 +190,7 @@ The following example shows an update change event that the connector captures f
          "a":22
       },
       "source":{
-         "version":"0.1.0",
+         "version":"1.0.0",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197446500,
@@ -226,7 +226,7 @@ The following example shows a delete event for the table that is shown in the pr
       "before":null,
       "after":null,
       "source":{
-         "version":"0.1.0",
+         "version":"1.0.0",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197665407,

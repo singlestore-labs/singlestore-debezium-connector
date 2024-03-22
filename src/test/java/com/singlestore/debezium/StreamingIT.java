@@ -153,7 +153,7 @@ public class StreamingIT extends IntegrationTestBase {
         SourceRecord record = records.get(0);
 
         Struct source = (Struct) ((Struct) record.value()).get("source");
-        assertEquals(source.get("version"), "0.1.0");
+        assertEquals(source.get("version"), "1.0.0");
         assertEquals(source.get("connector"), "singlestore");
         assertEquals(source.get("name"), "singlestore_topic");
         assertNotNull(source.get("ts_ms"));
@@ -347,10 +347,10 @@ public class StreamingIT extends IntegrationTestBase {
   public void testSkippedOperations() throws Exception {
     refreshTables();
     try (SingleStoreConnection conn = new SingleStoreConnection(
-            defaultJdbcConnectionConfigWithTable("product"))) {
+        defaultJdbcConnectionConfigWithTable("product"))) {
       Configuration config = defaultJdbcConfigWithTable("product");
       config = config.edit().withDefault(SingleStoreConnectorConfig.SKIPPED_OPERATIONS, "c")
-              .withDefault(SingleStoreConnectorConfig.TOMBSTONES_ON_DELETE, "false").build();
+          .withDefault(SingleStoreConnectorConfig.TOMBSTONES_ON_DELETE, "false").build();
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
       waitForStreamingToStart();
