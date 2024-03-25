@@ -63,7 +63,7 @@ CREATE ROWSTORE TABLE IF NOT EXISTS db.allTypesTable (
     `jsonColumn` JSON DEFAULT '{}',
     `enum_f` ENUM('val1','val2','val3') default 'val1',
     `set_f` SET('v1','v2','v3') default 'v1',
---    `geographyColumn` GEOGRAPHY DEFAULT 'POLYGON((1 1,2 1,2 2, 1 2, 1 1))',
+    `geographyColumn` GEOGRAPHY DEFAULT 'POLYGON((1 1,2 1,2 2, 1 2, 1 1))',
     `geographypointColumn` GEOGRAPHYPOINT DEFAULT 'POINT(1.50000003 1.50000000)',
      unique key(intColumn),
      shard key(intColumn)
