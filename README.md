@@ -1,5 +1,5 @@
 # SingleStore connector for Debezium
-<!--TODO add latest connector version-->
+[![YourLibraryName Version](https://img.shields.io/github/v/release/singlestore-labs/singlestore-debezium-connector?label=YourLibraryName&color=brightgreen)](https://github.com/singlestore-labs/singlestore-debezium-connector/releases)
 [![License](http://img.shields.io/:license-Apache%202-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt) 
 [![Github Actions status image](https://github.com/singlestore-labs/singlestore-debezium-connector/actions/workflows/maven.yml/badge.svg)](https://github.com/singlestore-labs/singlestore-debezium-connector/actions)
 
@@ -22,7 +22,7 @@ Ensure that the following are installed:
  * Kafka Connect
 
 ### Installation
- * Download the SingleStore connector for Debezium plugin archive <!--TODO add link-->.
+ * Download the [SingleStore connector for Debezium plugin archive](https://github.com/singlestore-labs/singlestore-debezium-connector/releases/download/v1.0.0/singlestore-debezium-connector-1.0.0-plugin.tar.gz).
  * Extract the archive to a directory.
  * Add the directory from the previous step to Kafka Connect’s plugin path.
  Set the `plugin.path` property in the `connect-distributed.properties` file.
