@@ -341,7 +341,7 @@ Debezium connectors handle binary data types based on the value of the [`binary.
 | ENUM                    | STRING          | N/A
 | SET                     | STRING          | N/A
 | GEOGRAPHYPOINT          | STRUCT          | `io.debezium.data.geometry.Geometry` - Contains a structure with two fields: `srid` (INT32): spatial reference system ID that defines the type of geometry object stored in the structure and `wkb` (BYTES): binary representation of the geometry object encoded in the Well-Known-Binary (wkb) format. Refer to the [Open Geospatial Consortium](https://www.opengeospatial.org/standards/sfa) for more details.
-<!-- TODO add GEOGRAPHY type when it will be fixed -->
+| GEOGRAPHY               | STRUCT          | `io.debezium.data.geometry.Geometry` - Contains a structure with two fields: `srid` (INT32): spatial reference system ID that defines the type of geometry object stored in the structure and `wkb` (BYTES): binary representation of the geometry object encoded in the Well-Known-Binary (wkb) format. Refer to the [Open Geospatial Consortium](https://www.opengeospatial.org/standards/sfa) for more details.
 
 ## Connector properties
 The SingleStore Debezium connector supports the following configuration properties which can be used to achieve the right connector behavior for your application. 

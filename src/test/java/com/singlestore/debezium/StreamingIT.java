@@ -73,7 +73,7 @@ public class StreamingIT extends IntegrationTestBase {
             "'{}', " + // jsonColumn
             "'val1', " + // enum_f
             "'v1', " + // set_f
-            //              "'POLYGON((1 1,2 1,2 2, 1 2, 1 1))', " + // geographyColumn TODO: PLAT-6907 test GEOGRAPHY datatype
+            "'POLYGON((1 1,2 1,2 2, 1 2, 1 1))', " + // geographyColumn TODO: PLAT-6907 test GEOGRAPHY datatype
             "'POINT(1.50000003 1.50000000)')" // geographypointColumn
         );
 
@@ -127,6 +127,11 @@ public class StreamingIT extends IntegrationTestBase {
         assertEquals("{}", after.get("jsonColumn"));
         assertEquals("val1", after.get("enum_f"));
         assertEquals("v1", after.get("set_f"));
+        String geographyValue = "POLYGON((1 1,2 1,2 2, 1 2, 1 1))";
+        SingleStoreGeometry singleStoregeographyValue = SingleStoreGeometry.fromEkt(
+            geographyValue);
+        assertArrayEquals((byte[]) ((Struct) after.get("geographyColumn")).get("wkb"),
+            singleStoregeographyValue.getWkb());
         String geographyPointValue = "POINT(1.50000003 1.50000000)";
         SingleStoreGeometry singleStoregeographyPointValue = SingleStoreGeometry.fromEkt(
             geographyPointValue);
