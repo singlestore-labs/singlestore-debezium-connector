@@ -3,6 +3,8 @@
 [![License](http://img.shields.io/:license-Apache%202-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt) 
 [![Github Actions status image](https://github.com/singlestore-labs/singlestore-debezium-connector/actions/workflows/maven.yml/badge.svg)](https://github.com/singlestore-labs/singlestore-debezium-connector/actions)
 
+**Note**: This connector is in private preview. It is intended for experimental use only and is not fully tested, documented, or supported by SingleStore.
+
 SingleStore connector for Debezium ("the connector") captures and records row-level changes that occur in the database. 
 You can configure the connector to read from a single table and to ignore, mask, or truncate values in specific columns.
 
@@ -159,7 +161,7 @@ The following example demonstrates the value of a change event that the connecto
          "a":33
       },
       "source":{
-         "version":"1.0.0",
+         "version":"0.1.1",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197043473,
@@ -190,7 +192,7 @@ The following example shows an update change event that the connector captures f
          "a":22
       },
       "source":{
-         "version":"1.0.0",
+         "version":"0.1.1",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197446500,
@@ -226,7 +228,7 @@ The following example shows a delete event for the table that is shown in the pr
       "before":null,
       "after":null,
       "source":{
-         "version":"1.0.0",
+         "version":"0.1.1",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197665407,
