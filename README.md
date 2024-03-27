@@ -1,5 +1,4 @@
 # SingleStore connector for Debezium
-[![YourLibraryName Version](https://img.shields.io/github/v/release/singlestore-labs/singlestore-debezium-connector?label=YourLibraryName&color=brightgreen)](https://github.com/singlestore-labs/singlestore-debezium-connector/releases)
 [![License](http://img.shields.io/:license-Apache%202-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt) 
 [![Github Actions status image](https://github.com/singlestore-labs/singlestore-debezium-connector/actions/workflows/maven.yml/badge.svg)](https://github.com/singlestore-labs/singlestore-debezium-connector/actions)
 
