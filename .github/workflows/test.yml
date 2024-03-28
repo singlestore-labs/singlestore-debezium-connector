@@ -6,7 +6,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Build
+name: Test
 
 on:
   push:
@@ -39,11 +39,6 @@ jobs:
         uses: scacap/action-surefire-report@v1.7.3
         with:
           report_paths: '**/**-reports/TEST-*.xml'
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        if: success() && startsWith(github.ref, 'refs/tags/')
-        with:
-          files: target/singlestore-debezium-connector-*-plugin.tar.gz
 
       # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
       - name: Update dependency graph
