@@ -1,6 +1,5 @@
 package com.singlestore.debezium;
 
-
 import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
 import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
 
@@ -52,14 +51,14 @@ public class SingleStoreConnection extends JdbcConnection {
   /**
    * Executes OBSERVE query for CDC output stream events.
    *
-   * @param tableFilter tables filter to observe
+   * @param tableFilter       tables filter to observe
    * @param resultSetConsumer the consumer of the query results
    * @return this object for chaining methods together
    * @throws SQLException if there is an error connecting to the database or executing the
-   * statements
+   *                      statements
    */
-  public JdbcConnection observe(Set<TableId> tableFilter, ResultSetConsumer resultSetConsumer)
-      throws SQLException {
+  public JdbcConnection observe(Set<TableId> tableFilter,
+      ResultSetConsumer resultSetConsumer) throws SQLException {
     return observe(null, tableFilter, Optional.empty(), Optional.empty(), Optional.empty(),
         Optional.empty(), resultSetConsumer);
   }
@@ -67,12 +66,12 @@ public class SingleStoreConnection extends JdbcConnection {
   /**
    * Executes OBSERVE query for CDC output stream events.
    *
-   * @param fieldFilter columns filter to observe
-   * @param tableFilter tables filter to observe
+   * @param fieldFilter       columns filter to observe
+   * @param tableFilter       tables filter to observe
    * @param resultSetConsumer the consumer of the query results
    * @return this object for chaining methods together
    * @throws SQLException if there is an error connecting to the database or executing the
-   * statements
+   *                      statements
    */
   public JdbcConnection observe(Set<ColumnId> fieldFilter, Set<TableId> tableFilter,
       ResultSetConsumer resultSetConsumer) throws SQLException {
@@ -83,16 +82,16 @@ public class SingleStoreConnection extends JdbcConnection {
   /**
    * Executes OBSERVE query for CDC output stream events.
    *
-   * @param fieldFilter columns filter to observe
-   * @param tableFilter tables filter to observe
-   * @param format output format(SQL | JSON)
-   * @param outputConfig FS <FsConfig> | S3 <S3Config> | GCS <GCSConfig>
-   * @param offSetConfig offset config (<offset> | NULL),+    // # of partitions
-   * @param recordFilter filter on record metadata or content
+   * @param fieldFilter       columns filter to observe
+   * @param tableFilter       tables filter to observe
+   * @param format            output format(SQL | JSON)
+   * @param outputConfig      FS <FsConfig> | S3 <S3Config> | GCS <GCSConfig>
+   * @param offSetConfig      offset config (<offset> | NULL),+ // # of partitions
+   * @param recordFilter      filter on record metadata or content
    * @param resultSetConsumer the consumer of the query results
    * @return this object for chaining methods together
    * @throws SQLException if there is an error connecting to the database or executing the
-   * statements
+   *                      statements
    */
   public JdbcConnection observe(Set<ColumnId> fieldFilter, Set<TableId> tableFilter,
       Optional<OBSERVE_OUTPUT_FORMAT> format,
@@ -179,6 +178,9 @@ public class SingleStoreConnection extends JdbcConnection {
           .with("sslMode", sslMode().getValue())
           .with("defaultFetchSize", 1)
           .with("tinyInt1IsBit", "false")
+          .with("connectionAttributes", String.format(
+              "_connector_name:%s,_connector_version:%s,_product_version:%s",
+              "SingleStore Debezium Connector", Module.version(), Module.debeziumVersion()))
           .without("parameters");
       if (useSSL) {
         if (!Strings.isNullOrBlank(sslTrustStore())) {
@@ -276,9 +278,9 @@ public class SingleStoreConnection extends JdbcConnection {
     public Map<String, String> driverParameters() {
       final String driverParametersString = config
           .getString(SingleStoreConnectorConfig.DRIVER_PARAMETERS);
-      return driverParametersString == null ? Collections.emptyMap() :
-          Arrays.stream(driverParametersString.split(";"))
-              .map(s -> s.split("=")).collect(Collectors.toMap(s -> s[0].trim(), s -> s[1].trim()));
+      return driverParametersString == null ? Collections.emptyMap() : Arrays.stream(
+          driverParametersString.split(";"))
+          .map(s -> s.split("=")).collect(Collectors.toMap(s -> s[0].trim(), s -> s[1].trim()));
     }
 
     public CommonConnectorConfig.EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode() {

@@ -8,10 +8,16 @@ import io.debezium.util.IoUtil;
  * Information about this module.
  */
 public class Module {
-    private static final Properties INFO = IoUtil.loadProperties(Module.class, "com/singlestore/debezium/build.version");
+
+    private static final Properties INFO = IoUtil.loadProperties(Module.class,
+            "com/singlestore/debezium/build.version");
 
     public static String version() {
         return INFO.getProperty("version");
+    }
+
+    public static String debeziumVersion() {
+        return INFO.getProperty("debezium.version");
     }
 
     /**
