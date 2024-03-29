@@ -23,7 +23,7 @@ Ensure that the following are installed:
  * Kafka Connect
 
 ### Installation
- * Download the [SingleStore connector for Debezium plugin archive](https://github.com/singlestore-labs/singlestore-debezium-connector/releases/download/v0.1.1/singlestore-debezium-connector-0.1.1-plugin.tar.gz).
+ * Download the [SingleStore connector for Debezium plugin archive](https://github.com/singlestore-labs/singlestore-debezium-connector/releases/download/v0.1.2/singlestore-debezium-connector-0.1.2-plugin.tar.gz).
  * Extract the archive to a directory.
  * Add the directory from the previous step to Kafka Connect’s plugin path.
  Set the `plugin.path` property in the `connect-distributed.properties` file.
@@ -160,7 +160,7 @@ The following example demonstrates the value of a change event that the connecto
          "a":33
       },
       "source":{
-         "version":"0.1.1",
+         "version":"0.1.2",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197043473,
@@ -191,7 +191,7 @@ The following example shows an update change event that the connector captures f
          "a":22
       },
       "source":{
-         "version":"0.1.1",
+         "version":"0.1.2",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197446500,
@@ -227,7 +227,7 @@ The following example shows a delete event for the table that is shown in the pr
       "before":null,
       "after":null,
       "source":{
-         "version":"0.1.1",
+         "version":"0.1.2",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197665407,
