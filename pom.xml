@@ -19,7 +19,7 @@
 
     <version.kafka-connect-avro-converter>7.5.1</version.kafka-connect-avro-converter>
     <version.connect-json>3.6.1</version.connect-json>
-    <version.org.slf4j>2.0.4</version.org.slf4j>
+    <version.org.slf4j>2.0.12</version.org.slf4j>
     <version.logback-classic>1.4.14</version.logback-classic>
     <version.testcontainers>1.19.3</version.testcontainers>
     <version.awaitility>4.2.0</version.awaitility>
