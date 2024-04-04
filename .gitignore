@@ -27,3 +27,5 @@ target/
 database.properties
 
 .idea
+
+.github/workflows/secring.asc
