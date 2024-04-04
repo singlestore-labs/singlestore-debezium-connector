@@ -15,48 +15,51 @@ import io.debezium.util.Collect;
 
 public class SingleStoreEventMetadataProvider implements EventMetadataProvider {
 
-    @Override
-    public Instant getEventTimestamp(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
-        if (value == null) {
-            return null;
-        }
-        final Struct sourceInfo = value.getStruct(Envelope.FieldName.SOURCE);
-        if (source == null) {
-            return null;
-        }
-
-        final Long timestamp = sourceInfo.getInt64(SourceInfo.TIMESTAMP_KEY);
-        return timestamp == null ? null : Instant.ofEpochMilli(timestamp);
+  @Override
+  public Instant getEventTimestamp(DataCollectionId source, OffsetContext offset, Object key,
+      Struct value) {
+    if (value == null) {
+      return null;
+    }
+    final Struct sourceInfo = value.getStruct(Envelope.FieldName.SOURCE);
+    if (source == null) {
+      return null;
     }
 
-    @Override
-    public Map<String, String> getEventSourcePosition(DataCollectionId source, OffsetContext offset, Object key,
-            Struct value) {
-        if (value == null) {
-            return null;
-        }
-        final Struct sourceInfo = value.getStruct(Envelope.FieldName.SOURCE);
-        if (source == null) {
-            return null;
-        }
+    final Long timestamp = sourceInfo.getInt64(SourceInfo.TIMESTAMP_KEY);
+    return timestamp == null ? null : Instant.ofEpochMilli(timestamp);
+  }
 
-        List<String> offsets = sourceInfo.<String>getArray(SourceInfo.OFFSETS_KEY);
-        String offsetsString = offsets.stream().collect(Collectors.joining(","));
-
-        return Collect.hashMapOf(SourceInfo.OFFSETS_KEY, offsetsString);
+  @Override
+  public Map<String, String> getEventSourcePosition(DataCollectionId source, OffsetContext offset,
+      Object key,
+      Struct value) {
+    if (value == null) {
+      return null;
+    }
+    final Struct sourceInfo = value.getStruct(Envelope.FieldName.SOURCE);
+    if (source == null) {
+      return null;
     }
 
-    @Override
-    public String getTransactionId(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
-        if (value == null) {
-            return null;
-        }
-        final Struct sourceInfo = value.getStruct(Envelope.FieldName.SOURCE);
-        if (source == null) {
-            return null;
-        }
+    List<String> offsets = sourceInfo.<String>getArray(SourceInfo.OFFSETS_KEY);
+    String offsetsString = offsets.stream().collect(Collectors.joining(","));
 
-        return sourceInfo.getString(SourceInfo.TXID_KEY);
+    return Collect.hashMapOf(SourceInfo.OFFSETS_KEY, offsetsString);
+  }
+
+  @Override
+  public String getTransactionId(DataCollectionId source, OffsetContext offset, Object key,
+      Struct value) {
+    if (value == null) {
+      return null;
     }
-    
+    final Struct sourceInfo = value.getStruct(Envelope.FieldName.SOURCE);
+    if (source == null) {
+      return null;
+    }
+
+    return sourceInfo.getString(SourceInfo.TXID_KEY);
+  }
+
 }

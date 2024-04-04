@@ -15,113 +15,130 @@ import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.Clock;
 
-public class SingleStoreChangeRecordEmitter extends RelationalChangeRecordEmitter<SingleStorePartition> {
+public class SingleStoreChangeRecordEmitter extends
+    RelationalChangeRecordEmitter<SingleStorePartition> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreSnapshotChangeRecordEmitter.class);
-    private final Envelope.Operation operation;
-    private final OffsetContext offset;
-    private final Object[] before;
-    private final Object[] after;
-    private final long internalId;
-    
-    private static final String INTERNAL_ID = "internalId";
+  private static final Logger LOGGER = LoggerFactory.getLogger(
+      SingleStoreSnapshotChangeRecordEmitter.class);
+  private final Envelope.Operation operation;
+  private final OffsetContext offset;
+  private final Object[] before;
+  private final Object[] after;
+  private final long internalId;
 
-    public SingleStoreChangeRecordEmitter(SingleStorePartition partition, OffsetContext offset, Clock clock, Operation operation, Object[] before,
-                                    Object[] after, long internalId, SingleStoreConnectorConfig connectorConfig) {
-        super(partition, offset, clock, connectorConfig);
-        this.offset = offset;
-        this.operation = operation;
-        this.before = before;
-        this.after = after;
-        this.internalId = internalId;
+  private static final String INTERNAL_ID = "internalId";
+
+  public SingleStoreChangeRecordEmitter(SingleStorePartition partition, OffsetContext offset,
+      Clock clock, Operation operation, Object[] before,
+      Object[] after, long internalId, SingleStoreConnectorConfig connectorConfig) {
+    super(partition, offset, clock, connectorConfig);
+    this.offset = offset;
+    this.operation = operation;
+    this.before = before;
+    this.after = after;
+    this.internalId = internalId;
+  }
+
+  @Override
+  protected void emitCreateRecord(Receiver<SingleStorePartition> receiver, TableSchema tableSchema)
+      throws InterruptedException {
+    Object[] newColumnValues = getNewColumnValues();
+    Struct newKey = keyFromInternalId();
+    Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
+    Struct envelope = tableSchema.getEnvelopeSchema()
+        .create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+
+    if (skipEmptyMessages() && (newColumnValues == null || newColumnValues.length == 0)) {
+      // This case can be hit on UPDATE / DELETE when there's no primary key defined while using certain decoders
+      LOGGER.warn("no new values found for table '{}' from create message at '{}'; skipping record",
+          tableSchema, getOffset().getSourceInfo());
+      return;
+    }
+    receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope,
+        getOffset(), null);
+  }
+
+  @Override
+  protected void emitUpdateRecord(Receiver<SingleStorePartition> receiver, TableSchema tableSchema)
+      throws InterruptedException {
+    Object[] oldColumnValues = getOldColumnValues();
+    Object[] newColumnValues = getNewColumnValues();
+
+    Struct newKey = keyFromInternalId();
+
+    Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
+    Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
+
+    if (skipEmptyMessages() && (newColumnValues == null || newColumnValues.length == 0)) {
+      LOGGER.debug(
+          "no new values found for table '{}' from update message at '{}'; skipping record",
+          tableSchema, getOffset().getSourceInfo());
+      return;
     }
 
-    @Override
-    protected void emitCreateRecord(Receiver<SingleStorePartition> receiver, TableSchema tableSchema)
-            throws InterruptedException {
-        Object[] newColumnValues = getNewColumnValues();
-        Struct newKey = keyFromInternalId();
-        Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
-        Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-
-        if (skipEmptyMessages() && (newColumnValues == null || newColumnValues.length == 0)) {
-            // This case can be hit on UPDATE / DELETE when there's no primary key defined while using certain decoders
-            LOGGER.warn("no new values found for table '{}' from create message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
-            return;
-        }
-        receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope, getOffset(), null);
+    /*
+     * If skip.messages.without.change is configured true,
+     * Skip Publishing the message in case there is no change in monitored columns
+     * (Postgres) Only works if REPLICA IDENTITY is set to FULL - as oldValues won't be available
+     */
+    if (skipMessagesWithoutChange() && Objects.nonNull(newValue) && newValue.equals(oldValue)) {
+      LOGGER.debug(
+          "No new values found for table '{}' in included columns from update message at '{}'; skipping record",
+          tableSchema,
+          getOffset().getSourceInfo());
+      return;
     }
 
-    @Override
-    protected void emitUpdateRecord(Receiver<SingleStorePartition> receiver, TableSchema tableSchema)
-            throws InterruptedException {
-        Object[] oldColumnValues = getOldColumnValues();
-        Object[] newColumnValues = getNewColumnValues();
+    Struct envelope = tableSchema.getEnvelopeSchema()
+        .update(oldValue, newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+    receiver.changeRecord(getPartition(), tableSchema, Operation.UPDATE, newKey, envelope,
+        getOffset(), null);
+  }
 
-        Struct newKey = keyFromInternalId();
+  @Override
+  protected void emitDeleteRecord(Receiver<SingleStorePartition> receiver, TableSchema tableSchema)
+      throws InterruptedException {
+    Object[] oldColumnValues = getOldColumnValues();
+    Struct newKey = keyFromInternalId();
 
-        Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
-        Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
+    Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
-        if (skipEmptyMessages() && (newColumnValues == null || newColumnValues.length == 0)) {
-            LOGGER.debug("no new values found for table '{}' from update message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
-            return;
-        }
-
-        /*
-         * If skip.messages.without.change is configured true,
-         * Skip Publishing the message in case there is no change in monitored columns
-         * (Postgres) Only works if REPLICA IDENTITY is set to FULL - as oldValues won't be available
-         */
-        if (skipMessagesWithoutChange() && Objects.nonNull(newValue) && newValue.equals(oldValue)) {
-            LOGGER.debug("No new values found for table '{}' in included columns from update message at '{}'; skipping record", tableSchema,
-                    getOffset().getSourceInfo());
-            return;
-        }
-
-        Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-        receiver.changeRecord(getPartition(), tableSchema, Operation.UPDATE, newKey, envelope, getOffset(), null);
+    if (skipEmptyMessages() && (oldColumnValues == null || oldColumnValues.length == 0)) {
+      LOGGER.warn("no old values found for table '{}' from delete message at '{}'; skipping record",
+          tableSchema, getOffset().getSourceInfo());
+      return;
     }
 
-    @Override
-    protected void emitDeleteRecord(Receiver<SingleStorePartition> receiver, TableSchema tableSchema) throws InterruptedException {
-        Object[] oldColumnValues = getOldColumnValues();
-        Struct newKey = keyFromInternalId();
+    Struct envelope = tableSchema.getEnvelopeSchema()
+        .delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+    receiver.changeRecord(getPartition(), tableSchema, Operation.DELETE, newKey, envelope,
+        getOffset(), null);
+  }
 
-        Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
+  @Override
+  public OffsetContext getOffset() {
+    return offset;
+  }
 
-        if (skipEmptyMessages() && (oldColumnValues == null || oldColumnValues.length == 0)) {
-            LOGGER.warn("no old values found for table '{}' from delete message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
-            return;
-        }
+  @Override
+  public Operation getOperation() {
+    return operation;
+  }
 
-        Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-        receiver.changeRecord(getPartition(), tableSchema, Operation.DELETE, newKey, envelope, getOffset(), null);
-    }
+  @Override
+  protected Object[] getOldColumnValues() {
+    return before;
+  }
 
-    @Override
-    public OffsetContext getOffset() {
-        return offset;
-    }
+  @Override
+  protected Object[] getNewColumnValues() {
+    return after;
+  }
 
-    @Override
-    public Operation getOperation() {
-        return operation;
-    }
-
-    @Override
-    protected Object[] getOldColumnValues() {
-        return before;
-    }
-
-    @Override
-    protected Object[] getNewColumnValues() {
-        return after;
-    }
-
-    private Struct keyFromInternalId() {
-        Struct result = new Struct(SchemaBuilder.struct().field(INTERNAL_ID, Schema.INT64_SCHEMA).build());
-        result.put(INTERNAL_ID, internalId);
-        return result;
-    }
+  private Struct keyFromInternalId() {
+    Struct result = new Struct(
+        SchemaBuilder.struct().field(INTERNAL_ID, Schema.INT64_SCHEMA).build());
+    result.put(INTERNAL_ID, internalId);
+    return result;
+  }
 }

@@ -47,9 +47,9 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       .withWidth(ConfigDef.Width.SHORT)
       .withImportance(ConfigDef.Importance.LOW)
       .withDescription("The criteria for running a snapshot upon startup of the connector. "
-        + "Select one of the following snapshot options: "
-        + "'initial' (default): If the connector does not detect any offsets for the logical server name, it performs a full snapshot that captures the current state of the configured tables. After the snapshot completes, the connector begins to stream changes.; "
-        + "'initial_only': Similar to the 'initial' mode, the connector performs a full snapshot. Once the snapshot is complete, the connector stops, and does not stream any changes.");
+          + "Select one of the following snapshot options: "
+          + "'initial' (default): If the connector does not detect any offsets for the logical server name, it performs a full snapshot that captures the current state of the configured tables. After the snapshot completes, the connector begins to stream changes.; "
+          + "'initial_only': Similar to the 'initial' mode, the connector performs a full snapshot. Once the snapshot is complete, the connector stops, and does not stream any changes.");
 
   public static final Field CONNECTION_TIMEOUT_MS = Field.create("connect.timeout.ms")
       .withDisplayName("Connection Timeout (ms)")
@@ -394,7 +394,7 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
     /**
      * Determine if the supplied value is one of the predefined options.
      *
-     * @param value the configuration property value; may not be null
+     * @param value        the configuration property value; may not be null
      * @param defaultValue the default value; may be null
      * @return the matching option, or null if no match is found and the non-null default is invalid
      */
@@ -467,7 +467,7 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
     /**
      * Determine if the supplied value is one of the predefined options.
      *
-     * @param value the configuration property value; may not be null
+     * @param value        the configuration property value; may not be null
      * @param defaultValue the default value; may be null
      * @return the matching option, or null if no match is found and the non-null default is invalid
      */

@@ -39,7 +39,8 @@ public class MetricsIT extends IntegrationTestBase {
   public void testCustomMetrics() throws Exception {
     //create snapshot
     String statements =
-        "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE + ".AM (pk INT, aa VARCHAR(50), PRIMARY KEY(pk));" +
+        "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE
+            + ".AM (pk INT, aa VARCHAR(50), PRIMARY KEY(pk));" +
             "DELETE FROM " + TEST_DATABASE + ".AM WHERE 1 = 1;" +
             "INSERT INTO " + TEST_DATABASE + ".AM VALUES(0, 'test0');" +
             "INSERT INTO " + TEST_DATABASE + ".AM VALUES(1, 'test1');" +
@@ -86,7 +87,7 @@ public class MetricsIT extends IntegrationTestBase {
     // Insert for streaming events
     waitForStreamingWithCustomMetricsToStart(customMetricTags);
     String statements =
-            "UPDATE " + TEST_DATABASE + ".AM SET aa = 'test1updated' WHERE pk = 1;" +
+        "UPDATE " + TEST_DATABASE + ".AM SET aa = 'test1updated' WHERE pk = 1;" +
             "DELETE FROM " + TEST_DATABASE + ".AM WHERE pk = 2;" +
             "INSERT INTO " + TEST_DATABASE + ".AM VALUES(5, 'test1');" +
             "INSERT INTO " + TEST_DATABASE + ".AM VALUES(6, 'test2');";

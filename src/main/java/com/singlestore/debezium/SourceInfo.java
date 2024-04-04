@@ -10,23 +10,25 @@ import io.debezium.relational.TableId;
 
 
 /**
- * Information about the source of information, which includes the partitions and offsets within those partitions.
- * 
+ * Information about the source of information, which includes the partitions and offsets within
+ * those partitions.
+ *
  * <p>
- * The {@link SingleStorePartition#getSourcePartition() source partition} information describes the cluster whose events are being consumed. 
- * Typically, the clutser is identified by the host address and the port number. Here's a JSON-like
- * representation of an example cluster:
+ * The {@link SingleStorePartition#getSourcePartition() source partition} information describes the
+ * cluster whose events are being consumed. Typically, the clutser is identified by the host address
+ * and the port number. Here's a JSON-like representation of an example cluster:
  *
  * <pre>
  * {
  *     "server" : "production-server"
  * }
  * </pre>
- * 
- * The {@link SingleStoreOffsetContext#getOffset() source offset} information describes a structure containing the position in the server's offset for any
- * particular event for particular partition and transaction id. When performing snapshots, it may also contain a snapshot field which indicates that a particular record
- * is created while a snapshot it taking place.
- * Here's a JSON-like representation of an example:
+ * <p>
+ * The {@link SingleStoreOffsetContext#getOffset() source offset} information describes a structure
+ * containing the position in the server's offset for any particular event for particular partition
+ * and transaction id. When performing snapshots, it may also contain a snapshot field which
+ * indicates that a particular record is created while a snapshot it taking place. Here's a
+ * JSON-like representation of an example:
  *
  * <pre>
  * {
@@ -41,17 +43,19 @@ import io.debezium.relational.TableId;
  * <p>
  * The "{@code txId}" field identifies database transaction in which the event occured.
  * <p>
- * The "{@code offsets}" is an array of offsets for each dataabase partition.
- * We need to save all offsets to be able to continue streaming after the connector is stopped 
- * using only information from the last record. 
+ * The "{@code offsets}" is an array of offsets for each dataabase partition. We need to save all
+ * offsets to be able to continue streaming after the connector is stopped using only information
+ * from the last record.
  * <p>
- * 
- * The {@link #struct() source} struct appears in each message envelope and contains information about the event. It is
- * a mixture the fields from the {@link SingleStorePartition#getSourcePartition() partition} and {@link SingleStorePartition#getSourcePartition() offset}.
- * Like with the offset, the "{@code snapshot}" field only appears for events produced when the connector is in the
- * middle of a snapshot. Here's a JSON-like representation of the source for an event that corresponds to the above partition and
- * offset:
- * 
+ * <p>
+ * The {@link #struct() source} struct appears in each message envelope and contains information
+ * about the event. It is a mixture the fields from the
+ * {@link SingleStorePartition#getSourcePartition() partition} and
+ * {@link SingleStorePartition#getSourcePartition() offset}. Like with the offset, the
+ * "{@code snapshot}" field only appears for events produced when the connector is in the middle of
+ * a snapshot. Here's a JSON-like representation of the source for an event that corresponds to the
+ * above partition and offset:
+ *
  * <pre>
  * {
  *     "name": "production-server",
@@ -65,105 +69,105 @@ import io.debezium.relational.TableId;
 @NotThreadSafe
 public class SourceInfo extends BaseSourceInfo {
 
-    public static final String TXID_KEY = "txId";
-    public static final String PARTITIONID_KEY = "partitionId";
-    public static final String OFFSETS_KEY = "offsets";
+  public static final String TXID_KEY = "txId";
+  public static final String PARTITIONID_KEY = "partitionId";
+  public static final String OFFSETS_KEY = "offsets";
 
-    private Integer partitionId;
-    private String txId;
-    private TableId tableId;
-    private List<String> offsets;
-    private Instant timestamp;
+  private Integer partitionId;
+  private String txId;
+  private TableId tableId;
+  private List<String> offsets;
+  private Instant timestamp;
 
-    
-    public SourceInfo(SingleStoreConnectorConfig connectorConfig, Integer numPartitions) {
-        super(connectorConfig);
 
-        offsets = Collections.nCopies(numPartitions, null);
-    }
+  public SourceInfo(SingleStoreConnectorConfig connectorConfig, Integer numPartitions) {
+    super(connectorConfig);
 
-    /**
-     * Updates the source with information about a particular received or read event.
-     *
-     * @param partitionId index of the SingleStore partition
-     * @param txId the ID of the transaction that generated the transaction
-     * @param offsets hex strings that represent offset for each database partition
-     * @return this instance
-     */
-    protected SourceInfo update(Integer partitionId, String txId, List<String> offsets) {
-        this.partitionId = partitionId;
-        this.txId = txId;
-        this.offsets = offsets;
+    offsets = Collections.nCopies(numPartitions, null);
+  }
 
-        return this;
-    }
+  /**
+   * Updates the source with information about a particular received or read event.
+   *
+   * @param partitionId index of the SingleStore partition
+   * @param txId        the ID of the transaction that generated the transaction
+   * @param offsets     hex strings that represent offset for each database partition
+   * @return this instance
+   */
+  protected SourceInfo update(Integer partitionId, String txId, List<String> offsets) {
+    this.partitionId = partitionId;
+    this.txId = txId;
+    this.offsets = offsets;
 
-    /**
-     * Updates the source with information about a particular received or read event.
-     *
-     * @param partitionId index of the SingleStore partition
-     * @param txId the ID of the transaction that generated the transaction
-     * @param offset hex strings that represent offset for given database partition
-     * @return this instance
-     */
-    protected SourceInfo update(Integer partitionId, String txId, String offset) {
-        this.partitionId = partitionId;
-        this.txId = txId;
-        this.offsets.set(partitionId, offset);
+    return this;
+  }
 
-        return this;
-    }
+  /**
+   * Updates the source with information about a particular received or read event.
+   *
+   * @param partitionId index of the SingleStore partition
+   * @param txId        the ID of the transaction that generated the transaction
+   * @param offset      hex strings that represent offset for given database partition
+   * @return this instance
+   */
+  protected SourceInfo update(Integer partitionId, String txId, String offset) {
+    this.partitionId = partitionId;
+    this.txId = txId;
+    this.offsets.set(partitionId, offset);
 
-    /**
-     * Updates the source with information about a table event.
-     *
-     * @param tableId table that was modified 
-     * @param timestamp time when Debezium received the event information
-     * @return this instance
-     */
-    protected SourceInfo update(TableId tableId, Instant timestamp) {
-        this.tableId = tableId;
-        this.timestamp = timestamp;
+    return this;
+  }
 
-        return this;
-    }
+  /**
+   * Updates the source with information about a table event.
+   *
+   * @param tableId   table that was modified
+   * @param timestamp time when Debezium received the event information
+   * @return this instance
+   */
+  protected SourceInfo update(TableId tableId, Instant timestamp) {
+    this.tableId = tableId;
+    this.timestamp = timestamp;
 
-    @Override
-    protected Instant timestamp() {
-        return timestamp;
-    }
+    return this;
+  }
 
-    @Override
-    protected String database() {
-        return tableId == null ? "" : tableId.catalog();
-    }
+  @Override
+  protected Instant timestamp() {
+    return timestamp;
+  }
 
-    protected String table() {
-        return tableId == null ? "" : tableId.table();
-    }
+  @Override
+  protected String database() {
+    return tableId == null ? "" : tableId.catalog();
+  }
 
-    protected String txId() {
-        return txId;
-    }
+  protected String table() {
+    return tableId == null ? "" : tableId.table();
+  }
 
-    protected Integer partitionId() {
-        return partitionId;
-    }
+  protected String txId() {
+    return txId;
+  }
 
-    protected List<String> offsets() {
-        return offsets;
-    }
+  protected Integer partitionId() {
+    return partitionId;
+  }
 
-    @Override
-    public String toString() {
-        return "SourceInfo [" +
-                "serverName=" + serverName() +
-                ", db=" + database() +
-                ", table=" + table() +
-                ", snapshot=" + snapshotRecord +
-                ", partition=" + partitionId +
-                ", transaction=" + txId +
-                ", offsets=" + offsets +
-                "]";
-    }
+  protected List<String> offsets() {
+    return offsets;
+  }
+
+  @Override
+  public String toString() {
+    return "SourceInfo [" +
+        "serverName=" + serverName() +
+        ", db=" + database() +
+        ", table=" + table() +
+        ", snapshot=" + snapshotRecord +
+        ", partition=" + partitionId +
+        ", transaction=" + txId +
+        ", offsets=" + offsets +
+        "]";
+  }
 }
