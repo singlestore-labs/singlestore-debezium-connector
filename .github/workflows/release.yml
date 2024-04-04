@@ -25,6 +25,7 @@ jobs:
           mkdir -p ~/.m2
           cp .github/workflows/settings.xml ~/.m2/settings.xml
       - name: Release to Maven Central
+        if: success() && !startsWith(github.ref, 'refs/tags/v0')
         run: mvn -B clean deploy --file pom.xml -P assembly
       - name: Release Plugin Archive
         uses: softprops/action-gh-release@v1
