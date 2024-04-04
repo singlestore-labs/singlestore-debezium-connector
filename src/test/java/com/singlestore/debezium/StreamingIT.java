@@ -73,7 +73,8 @@ public class StreamingIT extends IntegrationTestBase {
             "'{}', " + // jsonColumn
             "'val1', " + // enum_f
             "'v1', " + // set_f
-            "'POLYGON((1 1,2 1,2 2, 1 2, 1 1))', " + // geographyColumn TODO: PLAT-6907 test GEOGRAPHY datatype
+            "'POLYGON((1 1,2 1,2 2, 1 2, 1 1))', " +
+            // geographyColumn TODO: PLAT-6907 test GEOGRAPHY datatype
             "'POINT(1.50000003 1.50000000)')" // geographypointColumn
         );
 

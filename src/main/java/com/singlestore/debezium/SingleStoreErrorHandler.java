@@ -10,14 +10,16 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.util.Collect;
 
 public class SingleStoreErrorHandler extends ErrorHandler {
-    
-    public SingleStoreErrorHandler(SingleStoreConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
-        super(SingleStoreConnector.class, connectorConfig, queue, null);
-    }
 
-    @Override
-    protected Set<Class<? extends Exception>> communicationExceptions() {
-        return Collect.unmodifiableSet(IOException.class, SQLException.class, WrongOffsetException.class);
-    }
+  public SingleStoreErrorHandler(SingleStoreConnectorConfig connectorConfig,
+      ChangeEventQueue<?> queue) {
+    super(SingleStoreConnector.class, connectorConfig, queue, null);
+  }
+
+  @Override
+  protected Set<Class<? extends Exception>> communicationExceptions() {
+    return Collect.unmodifiableSet(IOException.class, SQLException.class,
+        WrongOffsetException.class);
+  }
 
 }

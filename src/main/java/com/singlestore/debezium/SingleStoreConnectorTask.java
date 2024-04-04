@@ -26,120 +26,131 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.source.SourceRecord;
 
 /**
- * The main task executing streaming from SingleStore.
- * Responsible for lifecycle management of the streaming code.
+ * The main task executing streaming from SingleStore. Responsible for lifecycle management of the
+ * streaming code.
  */
-public class SingleStoreConnectorTask extends BaseSourceTask<SingleStorePartition, SingleStoreOffsetContext> {
+public class SingleStoreConnectorTask extends
+    BaseSourceTask<SingleStorePartition, SingleStoreOffsetContext> {
 
-    private static final String CONTEXT_NAME = "singlestore-connector-task";
-    private volatile ChangeEventQueue<DataChangeEvent> queue;
-    private volatile SingleStoreDatabaseSchema schema;
+  private static final String CONTEXT_NAME = "singlestore-connector-task";
+  private volatile ChangeEventQueue<DataChangeEvent> queue;
+  private volatile SingleStoreDatabaseSchema schema;
 
-    @Override
-    public String version() {
-        return Module.version();
-    }
+  @Override
+  public String version() {
+    return Module.version();
+  }
 
-    @Override
-    protected Iterable<Field> getAllConfigurationFields() {
-        return SingleStoreConnectorConfig.ALL_FIELDS;
-    }
+  @Override
+  protected Iterable<Field> getAllConfigurationFields() {
+    return SingleStoreConnectorConfig.ALL_FIELDS;
+  }
 
-    @Override
-    public ChangeEventSourceCoordinator<SingleStorePartition, SingleStoreOffsetContext> start(Configuration config) {
-        final Clock clock = Clock.system();
-        final SingleStoreConnectorConfig connectorConfig = new SingleStoreConnectorConfig(config);
-        final SchemaNameAdjuster schemaNameAdjuster =  connectorConfig.schemaNameAdjuster();
-        final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(SingleStoreConnectorConfig.TOPIC_NAMING_STRATEGY);
-        final SingleStoreValueConverters valueConverter = new SingleStoreValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode(),
-                connectorConfig.binaryHandlingMode());
-        final SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(valueConverter);
+  @Override
+  public ChangeEventSourceCoordinator<SingleStorePartition, SingleStoreOffsetContext> start(
+      Configuration config) {
+    final Clock clock = Clock.system();
+    final SingleStoreConnectorConfig connectorConfig = new SingleStoreConnectorConfig(config);
+    final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
+    final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(
+        SingleStoreConnectorConfig.TOPIC_NAMING_STRATEGY);
+    final SingleStoreValueConverters valueConverter = new SingleStoreValueConverters(
+        connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode(),
+        connectorConfig.binaryHandlingMode());
+    final SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
+        valueConverter);
 
-        MainConnectionProvidingConnectionFactory<SingleStoreConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
-                () -> new SingleStoreConnection(new SingleStoreConnection.SingleStoreConnectionConfiguration(config)));
+    MainConnectionProvidingConnectionFactory<SingleStoreConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
+        () -> new SingleStoreConnection(
+            new SingleStoreConnection.SingleStoreConnectionConfiguration(config)));
 
-        this.schema = new SingleStoreDatabaseSchema(connectorConfig, valueConverter,
-                defaultValueConverter,
-                topicNamingStrategy,
-                false);
+    this.schema = new SingleStoreDatabaseSchema(connectorConfig, valueConverter,
+        defaultValueConverter,
+        topicNamingStrategy,
+        false);
 
-        SingleStoreTaskContext taskContext = new SingleStoreTaskContext(connectorConfig, schema);
-        SingleStoreEventMetadataProvider metadataProvider = new SingleStoreEventMetadataProvider();
-        SingleStoreErrorHandler errorHandler = new SingleStoreErrorHandler(connectorConfig, queue);
+    SingleStoreTaskContext taskContext = new SingleStoreTaskContext(connectorConfig, schema);
+    SingleStoreEventMetadataProvider metadataProvider = new SingleStoreEventMetadataProvider();
+    SingleStoreErrorHandler errorHandler = new SingleStoreErrorHandler(connectorConfig, queue);
 
-        this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
-            .pollInterval(connectorConfig.getPollInterval())
-            .maxBatchSize(connectorConfig.getMaxBatchSize())
-            .maxQueueSize(connectorConfig.getMaxQueueSize())
-            .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
-            .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
-            .build();
+    this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+        .pollInterval(connectorConfig.getPollInterval())
+        .maxBatchSize(connectorConfig.getMaxBatchSize())
+        .maxQueueSize(connectorConfig.getMaxQueueSize())
+        .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
+        .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
+        .build();
 
-        Offsets<SingleStorePartition, SingleStoreOffsetContext> previousOffsets = getPreviousOffsets(
-            new SingleStorePartition.Provider(connectorConfig, config),
-            new SingleStoreOffsetContext.Loader(connectorConfig));
+    Offsets<SingleStorePartition, SingleStoreOffsetContext> previousOffsets = getPreviousOffsets(
+        new SingleStorePartition.Provider(connectorConfig, config),
+        new SingleStoreOffsetContext.Loader(connectorConfig));
 
-        SignalProcessor<SingleStorePartition, SingleStoreOffsetContext> signalProcessor = new SignalProcessor<>(
-            SingleStoreConnector.class, connectorConfig, Map.of(),
-                    getAvailableSignalChannels(),
-                    DocumentReader.defaultReader(),
-                    previousOffsets);
+    SignalProcessor<SingleStorePartition, SingleStoreOffsetContext> signalProcessor = new SignalProcessor<>(
+        SingleStoreConnector.class, connectorConfig, Map.of(),
+        getAvailableSignalChannels(),
+        DocumentReader.defaultReader(),
+        previousOffsets);
 
-        final Configuration heartbeatConfig = config;
-        final EventDispatcher<SingleStorePartition, TableId> dispatcher = new EventDispatcher<>(
-            connectorConfig,
+    final Configuration heartbeatConfig = config;
+    final EventDispatcher<SingleStorePartition, TableId> dispatcher = new EventDispatcher<>(
+        connectorConfig,
+        topicNamingStrategy,
+        schema,
+        queue,
+        connectorConfig.getTableFilters().dataCollectionFilter(),
+        DataChangeEvent::new,
+        metadataProvider,
+        connectorConfig.createHeartbeat(
             topicNamingStrategy,
-            schema,
-            queue,
-            connectorConfig.getTableFilters().dataCollectionFilter(),
-            DataChangeEvent::new,
-                metadataProvider,
-                connectorConfig.createHeartbeat(
-                        topicNamingStrategy,
-                        schemaNameAdjuster,
-                        () -> new SingleStoreConnection(new SingleStoreConnection.SingleStoreConnectionConfiguration(heartbeatConfig)),
-                        exception -> {
-                            final String sqlErrorId = exception.getMessage();
-                            throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
-                        }
-                ),
             schemaNameAdjuster,
-            signalProcessor);
-        
-        NotificationService<SingleStorePartition, SingleStoreOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
-                    connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
+            () -> new SingleStoreConnection(
+                new SingleStoreConnection.SingleStoreConnectionConfiguration(heartbeatConfig)),
+            exception -> {
+              final String sqlErrorId = exception.getMessage();
+              throw new DebeziumException(
+                  "Could not execute heartbeat action query (Error: " + sqlErrorId + ")",
+                  exception);
+            }
+        ),
+        schemaNameAdjuster,
+        signalProcessor);
 
-      SingleStoreChangeEventSourceCoordinator coordinator = new SingleStoreChangeEventSourceCoordinator(
-            previousOffsets,
-            errorHandler,
-            SingleStoreConnector.class,
-            connectorConfig,
-            new SingleStoreChangeEventSourceFactory(connectorConfig, connectionFactory, schema, dispatcher, errorHandler, clock),
-            new SingleStoreChangeEventSourceMetricsFactory(),
-            dispatcher,
-            schema,
-            signalProcessor,
-            notificationService);
+    NotificationService<SingleStorePartition, SingleStoreOffsetContext> notificationService = new NotificationService<>(
+        getNotificationChannels(),
+        connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
-        coordinator.start(taskContext, this.queue, metadataProvider);
+    SingleStoreChangeEventSourceCoordinator coordinator = new SingleStoreChangeEventSourceCoordinator(
+        previousOffsets,
+        errorHandler,
+        SingleStoreConnector.class,
+        connectorConfig,
+        new SingleStoreChangeEventSourceFactory(connectorConfig, connectionFactory, schema,
+            dispatcher, errorHandler, clock),
+        new SingleStoreChangeEventSourceMetricsFactory(),
+        dispatcher,
+        schema,
+        signalProcessor,
+        notificationService);
 
-        return coordinator;
-    }
+    coordinator.start(taskContext, this.queue, metadataProvider);
 
-    @Override
-    public List<SourceRecord> doPoll() throws InterruptedException {
-        final List<DataChangeEvent> records = queue.poll();
+    return coordinator;
+  }
 
-        final List<SourceRecord> sourceRecords = records.stream()
-                .map(DataChangeEvent::getRecord)
-                .collect(Collectors.toList());
+  @Override
+  public List<SourceRecord> doPoll() throws InterruptedException {
+    final List<DataChangeEvent> records = queue.poll();
 
-        return sourceRecords;
-    }
+    final List<SourceRecord> sourceRecords = records.stream()
+        .map(DataChangeEvent::getRecord)
+        .collect(Collectors.toList());
 
-    @Override
-    protected void doStop() {
-        schema.close();
-        // TODO
-    }
+    return sourceRecords;
+  }
+
+  @Override
+  protected void doStop() {
+    schema.close();
+    // TODO
+  }
 }

@@ -289,7 +289,8 @@ public class SingleStoreSnapshotChangeEventSource extends
             throw new InterruptedException("Interrupted while snapshotting table " + table.id()
                 + ", because of wrong StartSnapshot offset");
           }
-          LOGGER.trace("Snapshot record, type: {}, internalId: {}, partitionId: {}, offset: {} values: {}",
+          LOGGER.trace(
+              "Snapshot record, type: {}, internalId: {}, partitionId: {}, offset: {} values: {}",
               ObserveResultSetUtils.snapshotType(rs),
               ObserveResultSetUtils.internalId(rs),
               ObserveResultSetUtils.partitionId(rs),

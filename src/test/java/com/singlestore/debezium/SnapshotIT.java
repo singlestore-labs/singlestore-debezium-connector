@@ -57,7 +57,7 @@ public class SnapshotIT extends IntegrationTestBase {
     try {
       final SourceRecords recordsA = consumeRecordsByTopic(3);
       final List<SourceRecord> table1 = recordsA.recordsForTopic(
-          TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
+              TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
           .stream().sorted(Comparator.comparingInt(
               v -> (Integer) ((Struct) ((Struct) v.value()).get("after")).get("pk")))
           .collect(Collectors.toList());
@@ -162,7 +162,9 @@ public class SnapshotIT extends IntegrationTestBase {
 
         List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder()
             .stream().sorted(
-                    Comparator.comparing(v -> (String) ((Struct) ((Struct) v.value()).get("after")).get("aa"),String.CASE_INSENSITIVE_ORDER))
+                Comparator.comparing(
+                    v -> (String) ((Struct) ((Struct) v.value()).get("after")).get("aa"),
+                    String.CASE_INSENSITIVE_ORDER))
             .collect(Collectors.toList());
 
         List<String> values = Arrays.asList(new String[]{"test0", "test1", "test2"});
@@ -210,7 +212,7 @@ public class SnapshotIT extends IntegrationTestBase {
       assertThat(recordsA.allRecordsInOrder()).isEmpty();
       recordsA = consumeRecordsByTopic(3);
       final List<SourceRecord> table1 = recordsA.recordsForTopic(
-          TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
+              TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
           .stream().sorted(Comparator.comparingInt(
               v -> (Integer) ((Struct) ((Struct) v.value()).get("after")).get("pk")))
           .collect(Collectors.toList());

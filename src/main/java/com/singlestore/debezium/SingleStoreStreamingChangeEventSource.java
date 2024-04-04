@@ -20,148 +20,156 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SingleStoreStreamingChangeEventSource implements StreamingChangeEventSource<SingleStorePartition, SingleStoreOffsetContext>{
+public class SingleStoreStreamingChangeEventSource implements
+    StreamingChangeEventSource<SingleStorePartition, SingleStoreOffsetContext> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreStreamingChangeEventSource.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(
+      SingleStoreStreamingChangeEventSource.class);
 
-    SingleStoreConnectorConfig connectorConfig;
-    SingleStoreConnection connection;
-    EventDispatcher<SingleStorePartition, TableId> dispatcher;
-    ErrorHandler errorHandler;
-    SingleStoreDatabaseSchema schema;
-    Clock clock;
+  SingleStoreConnectorConfig connectorConfig;
+  SingleStoreConnection connection;
+  EventDispatcher<SingleStorePartition, TableId> dispatcher;
+  ErrorHandler errorHandler;
+  SingleStoreDatabaseSchema schema;
+  Clock clock;
 
-    public SingleStoreStreamingChangeEventSource(SingleStoreConnectorConfig connectorConfig,
-        SingleStoreConnection connection, 
-        EventDispatcher<SingleStorePartition, TableId> dispatcher,
-        ErrorHandler errorHandler,
-        SingleStoreDatabaseSchema schema,
-        Clock clock) {
-        this.connectorConfig = connectorConfig;    
-        this.connection = connection;
-        this.dispatcher = dispatcher;
-        this.errorHandler = errorHandler;
-        this.schema = schema;
-        this.clock = clock;
+  public SingleStoreStreamingChangeEventSource(SingleStoreConnectorConfig connectorConfig,
+      SingleStoreConnection connection,
+      EventDispatcher<SingleStorePartition, TableId> dispatcher,
+      ErrorHandler errorHandler,
+      SingleStoreDatabaseSchema schema,
+      Clock clock) {
+    this.connectorConfig = connectorConfig;
+    this.connection = connection;
+    this.dispatcher = dispatcher;
+    this.errorHandler = errorHandler;
+    this.schema = schema;
+    this.clock = clock;
+  }
+
+  @Override
+  public void execute(ChangeEventSourceContext context, SingleStorePartition partition,
+      SingleStoreOffsetContext offsetContext) throws InterruptedException {
+    if (!connectorConfig.getSnapshotMode().shouldStream()) {
+      LOGGER.info("Streaming is disabled for snapshot mode {}", connectorConfig.getSnapshotMode());
+      return;
     }
 
-    @Override
-    public void execute(ChangeEventSourceContext context, SingleStorePartition partition,
-            SingleStoreOffsetContext offsetContext) throws InterruptedException {
-        if (!connectorConfig.getSnapshotMode().shouldStream()) {
-            LOGGER.info("Streaming is disabled for snapshot mode {}", connectorConfig.getSnapshotMode());
-            return;
-        }
-        
-        Set<TableId> tables = schema.tableIds();
-        // We must have only one table
-        assert(tables.size() == 1);
-        TableId table = tables.iterator().next();
-        List<String> offsets = offsetContext.offsets()
-            .stream()
-            .map(o -> o == null ? "NULL" : "'" + o + "'")
-            .collect(Collectors.toList());
-        Optional<String> offset;
-        if (offsets == null) {
-            offset = Optional.empty();
-        } else {
-            offset = Optional.of("(" + String.join(",", offsets) + ")");
-        }
+    Set<TableId> tables = schema.tableIds();
+    // We must have only one table
+    assert (tables.size() == 1);
+    TableId table = tables.iterator().next();
+    List<String> offsets = offsetContext.offsets()
+        .stream()
+        .map(o -> o == null ? "NULL" : "'" + o + "'")
+        .collect(Collectors.toList());
+    Optional<String> offset;
+    if (offsets == null) {
+      offset = Optional.empty();
+    } else {
+      offset = Optional.of("(" + String.join(",", offsets) + ")");
+    }
 
-        InterruptedException interrupted[] = new InterruptedException[1];
-        try {
-            // TODO: add field filter when it will be supported
-            connection.observe(null, tables, Optional.empty(), Optional.empty(), offset, Optional.empty(), new ResultSetConsumer() {
+    InterruptedException interrupted[] = new InterruptedException[1];
+    try {
+      // TODO: add field filter when it will be supported
+      connection.observe(null, tables, Optional.empty(), Optional.empty(), offset, Optional.empty(),
+          new ResultSetConsumer() {
+            @Override
+            public void accept(ResultSet rs) throws SQLException {
+              dispatcher.dispatchConnectorEvent(partition, ObserveStreamingStartedEvent.INSTANCE);
+              Thread t = new Thread(new Runnable() {
                 @Override
-                public void accept(ResultSet rs) throws SQLException {
-                    dispatcher.dispatchConnectorEvent(partition, ObserveStreamingStartedEvent.INSTANCE);
-                    Thread t = new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            while (context.isRunning()) {
-                                try {
-                                    Thread.sleep(1000);
-                                } catch (InterruptedException e) {
-                                }
-                            }
-                            try {
-                                ((com.singlestore.jdbc.Connection)rs.getStatement().getConnection()).cancelCurrentQuery();
-                            } catch (SQLException ex) {
-                                // TODO handle exception
-                            }
-                        }
-                    });
-                    t.start();
-
-                    List<Integer> columnPositions = 
-                        ObserveResultSetUtils.columnPositions(rs, schema.tableFor(table).columns(), connectorConfig.populateInternalId());
+                public void run() {
+                  while (context.isRunning()) {
                     try {
-                        while (rs.next() && context.isRunning()) {
-                            LOGGER.trace("Streaming record, type: {}, internalId: {}, partitionId: {}, offset: {} values: {}",
-                                ObserveResultSetUtils.snapshotType(rs),
-                                ObserveResultSetUtils.internalId(rs),
-                                ObserveResultSetUtils.partitionId(rs),
-                                ObserveResultSetUtils.offset(rs),
-                                ObserveResultSetUtils.rowToArray(rs, columnPositions));
-                            Operation operation;
-                            switch (rs.getString("Type")) {
-                                case "Insert":
-                                    operation = Operation.CREATE;
-                                    break;
-                                case "Update":
-                                    operation = Operation.UPDATE;
-                                    break;
-                                case "Delete":
-                                    operation = Operation.DELETE;
-                                    break;
-                                default:
-                                    continue;
-                            }
-
-                            String offset = ObserveResultSetUtils.offset(rs);
-                            Integer partitionId = ObserveResultSetUtils.partitionId(rs);
-                            String txId = ObserveResultSetUtils.txId(rs);
-                            Long internalId = ObserveResultSetUtils.internalId(rs);
-
-                            offsetContext.event(table, Instant.now());
-                            offsetContext.update(partitionId, txId, offset);
-
-                            Object[] after = ObserveResultSetUtils.rowToArray(rs, columnPositions);
-
-                            try {
-                                dispatcher.dispatchDataChangeEvent(partition, table, 
-                                    new SingleStoreChangeRecordEmitter(
-                                        partition, 
-                                        offsetContext, 
-                                        clock, 
-                                        operation, 
-                                        null,
-                                        after, 
-                                        internalId,
-                                        connectorConfig));
-                            } catch (InterruptedException e) {
-                                interrupted[0] = e;
-                                break;
-                            }
-                        }
-                    } finally {
-                        t.interrupt();
+                      Thread.sleep(1000);
+                    } catch (InterruptedException e) {
                     }
+                  }
+                  try {
+                    ((com.singlestore.jdbc.Connection) rs.getStatement()
+                        .getConnection()).cancelCurrentQuery();
+                  } catch (SQLException ex) {
+                    // TODO handle exception
+                  }
                 }
-            });
-        } catch (SQLException e) {
-            // TODO: handle schema change event
-            if (!(!context.isRunning() && 
-                e.getMessage().contains("Query execution was interrupted") &&
-                e.getErrorCode() == 1317 && 
-                e.getSQLState().equals("70100"))) {
-                String msg = e.getMessage() + " Error code: " + e.getErrorCode() + "; SQLSTATE: " + e.getSQLState() + ".";
-                errorHandler.setProducerThrowable(new DebeziumException(msg, e));
-            }
-        }
+              });
+              t.start();
 
-        if (interrupted[0] != null) {
-            throw interrupted[0];
-        }
+              List<Integer> columnPositions =
+                  ObserveResultSetUtils.columnPositions(rs, schema.tableFor(table).columns(),
+                      connectorConfig.populateInternalId());
+              try {
+                while (rs.next() && context.isRunning()) {
+                  LOGGER.trace(
+                      "Streaming record, type: {}, internalId: {}, partitionId: {}, offset: {} values: {}",
+                      ObserveResultSetUtils.snapshotType(rs),
+                      ObserveResultSetUtils.internalId(rs),
+                      ObserveResultSetUtils.partitionId(rs),
+                      ObserveResultSetUtils.offset(rs),
+                      ObserveResultSetUtils.rowToArray(rs, columnPositions));
+                  Operation operation;
+                  switch (rs.getString("Type")) {
+                    case "Insert":
+                      operation = Operation.CREATE;
+                      break;
+                    case "Update":
+                      operation = Operation.UPDATE;
+                      break;
+                    case "Delete":
+                      operation = Operation.DELETE;
+                      break;
+                    default:
+                      continue;
+                  }
+
+                  String offset = ObserveResultSetUtils.offset(rs);
+                  Integer partitionId = ObserveResultSetUtils.partitionId(rs);
+                  String txId = ObserveResultSetUtils.txId(rs);
+                  Long internalId = ObserveResultSetUtils.internalId(rs);
+
+                  offsetContext.event(table, Instant.now());
+                  offsetContext.update(partitionId, txId, offset);
+
+                  Object[] after = ObserveResultSetUtils.rowToArray(rs, columnPositions);
+
+                  try {
+                    dispatcher.dispatchDataChangeEvent(partition, table,
+                        new SingleStoreChangeRecordEmitter(
+                            partition,
+                            offsetContext,
+                            clock,
+                            operation,
+                            null,
+                            after,
+                            internalId,
+                            connectorConfig));
+                  } catch (InterruptedException e) {
+                    interrupted[0] = e;
+                    break;
+                  }
+                }
+              } finally {
+                t.interrupt();
+              }
+            }
+          });
+    } catch (SQLException e) {
+      // TODO: handle schema change event
+      if (!(!context.isRunning() &&
+          e.getMessage().contains("Query execution was interrupted") &&
+          e.getErrorCode() == 1317 &&
+          e.getSQLState().equals("70100"))) {
+        String msg =
+            e.getMessage() + " Error code: " + e.getErrorCode() + "; SQLSTATE: " + e.getSQLState()
+                + ".";
+        errorHandler.setProducerThrowable(new DebeziumException(msg, e));
+      }
     }
+
+    if (interrupted[0] != null) {
+      throw interrupted[0];
+    }
+  }
 }

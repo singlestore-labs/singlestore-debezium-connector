@@ -279,7 +279,7 @@ public class SingleStoreConnection extends JdbcConnection {
       final String driverParametersString = config
           .getString(SingleStoreConnectorConfig.DRIVER_PARAMETERS);
       return driverParametersString == null ? Collections.emptyMap() : Arrays.stream(
-          driverParametersString.split(";"))
+              driverParametersString.split(";"))
           .map(s -> s.split("=")).collect(Collectors.toMap(s -> s[0].trim(), s -> s[1].trim()));
     }
 
