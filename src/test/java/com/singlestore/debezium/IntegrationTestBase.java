@@ -62,6 +62,7 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
     // Create database if it doesn't exist
     executeDDL("create_database.ddl");
     executeDDL("create_tables.ddl");
+    execute("SET GLOBAL enable_observe_queries=1");
   }
 
   @AfterClass
