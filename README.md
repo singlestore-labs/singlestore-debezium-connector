@@ -25,11 +25,15 @@ in specific columns.
 
 ### Prerequisites
 
-Ensure that the following are installed:
-
-* ZooKeeper
-* Kafka
-* Kafka Connect
+* An active SingleStore workspace/cluster with `OBSERVE` queries enabled.
+    * Run the following SQL statement to enable `OBSERVE` queries:
+      ```
+      SET GLOBAL enable_observe_queries=1;
+      ```
+* Install the following:
+    * ZooKeeper
+    * Kafka
+    * Kafka Connect
 
 Ensure that you have running SingleStore cluster and that `OBSERVE` queries are enabled in it.
 OBSERVE queries can be enabled using the following SQL query `SET GLOBAL enable_observe_queries=1`.
