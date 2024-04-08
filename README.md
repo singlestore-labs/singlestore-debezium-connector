@@ -35,9 +35,6 @@ in specific columns.
     * Kafka
     * Kafka Connect
 
-Ensure that you have running SingleStore cluster and that `OBSERVE` queries are enabled in it.
-OBSERVE queries can be enabled using the following SQL query `SET GLOBAL enable_observe_queries=1`.
-
 ### Installation
 
 * Download
