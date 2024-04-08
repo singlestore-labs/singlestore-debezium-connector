@@ -36,7 +36,7 @@
       work on all platforms. We'll set some of these as system properties during integration testing.
     -->
     <singlestore.image>ghcr.io/singlestore-labs/singlestoredb-dev:latest</singlestore.image>
-    <singlestore.version>dev:37501638-668e-443b-be3d-2011d68be441</singlestore.version>
+    <singlestore.version>dev:92a8a199-13fd-462d-a9ec-58ef94754473</singlestore.version>
     <singlestore.license>${env.SINGLESTORE_LICENSE}</singlestore.license>
     <singlestore.host>127.0.0.1</singlestore.host>
     <singlestore.port>3306</singlestore.port>
