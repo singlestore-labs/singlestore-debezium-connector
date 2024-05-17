@@ -14,7 +14,7 @@
 
     <version.debezium>2.5.1.Final</version.debezium>
     <version.kafka>3.6.1</version.kafka>
-    <version.singlestore.jdbc.driver>1.2.0</version.singlestore.jdbc.driver>
+    <version.singlestore.jdbc.driver>1.2.3</version.singlestore.jdbc.driver>
     <version.jts.io>1.19.0</version.jts.io>
 
     <version.kafka-connect-avro-converter>7.5.1</version.kafka-connect-avro-converter>
