@@ -160,7 +160,8 @@ public class SingleStoreSnapshotChangeEventSource extends
     CompletionService<SingleStoreOffsetContext> completionService = new ExecutorCompletionService<>(
         executorService);
     Queue<SingleStoreOffsetContext> offsets = new ConcurrentLinkedQueue<>();
-    for (int i = 0; i < snapshotMaxThreads; i++) {
+    offsets.add(snapshotContext.offset);
+    for (int i = 1; i < snapshotMaxThreads; i++) {
       offsets.add(copyOffset(snapshotContext));
     }
 
@@ -637,8 +638,7 @@ public class SingleStoreSnapshotChangeEventSource extends
     // found a previous offset and the earlier snapshot has completed
     if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
       LOGGER.info(
-          "A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
-      snapshotSchema = false;
+          "A previous offset indicating a completed snapshot has been found. Only schema will be snapshotted.");
       snapshotData = false;
     } else {
       LOGGER.info("No previous offset has been found");

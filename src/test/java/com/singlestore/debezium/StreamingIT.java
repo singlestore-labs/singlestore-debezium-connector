@@ -4,7 +4,10 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
+import ch.qos.logback.classic.Logger;
 import io.debezium.config.Configuration;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -19,11 +22,12 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 import org.locationtech.jts.io.ParseException;
+import org.slf4j.LoggerFactory;
 
 public class StreamingIT extends IntegrationTestBase {
 
   @Test
-  public void canReadAllTypes() throws SQLException, InterruptedException, ParseException {
+  public void canReadAllTypes() throws SQLException, ParseException, InterruptedException {
     try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
       Configuration config = defaultJdbcConfigWithTable("allTypesTable");
@@ -84,6 +88,10 @@ public class StreamingIT extends IntegrationTestBase {
         SourceRecord record = records.get(0);
         Struct value = (Struct) record.value();
         Struct after = (Struct) value.get("after");
+        Struct source = (Struct) value.get("source");
+
+        assertEquals(true, record.sourceOffset().get("snapshot_completed"));
+        assertEquals("false", source.get("snapshot"));
 
         // TODO: PLAT-6909 handle BOOL columns as boolean
         assertEquals((short) 1, after.get("boolColumn"));
@@ -408,6 +416,65 @@ public class StreamingIT extends IntegrationTestBase {
         assertEquals(0, records.size());
 
       } finally {
+        stopConnector();
+      }
+    }
+  }
+
+  @Test
+  public void testStaleOffset() throws Exception {
+    try (SingleStoreConnection conn = new SingleStoreConnection(
+        defaultJdbcConnectionConfig())) {
+      try {
+        conn.execute(String.format("USE %s", TEST_DATABASE),
+            "SET GLOBAL snapshots_to_keep=1",
+            "SET GLOBAL snapshot_trigger_size=65536",
+            "CREATE TABLE staleOffsets(a INT)"
+        );
+
+        Configuration config = defaultJdbcConfigWithTable("staleOffsets").edit()
+            .withDefault("offset.flush.interval.ms", "20").build();
+
+        start(SingleStoreConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+
+        Thread.sleep(100);
+        for (int i = 0; i < 10; i++) {
+          conn.execute("INSERT INTO staleOffsets VALUES (123456789)");
+        }
+        Thread.sleep(100);
+
+        List<SourceRecord> records = consumeRecordsByTopic(10).allRecordsInOrder();
+        assertEquals(10, records.size());
+
+        stopConnector();
+
+        for (int i = 0; i < 10000; i++) {
+          conn.execute("INSERT INTO staleOffsets VALUES (123456789)");
+        }
+
+        final TestAppender appender = new TestAppender();
+        final Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(
+            "com.singlestore.debezium");
+        appender.start();
+        logger.addAppender(appender);
+        try {
+          start(SingleStoreConnector.class, config);
+          assertConnectorIsRunning();
+          assertThrows("Expected streaming to fail",
+              org.awaitility.core.ConditionTimeoutException.class, this::waitForStreamingToStart);
+
+          assertTrue(appender.getLog().stream().anyMatch(event -> event.getMessage()
+              .contains(
+                  "Offset that the connector is trying to resume from is considered stale.")));
+        } finally {
+          logger.detachAppender(appender);
+        }
+      } finally {
+        conn.execute("SET GLOBAL snapshots_to_keep=2",
+            "SET GLOBAL snapshot_trigger_size=2147483648"
+        );
         stopConnector();
       }
     }
