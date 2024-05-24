@@ -171,7 +171,7 @@ public class StreamingIT extends IntegrationTestBase {
         assertEquals(source.get("connector"), "singlestore");
         assertEquals(source.get("name"), "singlestore_topic");
         assertNotNull(source.get("ts_ms"));
-        assertEquals(source.get("snapshot"), "true");
+        assertEquals(source.get("snapshot"), "false");
         assertEquals(source.get("db"), "db");
         assertEquals(source.get("table"), "purchased");
         assertNotNull(source.get("txId"));
