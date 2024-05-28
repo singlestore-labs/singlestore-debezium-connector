@@ -167,7 +167,7 @@ public class StreamingIT extends IntegrationTestBase {
         SourceRecord record = records.get(0);
 
         Struct source = (Struct) ((Struct) record.value()).get("source");
-        assertEquals(source.get("version"), "0.1.2");
+        assertEquals(source.get("version"), "0.1.3");
         assertEquals(source.get("connector"), "singlestore");
         assertEquals(source.get("name"), "singlestore_topic");
         assertNotNull(source.get("ts_ms"));
