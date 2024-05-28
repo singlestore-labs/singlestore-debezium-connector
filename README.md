@@ -18,6 +18,7 @@ in specific columns.
 - [Data change events](#data-change-events)
 - [Data type mappings](#data-type-mappings)
 - [Connector properties](#connector-properties)
+- [Frequently asked question](#frequently-asked-questions)
 
 <!--TODO add compatibility information-->
 
@@ -546,3 +547,21 @@ therefore rarely need to be specified in the connector’s configuration.
 | sourceinfo.struct.maker                | SingleStoreSourceInfoStructMaker | The name of the SourceInfoStructMaker Class that returns the SourceInfo schema and struct.                                                                                                                                                                                                                                                                                                                                                                                                                              
 | notification.sink.topic.name           |                                  | The name of the topic for the notifications. This property is required if the 'sink' is in the list of enabled channels.                                                                                                                                                                                                                                                                                                                                                                                                
 | post.processors                        |                                  | Optional list of post processors. The processors are defined using the `<post.processor.prefix>.type` option and configured using `<post.processor.prefix.<option>`.                                                                                                                                                                                                                                                                                                                                                    
+
+# Frequently asked questions
+
+## Connector Unable to Start
+A connector that is stopped for a long period fails to start, and reports the following exception:
+```
+Offset that the connector is trying to resume from is considered stale...
+```
+The preceding exception indicates that the entry that 
+offset that the connector is trying to resume from is considered stale.
+Because of it, connector cannot resume streaming.
+You can use either of the following options to recover from the failure:
+* Delete the failed connector, and create a new connector with the same configuration but with a different connector name.
+* Pause the connector and then remove offsets, or change the offset topic.
+
+To help prevent failures related to stale offsets, you can increase following SingleStore engine variables:
+* `snapshots_to_keep` - Defines the number of snapshots to keep for backup and replication.
+* `snapshot_trigger_size` - Defines the size of transaction logs in bytes, which, when reached, triggers a snapshot that is written to disk.

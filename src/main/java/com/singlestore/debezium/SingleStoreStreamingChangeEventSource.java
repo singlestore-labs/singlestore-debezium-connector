@@ -161,9 +161,29 @@ public class SingleStoreStreamingChangeEventSource implements
           e.getMessage().contains("Query execution was interrupted") &&
           e.getErrorCode() == 1317 &&
           e.getSQLState().equals("70100"))) {
-        String msg =
-            e.getMessage() + " Error code: " + e.getErrorCode() + "; SQLSTATE: " + e.getSQLState()
-                + ".";
+        String msg;
+        if (e.getMessage().contains(
+            "The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
+            &&
+            e.getErrorCode() == 2851 &&
+            e.getSQLState().equals("HY000")
+        ) {
+          msg = "Offset that the connector is trying to resume from is considered stale.\n"
+              + "Because of it, connector cannot resume streaming.\n"
+              + "You can use either of the following options to recover from the failure:\n"
+              + " * Delete the failed connector, and create a new connector with the same configuration but with a different connector name.\n"
+              + " * Pause the connector and then remove offsets, or change the offset topic.\n"
+              + "To help prevent failures related to stale offsets, you can increase following SingleStore engine variables:\n"
+              + " * 'snapshots_to_keep' - Defines the number of snapshots to keep for backup and replication.\n"
+              + " * 'snapshot_trigger_size' - Defines the size of transaction logs in bytes, which, when reached, triggers a snapshot that is written to disk.";
+        } else {
+          msg =
+              e.getMessage() + " Error code: " + e.getErrorCode() + "; SQLSTATE: " + e.getSQLState()
+                  + ".";
+        }
+
+        LOGGER.error(msg);
+
         errorHandler.setProducerThrowable(new DebeziumException(msg, e));
       }
     }

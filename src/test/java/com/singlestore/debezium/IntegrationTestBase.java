@@ -2,6 +2,8 @@ package com.singlestore.debezium;
 
 import static org.junit.Assert.assertNotNull;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.AppenderBase;
 import io.debezium.config.Configuration;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -11,7 +13,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 import java.util.stream.Collectors;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -215,5 +219,19 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
 
   protected static String topicName(String suffix) {
     return TEST_SERVER + "." + suffix;
+  }
+
+  public static class TestAppender extends AppenderBase<ILoggingEvent> {
+
+    private final Stack<ILoggingEvent> events = new Stack<>();
+
+    @Override
+    protected void append(ILoggingEvent event) {
+      events.add(event);
+    }
+
+    public List<ILoggingEvent> getLog() {
+      return events;
+    }
   }
 }
