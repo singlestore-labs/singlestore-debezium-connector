@@ -316,7 +316,12 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
     /**
      * Perform a snapshot and then stop before attempting to stream events.
      */
-    INITIAL_ONLY("initial_only", true, true, false);
+    INITIAL_ONLY("initial_only", true, true, false),
+
+    /**
+     * Perform a snapshot when it is needed.
+     */
+    WHEN_NEEDED("when_needed", true, true, true);
     /**
      * Perform a snapshot of only the database schemas (without data) and then begin stream events.
      * This should be used with care, but it is very useful when the change event consumers need
