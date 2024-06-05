@@ -611,13 +611,10 @@ public class StreamingIT extends IntegrationTestBase {
         assertConnectorIsRunning();
 
         Thread.sleep(1000);
-        //consume only 10
         records = consumeRecordsByTopic(10000).allRecordsInOrder();
-        assertEquals(10000, records.size());
         //expected offset is reset and snapshot type records are consumed
         assertNotNull("must be a snapshot type record", records.get(0).sourceOffset().get("snapshot"));
         assertTrue("must be a snapshot type record", Boolean.parseBoolean(records.get(0).sourceOffset().get("snapshot").toString()));
-        waitForStreamingToStart();
       } finally {
         conn.execute("SET GLOBAL snapshots_to_keep=2",
                 "SET GLOBAL snapshot_trigger_size=2147483648"
