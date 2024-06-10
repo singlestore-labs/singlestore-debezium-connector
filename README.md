@@ -551,17 +551,25 @@ therefore rarely need to be specified in the connector’s configuration.
 # Frequently asked questions
 
 ## Connector Unable to Start
+
 A connector that is stopped for a long period fails to start and reports the following exception:
+
 ```
-Offset that the connector is trying to resume from is considered stale...
+Offset the connector is trying to resume from is considered stale...
 ```
-This exception indicates that the offset entry 
+
+This exception indicates that the offset entry
 the connector is trying to resume from is considered stale.
 Therefore, the connector cannot resume streaming.
 You can use either of the following options to recover from the failure:
-* Delete the failed connector, and create a new connector with the same configuration but with a different connector name.
+
+* Delete the failed connector, and create a new connector with the same configuration but with a
+  different connector name.
 * Pause the connector and then remove offsets, or change the offset topic.
 
-To help prevent failures related to stale offsets, you can increase the value of the following engine variables in SingleStore:
+To help prevent failures related to stale offsets, you can increase the value of the following
+engine variables in SingleStore:
+
 * `snapshots_to_keep` - Defines the number of snapshots to keep for backup and replication.
-* `snapshot_trigger_size` - Defines the size of transaction logs in bytes, which, when reached, triggers a snapshot that is written to disk.
+* `snapshot_trigger_size` - Defines the size of transaction logs in bytes, which, when reached,
+  triggers a snapshot that is written to disk.

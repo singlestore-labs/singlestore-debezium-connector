@@ -168,12 +168,12 @@ public class SingleStoreStreamingChangeEventSource implements
             e.getErrorCode() == 2851 &&
             e.getSQLState().equals("HY000")
         ) {
-          msg = "Offset that the connector is trying to resume from is considered stale.\n"
-              + "Because of it, connector cannot resume streaming.\n"
+          msg = "Offset the connector is trying to resume from is considered stale.\n"
+              + "Therefore, the connector cannot resume streaming.\n"
               + "You can use either of the following options to recover from the failure:\n"
               + " * Delete the failed connector, and create a new connector with the same configuration but with a different connector name.\n"
               + " * Pause the connector and then remove offsets, or change the offset topic.\n"
-              + "To help prevent failures related to stale offsets, you can increase following SingleStore engine variables:\n"
+              + "To help prevent failures related to stale offsets, you can increase the value of the following engine variables in SingleStore:\n"
               + " * 'snapshots_to_keep' - Defines the number of snapshots to keep for backup and replication.\n"
               + " * 'snapshot_trigger_size' - Defines the size of transaction logs in bytes, which, when reached, triggers a snapshot that is written to disk.";
         } else {

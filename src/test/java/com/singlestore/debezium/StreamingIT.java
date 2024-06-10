@@ -467,7 +467,7 @@ public class StreamingIT extends IntegrationTestBase {
 
           assertTrue(appender.getLog().stream().anyMatch(event -> event.getMessage()
               .contains(
-                  "Offset that the connector is trying to resume from is considered stale.")));
+                  "Offset the connector is trying to resume from is considered stale.")));
         } finally {
           logger.detachAppender(appender);
         }
