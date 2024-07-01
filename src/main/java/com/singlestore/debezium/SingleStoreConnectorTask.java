@@ -20,10 +20,15 @@ import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.kafka.connect.source.SourceRecord;
 
 /**
  * The main task executing streaming from SingleStore. Responsible for lifecycle management of the
@@ -32,6 +37,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 public class SingleStoreConnectorTask extends
     BaseSourceTask<SingleStorePartition, SingleStoreOffsetContext> {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(
+          SingleStoreConnectorTask.class);
   private static final String CONTEXT_NAME = "singlestore-connector-task";
   private volatile ChangeEventQueue<DataChangeEvent> queue;
   private volatile SingleStoreDatabaseSchema schema;
@@ -84,6 +91,7 @@ public class SingleStoreConnectorTask extends
     Offsets<SingleStorePartition, SingleStoreOffsetContext> previousOffsets = getPreviousOffsets(
         new SingleStorePartition.Provider(connectorConfig, config),
         new SingleStoreOffsetContext.Loader(connectorConfig));
+    validateOffset(connectionFactory, previousOffsets, connectorConfig.getSnapshotMode());
 
     SignalProcessor<SingleStorePartition, SingleStoreOffsetContext> signalProcessor = new SignalProcessor<>(
         SingleStoreConnector.class, connectorConfig, Map.of(),
@@ -136,6 +144,34 @@ public class SingleStoreConnectorTask extends
 
     return coordinator;
   }
+
+    private void validateOffset(MainConnectionProvidingConnectionFactory<SingleStoreConnection> connectionFactory,
+                                Offsets<SingleStorePartition, SingleStoreOffsetContext> previousOffsets,
+                                SingleStoreConnectorConfig.SnapshotMode snapshotMode) {
+        if (previousOffsets.getOffsets() != null && snapshotMode == SingleStoreConnectorConfig.SnapshotMode.WHEN_NEEDED) {
+            try (SingleStoreConnection connection = connectionFactory.newConnection()) {
+                schema.refresh(connection);
+                Set<TableId> tableIds = schema.tableIds();
+                if (tableIds == null || tableIds.isEmpty()) {
+                    return;
+                }
+                assert (tableIds.size() == 1);
+                for (Map.Entry<SingleStorePartition, SingleStoreOffsetContext> previousOffset : previousOffsets) {
+                    SingleStorePartition partition = previousOffset.getKey();
+                    SingleStoreOffsetContext offset = previousOffset.getValue();
+                    if (offset != null && !connection.validateOffset(tableIds, partition, offset)) {
+                        LOGGER.info("The last recorded offset is no longer available but we are in {} snapshot mode. "
+                                + "Attempting to snapshot data to fill the gap.", snapshotMode.name());
+                        previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
+                        return;
+                    }
+                }
+            } catch (SQLException e) {
+                LOGGER.error("Failed to validate offset");
+                throw new RuntimeException(e);
+            }
+        }
+    }
 
   @Override
   public List<SourceRecord> doPoll() throws InterruptedException {
