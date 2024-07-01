@@ -3,7 +3,7 @@
 [![License](http://img.shields.io/:license-Apache%202-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt)
 [![Github Actions status image](https://github.com/singlestore-labs/singlestore-debezium-connector/actions/workflows/maven.yml/badge.svg)](https://github.com/singlestore-labs/singlestore-debezium-connector/actions)
 
-**Note**: This connector is in private preview. It is intended for experimental use only and is not
+**Note**: This connector is in public preview. It is intended for experimental use only and is not
 fully tested, documented, or supported by SingleStore.
 
 SingleStore connector for Debezium ("the connector") captures and records row-level changes that
