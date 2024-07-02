@@ -1,6 +1,7 @@
 package com.singlestore.debezium;
 
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.Attribute;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
@@ -8,6 +9,8 @@ import io.debezium.relational.Key.KeyMapper;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Component that records the schema information for the {@link SingleStoreConnector}. The schema
@@ -17,6 +20,8 @@ import java.sql.SQLException;
  * {@link SingleStoreConnectorConfig#COLUMN_EXCLUDE_LIST specified} in the configuration.
  */
 public class SingleStoreDatabaseSchema extends RelationalDatabaseSchema {
+
+  private Map<TableId, Boolean> isRowstore = new HashMap<>();
 
   public SingleStoreDatabaseSchema(SingleStoreConnectorConfig config,
       SingleStoreValueConverters valueConverter,
@@ -50,7 +55,17 @@ public class SingleStoreDatabaseSchema extends RelationalDatabaseSchema {
       throws SQLException {
     connection.readSchema(tables(), null, null, getTableFilter(), null, true);
     refreshSchemas();
+    for (TableId tableId : tableIds()) {
+      isRowstore.put(tableId, connection.isRowstoreTable(tableId));
+      tableFor(tableId).edit().addAttribute(
+          Attribute.editor().name("IS_ROWSTORE").value(connection.isRowstoreTable(tableId))
+              .create());
+    }
     return this;
+  }
+
+  public Boolean isRowstore(TableId tableId) {
+    return isRowstore.get(tableId);
   }
 
   /**

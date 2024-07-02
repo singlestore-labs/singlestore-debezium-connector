@@ -70,11 +70,12 @@ public class SingleStoreTableSchemaBuilder extends TableSchemaBuilder {
 
   public TableSchema create(TopicNamingStrategy topicNamingStrategy, Table table,
       ColumnNameFilter filter, ColumnMappers mappers, KeyMapper keysMapper) {
+    // if (!table.primaryKeyColumnNames().isEmpty() && table.
     TableSchema schema = super.create(topicNamingStrategy, table, filter, mappers, keysMapper);
 
     if (!populateInternalId) {
       return new TableSchema(schema.id(),
-          SchemaBuilder.struct().field(INTERNAL_ID, Schema.INT64_SCHEMA).build(),
+          schema.keySchema(),
           (row) -> schema.keyFromColumnData(row),
           schema.getEnvelopeSchema(),
           schema.valueSchema(),
@@ -90,7 +91,7 @@ public class SingleStoreTableSchemaBuilder extends TableSchemaBuilder {
           .build();
 
       return new TableSchema(schema.id(),
-          SchemaBuilder.struct().field(INTERNAL_ID, Schema.INT64_SCHEMA).build(),
+          schema.keySchema(),
           (row) -> schema.keyFromColumnData(row),
           envelope,
           valSchema,

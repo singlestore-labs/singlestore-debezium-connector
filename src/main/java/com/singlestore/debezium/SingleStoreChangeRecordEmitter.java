@@ -43,7 +43,7 @@ public class SingleStoreChangeRecordEmitter extends
   protected void emitCreateRecord(Receiver<SingleStorePartition> receiver, TableSchema tableSchema)
       throws InterruptedException {
     Object[] newColumnValues = getNewColumnValues();
-    Struct newKey = keyFromInternalId();
+    Struct newKey = generateKey(tableSchema, newColumnValues);
     Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
     Struct envelope = tableSchema.getEnvelopeSchema()
         .create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
@@ -64,7 +64,7 @@ public class SingleStoreChangeRecordEmitter extends
     Object[] oldColumnValues = getOldColumnValues();
     Object[] newColumnValues = getNewColumnValues();
 
-    Struct newKey = keyFromInternalId();
+    Struct newKey = generateKey(tableSchema, newColumnValues);
 
     Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
     Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
@@ -99,7 +99,8 @@ public class SingleStoreChangeRecordEmitter extends
   protected void emitDeleteRecord(Receiver<SingleStorePartition> receiver, TableSchema tableSchema)
       throws InterruptedException {
     Object[] oldColumnValues = getOldColumnValues();
-    Struct newKey = keyFromInternalId();
+    Object[] newColumnValues = getNewColumnValues();
+    Struct newKey = generateKey(tableSchema, newColumnValues);
 
     Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
@@ -133,6 +134,14 @@ public class SingleStoreChangeRecordEmitter extends
   @Override
   protected Object[] getNewColumnValues() {
     return after;
+  }
+
+  private Struct generateKey(TableSchema tableSchema, Object[] values) {
+    if (true) {
+      return tableSchema.keyFromColumnData(values);
+    } else {
+      return keyFromInternalId();
+    }
   }
 
   private Struct keyFromInternalId() {

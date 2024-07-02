@@ -19,6 +19,8 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -36,6 +38,20 @@ public class SingleStoreConnection extends JdbcConnection {
     super(connectionConfig.jdbcConfig, connectionConfig.factory,
         SingleStoreConnection::validateServerVersion, QUOTED_CHARACTER, QUOTED_CHARACTER);
     this.connectionConfig = connectionConfig;
+  }
+
+  public boolean isRowstoreTable(TableId tableId) throws SQLException {
+    AtomicBoolean res = new AtomicBoolean(false);
+    prepareQuery(
+        "SELECT table_type = 'INMEMORY_ROWSTORE' as isRowstore FROM information_schema.tables WHERE table_schema = ? && table_name = ?",
+        statement -> {
+          statement.setString(1, tableId.catalog());
+          statement.setString(2, tableId.table());
+        },
+        rs -> {
+          res.set(rs.getBoolean(1));
+        });
+    return res.get();
   }
 
   private static void validateServerVersion(Statement statement) throws SQLException {
