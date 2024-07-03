@@ -55,12 +55,7 @@ public class SingleStoreDatabaseSchema extends RelationalDatabaseSchema {
       throws SQLException {
     connection.readSchema(tables(), null, null, getTableFilter(), null, true);
     refreshSchemas();
-    for (TableId tableId : tableIds()) {
-      isRowstore.put(tableId, connection.isRowstoreTable(tableId));
-      tableFor(tableId).edit().addAttribute(
-          Attribute.editor().name("IS_ROWSTORE").value(connection.isRowstoreTable(tableId))
-              .create());
-    }
+
     return this;
   }
 

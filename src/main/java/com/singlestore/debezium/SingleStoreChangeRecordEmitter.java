@@ -1,5 +1,7 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.util.InternalIdUtils;
+import io.debezium.relational.Table;
 import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
@@ -24,26 +26,26 @@ public class SingleStoreChangeRecordEmitter extends
   private final OffsetContext offset;
   private final Object[] before;
   private final Object[] after;
-  private final long internalId;
-
-  private static final String INTERNAL_ID = "internalId";
+  private final Long internalId;
+  private final Table table;
 
   public SingleStoreChangeRecordEmitter(SingleStorePartition partition, OffsetContext offset,
       Clock clock, Operation operation, Object[] before,
-      Object[] after, long internalId, SingleStoreConnectorConfig connectorConfig) {
+      Object[] after, Long internalId, SingleStoreConnectorConfig connectorConfig, Table table) {
     super(partition, offset, clock, connectorConfig);
     this.offset = offset;
     this.operation = operation;
     this.before = before;
     this.after = after;
     this.internalId = internalId;
+    this.table = table;
   }
 
   @Override
   protected void emitCreateRecord(Receiver<SingleStorePartition> receiver, TableSchema tableSchema)
       throws InterruptedException {
     Object[] newColumnValues = getNewColumnValues();
-    Struct newKey = generateKey(tableSchema, newColumnValues);
+    Struct newKey = InternalIdUtils.generateKey(table, tableSchema, newColumnValues, internalId);
     Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
     Struct envelope = tableSchema.getEnvelopeSchema()
         .create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
@@ -64,7 +66,7 @@ public class SingleStoreChangeRecordEmitter extends
     Object[] oldColumnValues = getOldColumnValues();
     Object[] newColumnValues = getNewColumnValues();
 
-    Struct newKey = generateKey(tableSchema, newColumnValues);
+    Struct newKey = InternalIdUtils.generateKey(table, tableSchema, newColumnValues, internalId);
 
     Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
     Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
@@ -100,7 +102,7 @@ public class SingleStoreChangeRecordEmitter extends
       throws InterruptedException {
     Object[] oldColumnValues = getOldColumnValues();
     Object[] newColumnValues = getNewColumnValues();
-    Struct newKey = generateKey(tableSchema, newColumnValues);
+    Struct newKey = InternalIdUtils.generateKey(table, tableSchema, newColumnValues, internalId);
 
     Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
@@ -134,20 +136,5 @@ public class SingleStoreChangeRecordEmitter extends
   @Override
   protected Object[] getNewColumnValues() {
     return after;
-  }
-
-  private Struct generateKey(TableSchema tableSchema, Object[] values) {
-    if (true) {
-      return tableSchema.keyFromColumnData(values);
-    } else {
-      return keyFromInternalId();
-    }
-  }
-
-  private Struct keyFromInternalId() {
-    Struct result = new Struct(
-        SchemaBuilder.struct().field(INTERNAL_ID, Schema.INT64_SCHEMA).build());
-    result.put(INTERNAL_ID, internalId);
-    return result;
   }
 }

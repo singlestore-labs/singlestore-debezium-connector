@@ -7,6 +7,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.Attribute;
 import io.debezium.relational.ColumnId;
 import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
@@ -16,18 +17,22 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link JdbcConnection} extension to be used with SingleStore
  */
 public class SingleStoreConnection extends JdbcConnection {
 
+  private static final Logger LOGGER = LoggerFactory
+      .getLogger(SingleStoreConnection.class);
   private static final String QUOTED_CHARACTER = "`";
   protected static final String URL_PATTERN = "jdbc:singlestore://${hostname}:${port}/?connectTimeout=${connectTimeout}";
   protected static final String URL_PATTERN_DATABASE = "jdbc:singlestore://${hostname}:${port}/${dbname}?connectTimeout=${connectTimeout}";
@@ -40,17 +45,25 @@ public class SingleStoreConnection extends JdbcConnection {
     this.connectionConfig = connectionConfig;
   }
 
-  public boolean isRowstoreTable(TableId tableId) throws SQLException {
+  public boolean isRowstoreTable(TableId tableId) {
     AtomicBoolean res = new AtomicBoolean(false);
-    prepareQuery(
-        "SELECT table_type = 'INMEMORY_ROWSTORE' as isRowstore FROM information_schema.tables WHERE table_schema = ? && table_name = ?",
-        statement -> {
-          statement.setString(1, tableId.catalog());
-          statement.setString(2, tableId.table());
-        },
-        rs -> {
-          res.set(rs.getBoolean(1));
-        });
+    try {
+      prepareQuery(
+          "SELECT storage_type = 'INMEMORY_ROWSTORE' as isRowstore FROM information_schema.tables WHERE table_schema = ? && table_name = ?",
+          statement -> {
+            statement.setString(1, tableId.catalog());
+            statement.setString(2, tableId.table());
+          },
+          rs -> {
+            rs.next();
+            res.set(rs.getBoolean(1));
+          });
+    } catch (SQLException e) {
+      LOGGER.warn("Failed to check if table {} is rowstore or columnstore",
+          quotedTableIdString(tableId));
+      return false;
+    }
+
     return res.get();
   }
 
@@ -303,5 +316,15 @@ public class SingleStoreConnection extends JdbcConnection {
       String mode = config.getString(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
       return CommonConnectorConfig.EventProcessingFailureHandlingMode.parse(mode);
     }
+  }
+
+  @Override
+  protected Map<TableId, List<Attribute>> getAttributeDetails(TableId tableId) {
+    Attribute isRowstore = Attribute.editor()
+        .name("IS_ROWSTORE")
+        .value(isRowstoreTable(tableId))
+        .create();
+
+    return Collections.singletonMap(tableId, Collections.singletonList(isRowstore));
   }
 }

@@ -1,9 +1,11 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.util.InternalIdUtils;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.SnapshotChangeRecordEmitter;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.Clock;
 import org.apache.kafka.connect.data.Schema;
@@ -13,15 +15,15 @@ import org.apache.kafka.connect.data.Struct;
 public class SingleStoreSnapshotChangeRecordEmitter extends
     SnapshotChangeRecordEmitter<SingleStorePartition> {
 
-  private static final String INTERNAL_ID = "internalId";
-
-  private final long internalId;
+  private final Long internalId;
+  private final Table table;
 
   public SingleStoreSnapshotChangeRecordEmitter(SingleStorePartition partition,
-      OffsetContext offset, Object[] row, long internalId, Clock clock,
-      RelationalDatabaseConnectorConfig connectorConfig) {
+      OffsetContext offset, Object[] row, Long internalId, Clock clock,
+      RelationalDatabaseConnectorConfig connectorConfig, Table table) {
     super(partition, offset, row, clock, connectorConfig);
     this.internalId = internalId;
+    this.table = table;
   }
 
   @Override
@@ -32,14 +34,8 @@ public class SingleStoreSnapshotChangeRecordEmitter extends
     Struct envelope = tableSchema.getEnvelopeSchema()
         .read(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
 
-    receiver.changeRecord(getPartition(), tableSchema, Envelope.Operation.READ, keyFromInternalId(),
+    receiver.changeRecord(getPartition(), tableSchema, Envelope.Operation.READ,
+        InternalIdUtils.generateKey(table, tableSchema, newColumnValues, internalId),
         envelope, getOffset(), null);
-  }
-
-  private Struct keyFromInternalId() {
-    Struct result = new Struct(
-        SchemaBuilder.struct().field(INTERNAL_ID, Schema.INT64_SCHEMA).build());
-    result.put(INTERNAL_ID, internalId);
-    return result;
   }
 }
