@@ -327,4 +327,10 @@ public class SingleStoreConnection extends JdbcConnection {
 
     return Collections.singletonMap(tableId, Collections.singletonList(isRowstore));
   }
+
+  @Override
+  protected List<String> readPrimaryKeyOrUniqueIndexNames(DatabaseMetaData metadata, TableId id)
+      throws SQLException {
+    return readPrimaryKeyNames(metadata, id);
+  }
 }
