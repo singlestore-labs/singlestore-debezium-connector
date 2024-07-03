@@ -15,11 +15,11 @@ import org.apache.kafka.connect.data.Struct;
 public class SingleStoreSnapshotChangeRecordEmitter extends
     SnapshotChangeRecordEmitter<SingleStorePartition> {
 
-  private final Long internalId;
+  private final long internalId;
   private final Table table;
 
   public SingleStoreSnapshotChangeRecordEmitter(SingleStorePartition partition,
-      OffsetContext offset, Object[] row, Long internalId, Clock clock,
+      OffsetContext offset, Object[] row, long internalId, Clock clock,
       RelationalDatabaseConnectorConfig connectorConfig, Table table) {
     super(partition, offset, row, clock, connectorConfig);
     this.internalId = internalId;

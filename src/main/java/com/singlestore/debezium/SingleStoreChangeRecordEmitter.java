@@ -26,12 +26,12 @@ public class SingleStoreChangeRecordEmitter extends
   private final OffsetContext offset;
   private final Object[] before;
   private final Object[] after;
-  private final Long internalId;
+  private final long internalId;
   private final Table table;
 
   public SingleStoreChangeRecordEmitter(SingleStorePartition partition, OffsetContext offset,
       Clock clock, Operation operation, Object[] before,
-      Object[] after, Long internalId, SingleStoreConnectorConfig connectorConfig, Table table) {
+      Object[] after, long internalId, SingleStoreConnectorConfig connectorConfig, Table table) {
     super(partition, offset, clock, connectorConfig);
     this.offset = offset;
     this.operation = operation;

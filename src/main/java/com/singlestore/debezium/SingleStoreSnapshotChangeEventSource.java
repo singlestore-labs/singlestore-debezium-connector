@@ -398,7 +398,7 @@ public class SingleStoreSnapshotChangeEventSource extends
    */
   protected ChangeRecordEmitter<SingleStorePartition> getChangeRecordEmitter(
       SingleStorePartition partition, SingleStoreOffsetContext offset, TableId tableId, Table table,
-      Object[] row, Long internalId, Instant timestamp) {
+      Object[] row, long internalId, Instant timestamp) {
     offset.event(tableId, timestamp);
     return new SingleStoreSnapshotChangeRecordEmitter(partition, offset, row, internalId,
         getClock(), connectorConfig, table);

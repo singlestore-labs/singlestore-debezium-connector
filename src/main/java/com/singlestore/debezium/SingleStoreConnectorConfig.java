@@ -275,10 +275,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
     return config.getString(DATABASE_NAME);
   }
 
-  public String tableName() {
-    return config.getString(TABLE_NAME);
-  }
-
   public String hostname() {
     return config.getString(HOSTNAME);
   }

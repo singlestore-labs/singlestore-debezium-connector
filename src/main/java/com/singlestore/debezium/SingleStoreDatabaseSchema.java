@@ -21,8 +21,6 @@ import java.util.Map;
  */
 public class SingleStoreDatabaseSchema extends RelationalDatabaseSchema {
 
-  private Map<TableId, Boolean> isRowstore = new HashMap<>();
-
   public SingleStoreDatabaseSchema(SingleStoreConnectorConfig config,
       SingleStoreValueConverters valueConverter,
       SingleStoreDefaultValueConverter defaultValueConverter,
@@ -55,12 +53,7 @@ public class SingleStoreDatabaseSchema extends RelationalDatabaseSchema {
       throws SQLException {
     connection.readSchema(tables(), null, null, getTableFilter(), null, true);
     refreshSchemas();
-
     return this;
-  }
-
-  public Boolean isRowstore(TableId tableId) {
-    return isRowstore.get(tableId);
   }
 
   /**
