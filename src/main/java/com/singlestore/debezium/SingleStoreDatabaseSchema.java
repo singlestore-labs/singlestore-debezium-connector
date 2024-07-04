@@ -1,16 +1,12 @@
 package com.singlestore.debezium;
 
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.relational.Attribute;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
-import io.debezium.relational.Key.KeyMapper;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Component that records the schema information for the {@link SingleStoreConnector}. The schema
@@ -52,6 +48,7 @@ public class SingleStoreDatabaseSchema extends RelationalDatabaseSchema {
   protected SingleStoreDatabaseSchema refresh(SingleStoreConnection connection)
       throws SQLException {
     connection.readSchema(tables(), null, null, getTableFilter(), null, true);
+    connection.refreshAttributes(tables(), tableIds());
     refreshSchemas();
     return this;
   }

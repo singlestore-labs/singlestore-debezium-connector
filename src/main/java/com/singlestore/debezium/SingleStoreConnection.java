@@ -9,7 +9,9 @@ import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Attribute;
 import io.debezium.relational.ColumnId;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 import io.debezium.util.Strings;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
@@ -45,26 +47,34 @@ public class SingleStoreConnection extends JdbcConnection {
     this.connectionConfig = connectionConfig;
   }
 
-  public boolean isRowstoreTable(TableId tableId) {
+  public boolean isRowstoreTable(TableId tableId) throws SQLException {
     AtomicBoolean res = new AtomicBoolean(false);
-    try {
-      prepareQuery(
-          "SELECT storage_type = 'INMEMORY_ROWSTORE' as isRowstore FROM information_schema.tables WHERE table_schema = ? && table_name = ?",
-          statement -> {
-            statement.setString(1, tableId.catalog());
-            statement.setString(2, tableId.table());
-          },
-          rs -> {
-            rs.next();
-            res.set(rs.getBoolean(1));
-          });
-    } catch (SQLException e) {
-      LOGGER.warn("Failed to check if table {} is rowstore or columnstore",
-          quotedTableIdString(tableId));
-      return false;
-    }
+    prepareQuery(
+        "SELECT storage_type = 'INMEMORY_ROWSTORE' as isRowstore FROM information_schema.tables WHERE table_schema = ? && table_name = ?",
+        statement -> {
+          statement.setString(1, tableId.catalog());
+          statement.setString(2, tableId.table());
+        },
+        rs -> {
+          rs.next();
+          res.set(rs.getBoolean(1));
+        });
 
     return res.get();
+  }
+
+  public void refreshAttributes(Tables tables, Set<TableId> tableIds) throws SQLException {
+    for (TableId tableId : tableIds) {
+      Attribute isRowstore = Attribute.editor()
+          .name("IS_ROWSTORE")
+          .value(isRowstoreTable(tableId))
+          .create();
+
+      tables.overwriteTable(tables
+          .editTable(tableId)
+          .addAttribute(isRowstore)
+          .create());
+    }
   }
 
   private static void validateServerVersion(Statement statement) throws SQLException {
@@ -316,16 +326,6 @@ public class SingleStoreConnection extends JdbcConnection {
       String mode = config.getString(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
       return CommonConnectorConfig.EventProcessingFailureHandlingMode.parse(mode);
     }
-  }
-
-  @Override
-  protected Map<TableId, List<Attribute>> getAttributeDetails(TableId tableId) {
-    Attribute isRowstore = Attribute.editor()
-        .name("IS_ROWSTORE")
-        .value(isRowstoreTable(tableId))
-        .create();
-
-    return Collections.singletonMap(tableId, Collections.singletonList(isRowstore));
   }
 
   @Override

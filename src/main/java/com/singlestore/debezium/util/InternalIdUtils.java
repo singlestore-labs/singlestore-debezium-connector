@@ -10,7 +10,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
-public class InternalIdUtils {
+public final class InternalIdUtils {
 
   public static final String INTERNAL_ID = "internalId";
 
@@ -69,5 +69,8 @@ public class InternalIdUtils {
         .create());
 
     return result;
+  }
+
+  private InternalIdUtils() {
   }
 }
