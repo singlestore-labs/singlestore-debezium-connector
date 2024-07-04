@@ -154,7 +154,9 @@ describes the structure of the payload, while the payload contains the actual da
 
 ### Change event keys
 
-For each changed table, the change event key payload consists of a single field named `internalid`.
+The change event key payload for rowstore tables that have a primary key consists of primary key
+fields.
+The change event key payload for all other tables consists of a single field named `internalid`.
 It represents a unique ID assigned to each row in the database.
 
 ```
@@ -176,10 +178,10 @@ It represents a unique ID assigned to each row in the database.
 }
 ```
 
-| Item | Field name | Description                                                                                                       
-|------|------------|-------------------------------------------------------------------------------------------------------------------
-| 1    | `schema`   | Specifies a Kafka Connect schema that describes the structure of the key's `payload`.                             
-| 2    | `payload`  | Contains a single field `internalId` used to specify the ID of the row for which this change event was generated. 
+| Item | Field name | Description                                                                                                                                                                                                       
+|------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| 1    | `schema`   | Specifies a Kafka Connect schema that describes the structure of the key's `payload`.                                                                                                                             
+| 2    | `payload`  | For rowstore tables that have a primary key, contains primary key fields. For all other tables, contains a single field `internalId` used to specify the ID of the row for which this change event was generated. 
 
 ### Change event values
 

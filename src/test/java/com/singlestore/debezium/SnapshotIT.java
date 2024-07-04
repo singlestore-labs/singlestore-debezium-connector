@@ -238,4 +238,42 @@ public class SnapshotIT extends IntegrationTestBase {
       stopConnector();
     }
   }
+
+  @Test
+  public void testPKInRowstore() throws Exception {
+    try (SingleStoreConnection createTableConn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("product"))) {
+      createTableConn.execute(
+          "CREATE ROWSTORE TABLE IF NOT EXISTS pkInRowstoreSnapshot(a INT, b TEXT, c TEXT, PRIMARY KEY(a, b));"
+              + "DELETE FROM pkInRowstoreSnapshot WHERE 1 = 1;");
+      try (SingleStoreConnection conn = new SingleStoreConnection(
+          defaultJdbcConnectionConfigWithTable("pkInRowstoreSnapshot"))) {
+        conn.execute("INSERT INTO pkInRowstoreSnapshot VALUES (2, 'd', 'e')");
+        conn.execute("INSERT INTO pkInRowstoreSnapshot VALUES (1, 'b', 'c')");
+        conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
+
+        Configuration config = defaultJdbcConfigWithTable("pkInRowstoreSnapshot");
+        config = config.edit().withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
+            "db.pkInRowstoreSnapshot.a,db.pkInRowstoreSnapshot.c").build();
+        start(SingleStoreConnector.class, config);
+        assertConnectorIsRunning();
+        try {
+          List<SourceRecord> records = consumeRecordsByTopic(2).allRecordsInOrder();
+          assertEquals(2, records.size());
+
+          List<Integer> keyA = Arrays.asList(2, 1);
+          List<String> keyB = Arrays.asList("d", "b");
+
+          for (int i = 0; i < records.size(); i++) {
+            SourceRecord record = records.get(i);
+            Struct key = (Struct) record.key();
+            assertEquals(key.getInt32("a"), keyA.get(i));
+            assertEquals(key.getString("b"), keyB.get(i));
+          }
+        } finally {
+          stopConnector();
+        }
+      }
+    }
+  }
 }

@@ -4,7 +4,6 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
-import io.debezium.relational.Key.KeyMapper;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 import java.sql.SQLException;

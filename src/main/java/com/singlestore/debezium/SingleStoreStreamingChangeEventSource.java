@@ -144,7 +144,8 @@ public class SingleStoreStreamingChangeEventSource implements
                             null,
                             after,
                             internalId,
-                            connectorConfig));
+                            connectorConfig,
+                            schema.tableFor(table)));
                   } catch (InterruptedException e) {
                     interrupted[0] = e;
                     break;

@@ -7,8 +7,12 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.Attribute;
 import io.debezium.relational.ColumnId;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
+import io.debezium.relational.Tables.ColumnNameFilter;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.util.Strings;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
@@ -16,16 +20,22 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link JdbcConnection} extension to be used with SingleStore
  */
 public class SingleStoreConnection extends JdbcConnection {
 
+  private static final Logger LOGGER = LoggerFactory
+      .getLogger(SingleStoreConnection.class);
   private static final String QUOTED_CHARACTER = "`";
   protected static final String URL_PATTERN = "jdbc:singlestore://${hostname}:${port}/?connectTimeout=${connectTimeout}";
   protected static final String URL_PATTERN_DATABASE = "jdbc:singlestore://${hostname}:${port}/${dbname}?connectTimeout=${connectTimeout}";
@@ -36,6 +46,43 @@ public class SingleStoreConnection extends JdbcConnection {
     super(connectionConfig.jdbcConfig, connectionConfig.factory,
         SingleStoreConnection::validateServerVersion, QUOTED_CHARACTER, QUOTED_CHARACTER);
     this.connectionConfig = connectionConfig;
+  }
+
+  public boolean isRowstoreTable(TableId tableId) throws SQLException {
+    AtomicBoolean res = new AtomicBoolean(false);
+    prepareQuery(
+        "SELECT storage_type = 'INMEMORY_ROWSTORE' as isRowstore FROM information_schema.tables WHERE table_schema = ? && table_name = ?",
+        statement -> {
+          statement.setString(1, tableId.catalog());
+          statement.setString(2, tableId.table());
+        },
+        rs -> {
+          rs.next();
+          res.set(rs.getBoolean(1));
+        });
+
+    return res.get();
+  }
+
+  public void addIsRowstoreAttribute(Tables tables) throws SQLException {
+    for (TableId tableId : tables.tableIds()) {
+      Attribute isRowstore = Attribute.editor()
+          .name("IS_ROWSTORE")
+          .value(isRowstoreTable(tableId))
+          .create();
+
+      tables.updateTable(tableId, table ->
+          table.edit().addAttribute(isRowstore).create());
+    }
+  }
+
+  @Override
+  public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern,
+      TableFilter tableFilter, ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
+      throws SQLException {
+    super.readSchema(tables, databaseCatalog, schemaNamePattern, tableFilter, columnFilter,
+        removeTablesNotFoundInJdbc);
+    addIsRowstoreAttribute(tables);
   }
 
   private static void validateServerVersion(Statement statement) throws SQLException {
@@ -287,5 +334,11 @@ public class SingleStoreConnection extends JdbcConnection {
       String mode = config.getString(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
       return CommonConnectorConfig.EventProcessingFailureHandlingMode.parse(mode);
     }
+  }
+
+  @Override
+  protected List<String> readPrimaryKeyOrUniqueIndexNames(DatabaseMetaData metadata, TableId id)
+      throws SQLException {
+    return readPrimaryKeyNames(metadata, id);
   }
 }

@@ -479,4 +479,45 @@ public class StreamingIT extends IntegrationTestBase {
       }
     }
   }
+
+  @Test
+  public void testPKInRowstore() throws Exception {
+    try (SingleStoreConnection createTableConn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("product"))) {
+      createTableConn.execute(
+          "CREATE ROWSTORE TABLE IF NOT EXISTS pkInRowstore(a INT, b TEXT, c TEXT, PRIMARY KEY(a, b));"
+              + "DELETE FROM pkInRowstore WHERE 1 = 1;");
+      try (SingleStoreConnection conn = new SingleStoreConnection(
+          defaultJdbcConnectionConfigWithTable("pkInRowstore"))) {
+        Configuration config = defaultJdbcConfigWithTable("pkInRowstore");
+        config = config.edit().withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
+            "db.pkInRowstore.a,db.pkInRowstore.c").build();
+        conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
+        start(SingleStoreConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+
+        try {
+          conn.execute("INSERT INTO pkInRowstore VALUES (2, 'd', 'e')");
+          conn.execute("INSERT INTO pkInRowstore VALUES (1, 'b', 'c')");
+          conn.execute("DELETE FROM pkInRowstore WHERE a = 1");
+
+          List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
+          assertEquals(3, records.size());
+
+          List<Integer> keyA = Arrays.asList(2, 1, 1);
+          List<String> keyB = Arrays.asList("d", "b", "b");
+
+          for (int i = 0; i < records.size(); i++) {
+            SourceRecord record = records.get(i);
+            Struct key = (Struct) record.key();
+            assertEquals(key.getInt32("a"), keyA.get(i));
+            assertEquals(key.getString("b"), keyB.get(i));
+          }
+        } finally {
+          stopConnector();
+        }
+      }
+    }
+  }
 }

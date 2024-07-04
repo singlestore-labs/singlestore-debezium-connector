@@ -328,7 +328,8 @@ public class SingleStoreSnapshotChangeEventSource extends
             setSnapshotMarker(offset, firstTable, lastTable, rows == 1,
                 ObserveResultSetUtils.isCommitSnapshot(rs) && numPartitions == 1);
             dispatcher.dispatchSnapshotEvent(partition, table.id(),
-                getChangeRecordEmitter(partition, offset, table.id(), row, internalId,
+                getChangeRecordEmitter(partition, offset, table.id(), table, row,
+                    internalId,
                     sourceTableSnapshotTimestamp), snapshotReceiver);
           }
         }
@@ -396,11 +397,11 @@ public class SingleStoreSnapshotChangeEventSource extends
    * Returns a {@link ChangeRecordEmitter} producing the change records for the given table row.
    */
   protected ChangeRecordEmitter<SingleStorePartition> getChangeRecordEmitter(
-      SingleStorePartition partition, SingleStoreOffsetContext offset, TableId tableId,
+      SingleStorePartition partition, SingleStoreOffsetContext offset, TableId tableId, Table table,
       Object[] row, long internalId, Instant timestamp) {
     offset.event(tableId, timestamp);
     return new SingleStoreSnapshotChangeRecordEmitter(partition, offset, row, internalId,
-        getClock(), connectorConfig);
+        getClock(), connectorConfig, table);
   }
 
   private Threads.Timer getTableScanLogTimer() {
