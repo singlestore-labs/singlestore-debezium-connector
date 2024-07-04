@@ -48,7 +48,6 @@ public class SingleStoreDatabaseSchema extends RelationalDatabaseSchema {
   protected SingleStoreDatabaseSchema refresh(SingleStoreConnection connection)
       throws SQLException {
     connection.readSchema(tables(), null, null, getTableFilter(), null, true);
-    connection.refreshAttributes(tables(), tableIds());
     refreshSchemas();
     return this;
   }

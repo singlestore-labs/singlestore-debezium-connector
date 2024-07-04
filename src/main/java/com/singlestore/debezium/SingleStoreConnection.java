@@ -9,9 +9,10 @@ import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Attribute;
 import io.debezium.relational.ColumnId;
-import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
+import io.debezium.relational.Tables.ColumnNameFilter;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.util.Strings;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
@@ -63,18 +64,25 @@ public class SingleStoreConnection extends JdbcConnection {
     return res.get();
   }
 
-  public void refreshAttributes(Tables tables, Set<TableId> tableIds) throws SQLException {
-    for (TableId tableId : tableIds) {
+  public void addIsRowstoreAttribute(Tables tables) throws SQLException {
+    for (TableId tableId : tables.tableIds()) {
       Attribute isRowstore = Attribute.editor()
           .name("IS_ROWSTORE")
           .value(isRowstoreTable(tableId))
           .create();
 
-      tables.overwriteTable(tables
-          .editTable(tableId)
-          .addAttribute(isRowstore)
-          .create());
+      tables.updateTable(tableId, table ->
+          table.edit().addAttribute(isRowstore).create());
     }
+  }
+
+  @Override
+  public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern,
+      TableFilter tableFilter, ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
+      throws SQLException {
+    super.readSchema(tables, databaseCatalog, schemaNamePattern, tableFilter, columnFilter,
+        removeTablesNotFoundInJdbc);
+    addIsRowstoreAttribute(tables);
   }
 
   private static void validateServerVersion(Statement statement) throws SQLException {
