@@ -1,8 +1,6 @@
 package com.singlestore.debezium;
 
-import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
-import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
-
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -14,28 +12,27 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.util.Strings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
+import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
 
 /**
  * {@link JdbcConnection} extension to be used with SingleStore
  */
 public class SingleStoreConnection extends JdbcConnection {
 
-  private static final Logger LOGGER = LoggerFactory
-      .getLogger(SingleStoreConnection.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(
+          SingleStoreConnection.class);
   private static final String QUOTED_CHARACTER = "`";
   protected static final String URL_PATTERN = "jdbc:singlestore://${hostname}:${port}/?connectTimeout=${connectTimeout}";
   protected static final String URL_PATTERN_DATABASE = "jdbc:singlestore://${hostname}:${port}/${dbname}?connectTimeout=${connectTimeout}";
@@ -144,16 +141,23 @@ public class SingleStoreConnection extends JdbcConnection {
       Optional<OBSERVE_OUTPUT_FORMAT> format,
       Optional<String> outputConfig, Optional<String> offSetConfig, Optional<String> recordFilter,
       ResultSetConsumer resultSetConsumer) throws SQLException {
+    final String query = observeQuery(fieldFilter, tableFilter, format, outputConfig, offSetConfig, recordFilter);
+    return query(query, resultSetConsumer);
+  }
+
+  private String observeQuery(Set<ColumnId> fieldFilter, Set<TableId> tableFilter,
+                              Optional<OBSERVE_OUTPUT_FORMAT> format,
+                              Optional<String> outputConfig, Optional<String> offSetConfig, Optional<String> recordFilter) {
     StringBuilder query = new StringBuilder("OBSERVE ");
     if (fieldFilter != null && !fieldFilter.isEmpty()) {
       query.append(fieldFilter.stream().map(this::quotedColumnIdString)
-          .collect(Collectors.joining(","))).append(" FROM ");
+              .collect(Collectors.joining(","))).append(" FROM ");
     } else {
       query.append("* FROM ");
     }
     if (tableFilter != null && !tableFilter.isEmpty()) {
       query.append(
-          tableFilter.stream().map(this::quotedTableIdString).collect(Collectors.joining(",")));
+              tableFilter.stream().map(this::quotedTableIdString).collect(Collectors.joining(",")));
     } else {
       query.append("*");
     }
@@ -161,7 +165,34 @@ public class SingleStoreConnection extends JdbcConnection {
     outputConfig.ifPresent(c -> query.append(" INTO ").append(c));
     offSetConfig.ifPresent(o -> query.append(" BEGIN AT ").append(o));
     recordFilter.ifPresent(f -> query.append(" WHERE ").append(f));
-    return query(query.toString(), resultSetConsumer);
+    return query.toString();
+  }
+
+  /**
+   * Validate observable offset before streaming.
+   *
+   * @param offset to validate
+   * @return true if streaming is possible for given offset, false otherwise
+   */
+  public boolean validateOffset(Set<TableId> tableFilter, SingleStorePartition partition, SingleStoreOffsetContext offset) {
+    List<String> offsets = offset.offsets().stream().filter(Objects::nonNull).map(o -> "'" + o + "'").collect(Collectors.toList());
+    Optional<String> offsetParam = Optional.of("(" + String.join(",", offsets) + ")");
+    final String query = observeQuery(null, tableFilter, Optional.empty(), Optional.empty(), offsetParam, Optional.empty());
+    //sometimes same observe query is failed after second time execution with the same offset
+    try (Statement statement = connection().createStatement(); AutoClosableResultSetWrapper rsWrapper = AutoClosableResultSetWrapper.from(statement.executeQuery(query))) {
+      rsWrapper.getResultSet().next();
+    } catch (SQLException e) {
+      if (e.getMessage().contains("The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
+              && e.getErrorCode() == 2851 && e.getSQLState().equals("HY000")) {
+        LOGGER.warn("Failed to validate offset {}", offsetParam.get());
+        return false;
+      } else {
+        LOGGER.error(e.getMessage());
+        throw new DebeziumException(e);
+      }
+    }
+    LOGGER.trace("Offset {} is successfully validated", offsetParam.get());
+    return true;
   }
 
   public SingleStoreConnectionConfiguration connectionConfig() {
