@@ -568,6 +568,7 @@ You can use either of the following options to recover from the failure:
 * Delete the failed connector, and create a new connector with the same configuration but with a
   different connector name.
 * Pause the connector and then remove offsets, or change the offset topic.
+* Run connector with `snapshot.mode` property set to `when_needed` option (see [here](#advanced-connector-configuration-properties)). Connector removes stale offsets automatically and starts with a snapshot.
 
 To help prevent failures related to stale offsets, you can increase the value of the following
 engine variables in SingleStore:

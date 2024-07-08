@@ -1,5 +1,6 @@
 package com.singlestore.debezium;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -177,12 +178,18 @@ public class SingleStoreConnection extends JdbcConnection {
     List<String> offsets = offset.offsets().stream().filter(Objects::nonNull).map(o -> "'" + o + "'").collect(Collectors.toList());
     Optional<String> offsetParam = Optional.of("(" + String.join(",", offsets) + ")");
     final String query = observeQuery(null, tableFilter, Optional.empty(), Optional.empty(), offsetParam, Optional.empty());
-    //consider another way of offset validation, sometimes same observe query is failed after second time execution with same offset
+    //sometimes same observe query is failed after second time execution with the same offset
     try (Statement statement = connection().createStatement(); AutoClosableResultSetWrapper rsWrapper = AutoClosableResultSetWrapper.from(statement.executeQuery(query))) {
       rsWrapper.getResultSet().next();
-    } catch (Exception e) {
-      LOGGER.warn("Failed to validate offset {}", offsetParam.get());
-      return false;
+    } catch (SQLException e) {
+      if (e.getMessage().contains("The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
+              && e.getErrorCode() == 2851 && e.getSQLState().equals("HY000")) {
+        LOGGER.warn("Failed to validate offset {}", offsetParam.get());
+        return false;
+      } else {
+        LOGGER.error(e.getMessage());
+        throw new DebeziumException(e);
+      }
     }
     LOGGER.trace("Offset {} is successfully validated", offsetParam.get());
     return true;
