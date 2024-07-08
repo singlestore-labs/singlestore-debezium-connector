@@ -257,6 +257,7 @@ public class SnapshotIT extends IntegrationTestBase {
             "db.pkInRowstoreSnapshot.a,db.pkInRowstoreSnapshot.c").build();
         start(SingleStoreConnector.class, config);
         assertConnectorIsRunning();
+        waitForStreamingToStart();
         try {
           List<SourceRecord> records = consumeRecordsByTopic(2).allRecordsInOrder();
           assertEquals(2, records.size());
