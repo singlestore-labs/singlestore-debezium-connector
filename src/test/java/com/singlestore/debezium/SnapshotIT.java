@@ -10,6 +10,7 @@ import io.debezium.config.Configuration;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -259,11 +260,19 @@ public class SnapshotIT extends IntegrationTestBase {
         assertConnectorIsRunning();
         waitForStreamingToStart();
         try {
-          List<SourceRecord> records = consumeRecordsByTopic(2).allRecordsInOrder();
+          List<SourceRecord> records = new ArrayList<>(
+              consumeRecordsByTopic(2).allRecordsInOrder());
           assertEquals(2, records.size());
+          records.sort(new Comparator<SourceRecord>() {
+            @Override
+            public int compare(SourceRecord r1, SourceRecord r2) {
+              return ((Struct) r1.key()).getInt32("a")
+                  .compareTo(((Struct) r2.key()).getInt32("a"));
+            }
+          });
 
-          List<Integer> keyA = Arrays.asList(2, 1);
-          List<String> keyB = Arrays.asList("d", "b");
+          List<Integer> keyA = Arrays.asList(1, 2);
+          List<String> keyB = Arrays.asList("b", "d");
 
           for (int i = 0; i < records.size(); i++) {
             SourceRecord record = records.get(i);

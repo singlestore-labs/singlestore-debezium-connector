@@ -35,7 +35,7 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
   static final String TEST_SERVER = System.getProperty("singlestore.hostname", "localhost");
   private static final String TEST_SERVER_VERSION = System.getProperty("singlestore.version", "");
   private static final String TEST_USER = System.getProperty("singlestore.user", "root");
-  private static final String TEST_PASSWORD = System.getProperty("singlestore.password", "root");
+  private static final String TEST_PASSWORD = "password";
   static final String TEST_DATABASE = "db";
   static final String TEST_TOPIC_PREFIX = "singlestore_topic";
   private static final String SINGLESTORE_LICENSE = System.getenv("SINGLESTORE_LICENSE");
