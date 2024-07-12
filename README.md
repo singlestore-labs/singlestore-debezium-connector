@@ -39,7 +39,7 @@ in specific columns.
 ### Installation
 
 * Download
-  the [SingleStore connector for Debezium plugin archive](https://github.com/singlestore-labs/singlestore-debezium-connector/releases/download/v0.1.3/singlestore-debezium-connector-0.1.3-plugin.tar.gz).
+  the [SingleStore connector for Debezium plugin archive](https://github.com/singlestore-labs/singlestore-debezium-connector/releases/download/v0.1.5/singlestore-debezium-connector-0.1.5-plugin.tar.gz).
 * Extract the archive to a directory.
 * Add the directory from the previous step to Kafka Connect’s plugin path.
   Set the `plugin.path` property in the `connect-distributed.properties` file.
@@ -232,7 +232,7 @@ operation that inserts data in the `t` table:
          "a":33
       },
       "source":{
-         "version":"0.1.3",
+         "version":"0.1.5",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197043473,
@@ -267,7 +267,7 @@ as the preceding create event.
          "a":22
       },
       "source":{
-         "version":"0.1.3",
+         "version":"0.1.5",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197446500,
@@ -309,7 +309,7 @@ update event examples.
       "before":null,
       "after":null,
       "source":{
-         "version":"0.1.3",
+         "version":"0.1.5",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197665407,
@@ -568,7 +568,9 @@ You can use either of the following options to recover from the failure:
 * Delete the failed connector, and create a new connector with the same configuration but with a
   different connector name.
 * Pause the connector and then remove offsets, or change the offset topic.
-* Run connector with `snapshot.mode` property set to `when_needed` option (see [here](#advanced-connector-configuration-properties)). Connector removes stale offsets automatically and starts with a snapshot.
+* Run connector with `snapshot.mode` property set to `when_needed` option (
+  see [here](#advanced-connector-configuration-properties)). Connector removes stale offsets
+  automatically and starts with a snapshot.
 
 To help prevent failures related to stale offsets, you can increase the value of the following
 engine variables in SingleStore:

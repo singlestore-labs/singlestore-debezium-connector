@@ -168,7 +168,7 @@ public class StreamingIT extends IntegrationTestBase {
         SourceRecord record = records.get(0);
 
         Struct source = (Struct) ((Struct) record.value()).get("source");
-        assertEquals(source.get("version"), "0.1.3");
+        assertEquals(source.get("version"), "0.1.5");
         assertEquals(source.get("connector"), "singlestore");
         assertEquals(source.get("name"), "singlestore_topic");
         assertNotNull(source.get("ts_ms"));
@@ -524,18 +524,18 @@ public class StreamingIT extends IntegrationTestBase {
 
   //Offset is validated successfully and offset is not reset, streaming should proceed after connector is restarted
   @Test
-  public void testValidOffsetInWhenNeededSnapshotMode() throws Exception{
+  public void testValidOffsetInWhenNeededSnapshotMode() throws Exception {
     String table = "validOffsets1";
     try (SingleStoreConnection conn = new SingleStoreConnection(
-            defaultJdbcConnectionConfig())) {
+        defaultJdbcConnectionConfig())) {
       conn.execute(String.format("USE %s", TEST_DATABASE),
-              String.format("DROP TABLE IF EXISTS %s", table),
-              String.format("CREATE TABLE %s(a INT)", table)
+          String.format("DROP TABLE IF EXISTS %s", table),
+          String.format("CREATE TABLE %s(a INT)", table)
       );
       Configuration config = defaultJdbcConfigWithTable(table).edit()
-              .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE,
-                      SingleStoreConnectorConfig.SnapshotMode.WHEN_NEEDED)
-              .build();
+          .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE,
+              SingleStoreConnectorConfig.SnapshotMode.WHEN_NEEDED)
+          .build();
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
       waitForStreamingToStart();
@@ -562,8 +562,10 @@ public class StreamingIT extends IntegrationTestBase {
       records = consumeRecordsByTopic(10).allRecordsInOrder();
       assertEquals(10, records.size());
       //expected offset is not reset and stream type records are consumed
-      assertNotNull("must be a stream type record", records.get(0).sourceOffset().get("snapshot_completed"));
-      assertTrue("must be a stream type record", Boolean.parseBoolean(records.get(0).sourceOffset().get("snapshot_completed").toString()));
+      assertNotNull("must be a stream type record",
+          records.get(0).sourceOffset().get("snapshot_completed"));
+      assertTrue("must be a stream type record",
+          Boolean.parseBoolean(records.get(0).sourceOffset().get("snapshot_completed").toString()));
     } finally {
       stopConnector();
     }
@@ -574,19 +576,19 @@ public class StreamingIT extends IntegrationTestBase {
   public void testStaleOffsetInWhenNeededSnapshotMode() throws Exception {
     String table = "staleOffsets2";
     try (SingleStoreConnection conn = new SingleStoreConnection(
-            defaultJdbcConnectionConfig())) {
+        defaultJdbcConnectionConfig())) {
       try {
         conn.execute(String.format("USE %s", TEST_DATABASE),
-                "SET GLOBAL snapshots_to_keep=1",
-                "SET GLOBAL snapshot_trigger_size=65536",
-                String.format("DROP TABLE IF EXISTS %s", table),
-                String.format("CREATE TABLE %s(a INT)", table)
+            "SET GLOBAL snapshots_to_keep=1",
+            "SET GLOBAL snapshot_trigger_size=65536",
+            String.format("DROP TABLE IF EXISTS %s", table),
+            String.format("CREATE TABLE %s(a INT)", table)
         );
         Configuration config = defaultJdbcConfigWithTable(table).edit()
-                .withDefault(OFFSET_FLUSH_INTERVAL_MS, 20)
-                .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE,
-                        SingleStoreConnectorConfig.SnapshotMode.WHEN_NEEDED)
-                .build();
+            .withDefault(OFFSET_FLUSH_INTERVAL_MS, 20)
+            .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE,
+                SingleStoreConnectorConfig.SnapshotMode.WHEN_NEEDED)
+            .build();
         start(SingleStoreConnector.class, config);
         assertConnectorIsRunning();
         waitForStreamingToStart();
@@ -613,11 +615,13 @@ public class StreamingIT extends IntegrationTestBase {
         Thread.sleep(1000);
         records = consumeRecordsByTopic(10000).allRecordsInOrder();
         //expected offset is reset and snapshot type records are consumed
-        assertNotNull("must be a snapshot type record", records.get(0).sourceOffset().get("snapshot"));
-        assertTrue("must be a snapshot type record", Boolean.parseBoolean(records.get(0).sourceOffset().get("snapshot").toString()));
+        assertNotNull("must be a snapshot type record",
+            records.get(0).sourceOffset().get("snapshot"));
+        assertTrue("must be a snapshot type record",
+            Boolean.parseBoolean(records.get(0).sourceOffset().get("snapshot").toString()));
       } finally {
         conn.execute("SET GLOBAL snapshots_to_keep=2",
-                "SET GLOBAL snapshot_trigger_size=2147483648"
+            "SET GLOBAL snapshot_trigger_size=2147483648"
         );
         stopConnector();
       }
