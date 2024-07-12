@@ -28,7 +28,7 @@ jobs:
           cp .github/workflows/settings.xml ~/.m2/settings.xml
       - name: Release to Maven Central
         if: success()
-        run: mvn -B clean deploy --file pom.xml -P assembly
+        run: mvn -B clean deploy --file pom.xml -P assembly -Dsonatype.username=${{ secrets.SONATYPE_USERNAME }} -Dsonatype.password=${{ secrets.SONATYPE_PASSWORD }}
       - name: Release Plugin Archive
         uses: softprops/action-gh-release@v1
         with:
