@@ -167,6 +167,12 @@ public class SingleStoreSnapshotChangeEventSource extends
 
     Map<TableId, String> queryTables = new HashMap<>();
     Map<TableId, OptionalLong> rowCountTables = new LinkedHashMap<>();
+
+    for (TableId id : snapshotContext.capturedTables)
+    {
+      LOGGER.info("capturedTable {} : {}", id.databaseParts(), id.table());
+    }
+
     for (TableId tableId : snapshotContext.capturedTables) {
       final String selectStatement = determineSnapshotSelect(snapshotContext, tableId);
       LOGGER.info("For table '{}' using select statement: '{}'", tableId, selectStatement);
@@ -415,6 +421,11 @@ public class SingleStoreSnapshotChangeEventSource extends
     Set<TableId> snapshottedTableIds = determineDataCollectionsToBeSnapshotted(allTableIds,
         dataCollectionsToBeSnapshotted).collect(Collectors.toSet());
 
+    for (TableId id : snapshottedTableIds)
+    {
+      LOGGER.info("snapshotted table : parts {} table {}", id.databaseParts(), id.table());
+    }
+
     Set<TableId> capturedTables = new HashSet<>();
     Set<TableId> capturedSchemaTables = new HashSet<>();
 
@@ -450,22 +461,25 @@ public class SingleStoreSnapshotChangeEventSource extends
     String tableIncludeList = connectorConfig.tableIncludeList();
     String signalingDataCollection = connectorConfig.getSignalingDataCollectionId();
     List<Pattern> captureTablePatterns = new ArrayList<>();
+
+    Set<TableId> result = new HashSet<>();
     if (!Strings.isNullOrBlank(tableIncludeList)) {
       captureTablePatterns.addAll(Strings.listOfRegex(tableIncludeList, Pattern.CASE_INSENSITIVE));
+    } else {
+      result = capturedTables
+              .stream()
+              .sorted().collect(Collectors.toCollection(LinkedHashSet::new));
     }
     if (!Strings.isNullOrBlank(signalingDataCollection)) {
       captureTablePatterns.addAll(getSignalDataCollectionPattern(signalingDataCollection));
     }
     if (captureTablePatterns.size() > 0) {
-      return captureTablePatterns
+      result.addAll(captureTablePatterns
           .stream()
           .flatMap(pattern -> toTableIds(capturedTables, pattern))
-          .collect(Collectors.toCollection(LinkedHashSet::new));
+          .collect(Collectors.toCollection(LinkedHashSet::new)));
     }
-    return capturedTables
-        .stream()
-        .sorted()
-        .collect(Collectors.toCollection(LinkedHashSet::new));
+    return result;
   }
 
   private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
