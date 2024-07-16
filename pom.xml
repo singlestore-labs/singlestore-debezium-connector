@@ -11,6 +11,31 @@
   <description>SingleStore Debezium Connector</description>
   <url>https://github.com/singlestore-labs/singlestore-debezium-connector</url>
 
+  <organization>
+    <name>SingleStore</name>
+    <url>https://www.singlestore.com/</url>
+  </organization>
+
+  <developers>
+    <developer>
+      <id>singlestore</id>
+      <name>SingleStore</name>
+      <email>team@singlestore.com</email>
+      <organization>SingleStore</organization>
+      <organizationUrl>https://www.singlestore.com/</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <url>git://git@github.com:singlestore-labs/singlestore-debezium-connector.git</url>
+    <connection>scm:git:git@github.com:singlestore-labs/singlestore-debezium-connector.git
+    </connection>
+    <developerConnection>
+      scm:git:git@github.com:singlestore-labs/singlestore-debezium-connector.git
+    </developerConnection>
+    <tag>singlestore-debezium-connector-0.1.5</tag>
+  </scm>
+
   <licenses>
     <license>
       <name>Apache License, Version 2.0</name>
@@ -315,6 +340,19 @@
         <executions>
           <execution>
             <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.2.1</version>
+        <executions>
+          <execution>
+            <!--package phase-->
             <goals>
               <goal>jar</goal>
             </goals>
