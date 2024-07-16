@@ -190,6 +190,13 @@ public class SingleStoreSnapshotChangeEventSource extends
       boolean lastTable = tableOrder == tableCount && snapshotMaxThreads == 1;
       String selectStatement = queryTables.get(tableId);
       OptionalLong rowCount = rowCountTables.get(tableId);
+
+      notificationService.initialSnapshotNotificationService().notifyTableInProgress(
+              snapshotContext.partition,
+              snapshotContext.offset,
+              tableId.table(),
+              rowCountTables.keySet());
+
       Callable<SingleStoreOffsetContext> callable = createDataEventsForTableCallable(sourceContext,
           snapshotContext, snapshotReceiver,
           snapshotContext.tables.forTable(tableId), firstTable, lastTable, tableOrder++, tableCount,
@@ -347,7 +354,12 @@ public class SingleStoreSnapshotChangeEventSource extends
           rows, table.id(), tableOrder, tableCount,
           Strings.duration(clock.currentTimeInMillis() - exportStart));
       snapshotProgressListener.dataCollectionSnapshotCompleted(partition, table.id(), rows);
+      notificationService.initialSnapshotNotificationService().notifyCompletedTableSuccessfully(snapshotContext.partition,
+              snapshotContext.offset, table.id().table(), rows, snapshotContext.capturedTables);
     } catch (SQLException | BrokenBarrierException e) {
+      notificationService.initialSnapshotNotificationService().notifyCompletedTableWithError(snapshotContext.partition,
+              snapshotContext.offset,
+              table.id().table());
       throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
     }
     return commitOffset;
