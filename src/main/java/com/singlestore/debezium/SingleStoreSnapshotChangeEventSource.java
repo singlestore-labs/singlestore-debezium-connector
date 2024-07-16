@@ -395,7 +395,7 @@ public class SingleStoreSnapshotChangeEventSource extends
         .map(TableId::catalog)
         .collect(Collectors.toSet());
 
-    Tables.TableFilter tableFilter = snapshottingTask.isOnDemand() ? Tables.TableFilter
+    Tables.TableFilter tableFilter = snapshottingTask.isBlocking() ? Tables.TableFilter
         .fromPredicate(snapshotContext.capturedTables::contains)
         : connectorConfig.getTableFilters().dataCollectionFilter();
 
@@ -494,9 +494,7 @@ public class SingleStoreSnapshotChangeEventSource extends
   }
 
   @Override
-  protected SnapshotContext<SingleStorePartition, SingleStoreOffsetContext> prepare(
-      SingleStorePartition singleStorePartition, boolean onDemand) {
-    return new RelationalSnapshotContext<>(singleStorePartition, connectorConfig.databaseName(),
-        onDemand);
+  protected SnapshotContext<SingleStorePartition, SingleStoreOffsetContext> prepare(SingleStorePartition singleStorePartition) throws Exception {
+    return new RelationalSnapshotContext<>(singleStorePartition, connectorConfig.databaseName());
   }
 }

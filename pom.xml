@@ -48,7 +48,7 @@
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
 
-    <version.debezium>2.5.1.Final</version.debezium>
+    <version.debezium>2.5.0.Final</version.debezium>
     <version.kafka>3.6.1</version.kafka>
     <version.singlestore.jdbc.driver>1.2.0</version.singlestore.jdbc.driver>
     <version.jts.io>1.19.0</version.jts.io>
