@@ -627,4 +627,52 @@ public class StreamingIT extends IntegrationTestBase {
       }
     }
   }
+
+  @Test
+  public void schemaOnly() throws Exception {
+    try (SingleStoreConnection createTableConn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("product"))) {
+      createTableConn.execute(
+          "CREATE ROWSTORE TABLE IF NOT EXISTS schemaOnly(a INT, b TEXT);"
+              + "DELETE FROM schemaOnly WHERE 1 = 1;"
+              + "SNAPSHOT DATABASE db;"
+              + "INSERT INTO schemaOnly VALUES(1, 'a');"
+              + "SNAPSHOT DATABASE db");
+
+      Configuration config = defaultJdbcConfigWithTable("schemaOnly");
+      start(SingleStoreConnector.class, config);
+      assertConnectorIsRunning();
+      List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+      assertEquals(1, records.size());
+
+      SourceRecord record = records.get(0);
+      Struct value = (Struct) record.value();
+      assertEquals(Integer.valueOf(1), value.getStruct("after").getInt32("a"));
+      assertEquals("a", value.getStruct("after").getString("b"));
+      List<String> offsets = value.getStruct("source").getArray("offsets");
+
+      waitForStreamingToStart();
+      stopConnector();
+
+      config = config.edit()
+          .withDefault(SingleStoreConnectorConfig.OFFSETS, String.join(",", offsets))
+          .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE, "schema_only")
+          .build();
+
+      createTableConn.execute("INSERT INTO schemaOnly VALUES(2, 'b');");
+
+      start(SingleStoreConnector.class, config);
+      waitForStreamingToStart();
+      assertConnectorIsRunning();
+
+      records = consumeRecordsByTopic(1).allRecordsInOrder();
+      assertEquals(1, records.size());
+
+      record = records.get(0);
+      value = (Struct) record.value();
+      assertEquals(Integer.valueOf(2), value.getStruct("after").getInt32("a"));
+      assertEquals("b", value.getStruct("after").getString("b"));
+      stopConnector();
+    }
+  }
 }
