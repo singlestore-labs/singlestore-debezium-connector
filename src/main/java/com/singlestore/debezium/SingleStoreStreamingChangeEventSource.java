@@ -2,9 +2,9 @@ package com.singlestore.debezium;
 
 import com.singlestore.debezium.events.ObserveStreamingStartedEvent;
 import com.singlestore.debezium.util.ObserveResultSetUtils;
+import com.singlestore.jdbc.Connection;
 import io.debezium.DebeziumException;
 import io.debezium.data.Envelope.Operation;
-import io.debezium.jdbc.JdbcConnection.ResultSetConsumer;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -12,9 +12,9 @@ import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -47,6 +47,14 @@ public class SingleStoreStreamingChangeEventSource implements
     this.clock = clock;
   }
 
+  private String getOffsetStr(SingleStoreOffsetContext offsetContext) {
+    return "(" +
+        offsetContext.offsets()
+            .stream()
+            .map(o -> o == null ? "NULL" : "'" + o + "'")
+            .collect(Collectors.joining(",")) + ")";
+  }
+
   @Override
   public void execute(ChangeEventSourceContext context, SingleStorePartition partition,
       SingleStoreOffsetContext offsetContext) throws InterruptedException {
@@ -59,103 +67,83 @@ public class SingleStoreStreamingChangeEventSource implements
     // We must have only one table
     assert (tables.size() == 1);
     TableId table = tables.iterator().next();
-    List<String> offsets = offsetContext.offsets()
-        .stream()
-        .map(o -> o == null ? "NULL" : "'" + o + "'")
-        .collect(Collectors.toList());
-    Optional<String> offset;
-    if (offsets == null) {
-      offset = Optional.empty();
-    } else {
-      offset = Optional.of("(" + String.join(",", offsets) + ")");
-    }
 
-    InterruptedException interrupted[] = new InterruptedException[1];
-    try {
-      // TODO: add field filter when it will be supported
-      connection.observe(null, tables, Optional.empty(), Optional.empty(), offset, Optional.empty(),
-          new ResultSetConsumer() {
-            @Override
-            public void accept(ResultSet rs) throws SQLException {
-              dispatcher.dispatchConnectorEvent(partition, ObserveStreamingStartedEvent.INSTANCE);
-              Thread t = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                  while (context.isRunning()) {
-                    try {
-                      Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                    }
-                  }
-                  try {
-                    ((com.singlestore.jdbc.Connection) rs.getStatement()
-                        .getConnection()).cancelCurrentQuery();
-                  } catch (SQLException ex) {
-                    // TODO handle exception
-                  }
-                }
-              });
-              t.start();
+    try (Connection conn = (com.singlestore.jdbc.Connection) connection.connection(true)) {
+      Thread t = new Thread(() -> {
+        do {
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ignored) {
+          }
+        } while (context.isRunning());
+        try {
+          conn.cancelCurrentQuery();
+        } catch (SQLException ex) {
+          // TODO handle exception
+        }
+      });
+      t.start();
 
-              List<Integer> columnPositions =
-                  ObserveResultSetUtils.columnPositions(rs, schema.tableFor(table).columns(),
-                      connectorConfig.populateInternalId());
-              try {
-                while (rs.next() && context.isRunning()) {
-                  LOGGER.trace(
-                      "Streaming record, type: {}, internalId: {}, partitionId: {}, offset: {} values: {}",
-                      ObserveResultSetUtils.snapshotType(rs),
-                      ObserveResultSetUtils.internalId(rs),
-                      ObserveResultSetUtils.partitionId(rs),
-                      ObserveResultSetUtils.offset(rs),
-                      ObserveResultSetUtils.rowToArray(rs, columnPositions));
-                  Operation operation;
-                  switch (rs.getString("Type")) {
-                    case "Insert":
-                      operation = Operation.CREATE;
-                      break;
-                    case "Update":
-                      operation = Operation.UPDATE;
-                      break;
-                    case "Delete":
-                      operation = Operation.DELETE;
-                      break;
-                    default:
-                      continue;
-                  }
-
-                  String offset = ObserveResultSetUtils.offset(rs);
-                  Integer partitionId = ObserveResultSetUtils.partitionId(rs);
-                  String txId = ObserveResultSetUtils.txId(rs);
-                  Long internalId = ObserveResultSetUtils.internalId(rs);
-
-                  offsetContext.event(table, Instant.now());
-                  offsetContext.update(partitionId, txId, offset);
-
-                  Object[] after = ObserveResultSetUtils.rowToArray(rs, columnPositions);
-
-                  try {
-                    dispatcher.dispatchDataChangeEvent(partition, table,
-                        new SingleStoreChangeRecordEmitter(
-                            partition,
-                            offsetContext,
-                            clock,
-                            operation,
-                            null,
-                            after,
-                            internalId,
-                            connectorConfig,
-                            schema.tableFor(table)));
-                  } catch (InterruptedException e) {
-                    interrupted[0] = e;
-                    break;
-                  }
-                }
-              } finally {
-                t.interrupt();
-              }
+      dispatcher.dispatchConnectorEvent(partition, ObserveStreamingStartedEvent.INSTANCE);
+      String query = String.format("OBSERVE * FROM %s BEGIN AT %s",
+          connection.quotedTableIdString(table), getOffsetStr(offsetContext));
+      try (
+          Statement stmt = conn.createStatement();
+          ResultSet rs = stmt.executeQuery(query);
+      ) {
+        List<Integer> columnPositions =
+            ObserveResultSetUtils.columnPositions(rs, schema.tableFor(table).columns(),
+                connectorConfig.populateInternalId());
+        try {
+          while (rs.next() && context.isRunning()) {
+            LOGGER.trace(
+                "Streaming record, type: {}, internalId: {}, partitionId: {}, offset: {} values: {}",
+                ObserveResultSetUtils.snapshotType(rs),
+                ObserveResultSetUtils.internalId(rs),
+                ObserveResultSetUtils.partitionId(rs),
+                ObserveResultSetUtils.offset(rs),
+                ObserveResultSetUtils.rowToArray(rs, columnPositions));
+            Operation operation;
+            switch (rs.getString("Type")) {
+              case "Insert":
+                operation = Operation.CREATE;
+                break;
+              case "Update":
+                operation = Operation.UPDATE;
+                break;
+              case "Delete":
+                operation = Operation.DELETE;
+                break;
+              default:
+                continue;
             }
-          });
+
+            String offset = ObserveResultSetUtils.offset(rs);
+            Integer partitionId = ObserveResultSetUtils.partitionId(rs);
+            String txId = ObserveResultSetUtils.txId(rs);
+            Long internalId = ObserveResultSetUtils.internalId(rs);
+
+            offsetContext.event(table, Instant.now());
+            offsetContext.update(partitionId, txId, offset);
+
+            Object[] after = ObserveResultSetUtils.rowToArray(rs, columnPositions);
+
+            dispatcher.dispatchDataChangeEvent(partition, table,
+                new SingleStoreChangeRecordEmitter(
+                    partition,
+                    offsetContext,
+                    clock,
+                    operation,
+                    null,
+                    after,
+                    internalId,
+                    connectorConfig,
+                    schema.tableFor(table)));
+          }
+        } finally {
+          t.interrupt();
+        }
+      }
     } catch (SQLException e) {
       // TODO: handle schema change event
       if (!(!context.isRunning() &&
@@ -187,10 +175,6 @@ public class SingleStoreStreamingChangeEventSource implements
 
         errorHandler.setProducerThrowable(new DebeziumException(msg, e));
       }
-    }
-
-    if (interrupted[0] != null) {
-      throw interrupted[0];
     }
   }
 }

@@ -122,6 +122,12 @@ public class SingleStoreSnapshotChangeEventSource extends
       } else {
         LOGGER.info("Snapshot step 5 - Skipping snapshotting of data");
         releaseDataSnapshotLocks(ctx);
+        for (int i = 0; i < connectorConfig.offsets().size(); i++) {
+          String offset = connectorConfig.offsets().get(i);
+          if (!offset.equalsIgnoreCase("null")) {
+            ctx.offset.update(i, "", offset);
+          }
+        }
         ctx.offset.preSnapshotCompletion();
         ctx.offset.postSnapshotCompletion();
       }

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigValue;
 
@@ -151,6 +152,18 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
           "Specifies whether to add internalId to the `after` field of the event message")
       .withDefault(false);
 
+  public static final Field OFFSETS = Field.create("offsets")
+      .withDisplayName(
+          "Offsets from which to start observing when 'snapshot.mode' is 'schema_only'")
+      .withType(Type.LIST)
+      .withWidth(Width.LONG)
+      .withImportance(Importance.LOW)
+      .withDescription(
+          "When specified and 'snapshot.mode' is 'schema_only' - connector will start streaming changes from these offsets. "
+              + "Should be provided as a comma separated list of hex offsets per each partitions. "
+              + "Example: 0000000000000077000000000000000E000000000000E06E,0x0000000000000077000000000000000E000000000000E087,0000000000000077000000000000000E000000000000E088");
+
+
   public static final Field TOPIC_NAMING_STRATEGY = CommonConnectorConfig.TOPIC_NAMING_STRATEGY
       .withDefault(DefaultTopicNamingStrategy.class.getName());
 
@@ -198,7 +211,8 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
           CONNECTION_TIMEOUT_MS,
           DRIVER_PARAMETERS,
           SNAPSHOT_MODE,
-          BINARY_HANDLING_MODE)
+          BINARY_HANDLING_MODE,
+          OFFSETS)
       .events(
           SOURCE_INFO_STRUCT_MAKER,
           POPULATE_INTERNAL_ID)
@@ -214,6 +228,7 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
   private final Duration connectionTimeout;
   private final RelationalTableFilters tableFilters;
   private final Boolean populateInternalId;
+  private final List<String> offsets;
 
   public SingleStoreConnectorConfig(Configuration config) {
     super(config,
@@ -230,6 +245,7 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
     this.connectionTimeout = Duration
         .ofMillis(config.getLong(SingleStoreConnectorConfig.CONNECTION_TIMEOUT_MS));
     this.populateInternalId = config.getBoolean(SingleStoreConnectorConfig.POPULATE_INTERNAL_ID);
+    this.offsets = config.getList(SingleStoreConnectorConfig.OFFSETS);
   }
 
   private static class SystemTablesPredicate implements TableFilter {
@@ -303,6 +319,10 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
     return populateInternalId;
   }
 
+  public List<String> offsets() {
+    return offsets;
+  }
+
   /**
    * The set of predefined SnapshotMode options or aliases.
    */
@@ -321,15 +341,15 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
     /**
      * Perform a snapshot when it is needed.
      */
-    WHEN_NEEDED("when_needed", true, true, true);
+    WHEN_NEEDED("when_needed", true, true, true),
+
     /**
      * Perform a snapshot of only the database schemas (without data) and then begin stream events.
      * This should be used with care, but it is very useful when the change event consumers need
      * only the changes from the point in time the snapshot is made (and doesn't care about any
      * state or changes prior to this point).
      */
-    // TODO: PLAT-6912
-    // SCHEMA_ONLY("schema_only", true, false, true);
+    SCHEMA_ONLY("schema_only", true, false, true);
 
     private final String value;
     private final boolean includeSchema;
