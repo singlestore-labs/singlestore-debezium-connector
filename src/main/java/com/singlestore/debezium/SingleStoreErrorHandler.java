@@ -22,4 +22,19 @@ public class SingleStoreErrorHandler extends ErrorHandler {
         WrongOffsetException.class);
   }
 
+  protected boolean isRetriable(Throwable throwable) {
+    if (throwable instanceof SQLException) {
+      SQLException e = (SQLException) throwable;
+      if (e.getMessage().contains(
+          "The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
+          &&
+          e.getErrorCode() == 2851 &&
+          e.getSQLState().equals("HY000")
+      ) {
+        return false;
+      }
+    }
+    
+    return super.isRetriable(throwable);
+  }
 }
