@@ -10,7 +10,7 @@ name: Test
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "resumeSnapshot" ]
   pull_request:
     branches: [ "main" ]
 
