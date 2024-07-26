@@ -10,6 +10,9 @@ import static org.junit.Assert.assertTrue;
 
 import ch.qos.logback.classic.Logger;
 import io.debezium.config.Configuration;
+import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.embedded.EmbeddedEngine.CompletionResult;
+import io.debezium.engine.DebeziumEngine;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
@@ -430,7 +433,8 @@ public class StreamingIT extends IntegrationTestBase {
         conn.execute(String.format("USE %s", TEST_DATABASE),
             "SET GLOBAL snapshots_to_keep=1",
             "SET GLOBAL snapshot_trigger_size=65536",
-            "CREATE TABLE staleOffsets(a INT)"
+            "CREATE TABLE IF NOT EXISTS staleOffsets(a INT)",
+            "DELETE FROM staleOffsets WHERE 1 > 0"
         );
 
         Configuration config = defaultJdbcConfigWithTable("staleOffsets").edit()
@@ -463,9 +467,8 @@ public class StreamingIT extends IntegrationTestBase {
         try {
           start(SingleStoreConnector.class, config);
           assertConnectorIsRunning();
-          assertThrows("Expected streaming to fail",
-              org.awaitility.core.ConditionTimeoutException.class, this::waitForStreamingToStart);
-
+          consumeRecordsByTopic(1);
+          assertConnectorNotRunning();
           assertTrue(appender.getLog().stream().anyMatch(event -> event.getMessage()
               .contains(
                   "Offset the connector is trying to resume from is considered stale.")));
