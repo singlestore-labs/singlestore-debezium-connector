@@ -6,7 +6,7 @@
 
   <groupId>com.singlestore</groupId>
   <artifactId>singlestore-debezium-connector</artifactId>
-  <version>0.1.6-beta</version>
+  <version>0.1.7-beta</version>
   <name>singlestore-debezium-connector</name>
   <description>SingleStore Debezium Connector</description>
   <url>https://github.com/singlestore-labs/singlestore-debezium-connector</url>
@@ -33,7 +33,7 @@
     <developerConnection>
       scm:git:git@github.com:singlestore-labs/singlestore-debezium-connector.git
     </developerConnection>
-    <tag>singlestore-debezium-connector-0.1.6-beta</tag>
+    <tag>singlestore-debezium-connector-0.1.7-beta</tag>
   </scm>
 
   <licenses>

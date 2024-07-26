@@ -38,7 +38,7 @@ public class SingleStoreConnectorTask extends
     BaseSourceTask<SingleStorePartition, SingleStoreOffsetContext> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(
-          SingleStoreConnectorTask.class);
+      SingleStoreConnectorTask.class);
   private static final String CONTEXT_NAME = "singlestore-connector-task";
   private volatile ChangeEventQueue<DataChangeEvent> queue;
   private volatile SingleStoreDatabaseSchema schema;
@@ -78,7 +78,6 @@ public class SingleStoreConnectorTask extends
 
     SingleStoreTaskContext taskContext = new SingleStoreTaskContext(connectorConfig, schema);
     SingleStoreEventMetadataProvider metadataProvider = new SingleStoreEventMetadataProvider();
-    SingleStoreErrorHandler errorHandler = new SingleStoreErrorHandler(connectorConfig, queue);
 
     this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
         .pollInterval(connectorConfig.getPollInterval())
@@ -87,6 +86,8 @@ public class SingleStoreConnectorTask extends
         .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
         .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
         .build();
+
+    SingleStoreErrorHandler errorHandler = new SingleStoreErrorHandler(connectorConfig, queue);
 
     Offsets<SingleStorePartition, SingleStoreOffsetContext> previousOffsets = getPreviousOffsets(
         new SingleStorePartition.Provider(connectorConfig, config),
@@ -145,33 +146,36 @@ public class SingleStoreConnectorTask extends
     return coordinator;
   }
 
-    private void validateOffset(MainConnectionProvidingConnectionFactory<SingleStoreConnection> connectionFactory,
-                                Offsets<SingleStorePartition, SingleStoreOffsetContext> previousOffsets,
-                                SingleStoreConnectorConfig.SnapshotMode snapshotMode) {
-        if (previousOffsets.getOffsets() != null && snapshotMode == SingleStoreConnectorConfig.SnapshotMode.WHEN_NEEDED) {
-            try (SingleStoreConnection connection = connectionFactory.newConnection()) {
-                schema.refresh(connection);
-                Set<TableId> tableIds = schema.tableIds();
-                if (tableIds == null || tableIds.isEmpty()) {
-                    return;
-                }
-                assert (tableIds.size() == 1);
-                for (Map.Entry<SingleStorePartition, SingleStoreOffsetContext> previousOffset : previousOffsets) {
-                    SingleStorePartition partition = previousOffset.getKey();
-                    SingleStoreOffsetContext offset = previousOffset.getValue();
-                    if (offset != null && !connection.validateOffset(tableIds, partition, offset)) {
-                        LOGGER.info("The last recorded offset is no longer available but we are in {} snapshot mode. "
-                                + "Attempting to snapshot data to fill the gap.", snapshotMode.name());
-                        previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
-                        return;
-                    }
-                }
-            } catch (SQLException e) {
-                LOGGER.error("Failed to validate offset");
-                throw new RuntimeException(e);
-            }
+  private void validateOffset(
+      MainConnectionProvidingConnectionFactory<SingleStoreConnection> connectionFactory,
+      Offsets<SingleStorePartition, SingleStoreOffsetContext> previousOffsets,
+      SingleStoreConnectorConfig.SnapshotMode snapshotMode) {
+    if (previousOffsets.getOffsets() != null
+        && snapshotMode == SingleStoreConnectorConfig.SnapshotMode.WHEN_NEEDED) {
+      try (SingleStoreConnection connection = connectionFactory.newConnection()) {
+        schema.refresh(connection);
+        Set<TableId> tableIds = schema.tableIds();
+        if (tableIds == null || tableIds.isEmpty()) {
+          return;
         }
+        assert (tableIds.size() == 1);
+        for (Map.Entry<SingleStorePartition, SingleStoreOffsetContext> previousOffset : previousOffsets) {
+          SingleStorePartition partition = previousOffset.getKey();
+          SingleStoreOffsetContext offset = previousOffset.getValue();
+          if (offset != null && !connection.validateOffset(tableIds, partition, offset)) {
+            LOGGER.info(
+                "The last recorded offset is no longer available but we are in {} snapshot mode. "
+                    + "Attempting to snapshot data to fill the gap.", snapshotMode.name());
+            previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
+            return;
+          }
+        }
+      } catch (SQLException e) {
+        LOGGER.error("Failed to validate offset");
+        throw new RuntimeException(e);
+      }
     }
+  }
 
   @Override
   public List<SourceRecord> doPoll() throws InterruptedException {

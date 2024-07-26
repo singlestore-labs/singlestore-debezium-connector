@@ -16,7 +16,6 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,14 +44,6 @@ public class SingleStoreStreamingChangeEventSource implements
     this.errorHandler = errorHandler;
     this.schema = schema;
     this.clock = clock;
-  }
-
-  private String getOffsetStr(SingleStoreOffsetContext offsetContext) {
-    return "(" +
-        offsetContext.offsets()
-            .stream()
-            .map(o -> o == null ? "NULL" : "'" + o + "'")
-            .collect(Collectors.joining(",")) + ")";
   }
 
   @Override
@@ -85,11 +76,10 @@ public class SingleStoreStreamingChangeEventSource implements
       t.start();
 
       dispatcher.dispatchConnectorEvent(partition, ObserveStreamingStartedEvent.INSTANCE);
-      String query = String.format("OBSERVE * FROM %s BEGIN AT %s",
-          connection.quotedTableIdString(table), getOffsetStr(offsetContext));
+      String query = SingleStoreConnection.generateObserveQuery(table, offsetContext.offsets());
       try (
           Statement stmt = conn.createStatement();
-          ResultSet rs = stmt.executeQuery(query);
+          ResultSet rs = stmt.executeQuery(query)
       ) {
         List<Integer> columnPositions =
             ObserveResultSetUtils.columnPositions(rs, schema.tableFor(table).columns(),
