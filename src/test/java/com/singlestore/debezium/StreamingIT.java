@@ -100,22 +100,22 @@ public class StreamingIT extends IntegrationTestBase {
         // TODO: PLAT-6910 BIT type is returned in reversed order
         assertArrayEquals("hgfedcba".getBytes(), (byte[]) after.get("bitColumn"));
         assertEquals((short) -128, after.get("tinyintColumn"));
-        assertEquals((int) -8388608, after.get("mediumintColumn"));
+        assertEquals(-8388608, after.get("mediumintColumn"));
         assertEquals((short) -32768, after.get("smallintColumn"));
-        assertEquals((int) -2147483648, after.get("intColumn"));
-        assertEquals((int) -2147483648, after.get("integerColumn"));
-        assertEquals((long) -9223372036854775808l, after.get("bigintColumn"));
+        assertEquals(-2147483648, after.get("intColumn"));
+        assertEquals(-2147483648, after.get("integerColumn"));
+        assertEquals(-9223372036854775808L, after.get("bigintColumn"));
         assertEquals((float) -100.01, after.get("floatColumn"));
-        assertEquals((double) -1000.01, after.get("doubleColumn"));
-        assertEquals((double) -1000.01, after.get("realColumn"));
-        assertEquals((int) -354285, after.get("dateColumn"));
-        assertEquals((int) 0, after.get("timeColumn"));
+        assertEquals(-1000.01, after.get("doubleColumn"));
+        assertEquals(-1000.01, after.get("realColumn"));
+        assertEquals(-354285, after.get("dateColumn"));
+        assertEquals(0, after.get("timeColumn"));
         assertEquals((long) 0, after.get("time6Column"));
-        assertEquals((long) -30610224000000l, after.get("datetimeColumn"));
-        assertEquals((long) -30610224000000000l, after.get("datetime6Column"));
+        assertEquals(-30610224000000L, after.get("datetimeColumn"));
+        assertEquals(-30610224000000000L, after.get("datetime6Column"));
         assertEquals((long) 1000, after.get("timestampColumn"));
         assertEquals((long) 1000000, after.get("timestamp6Column"));
-        assertEquals((int) 1901, after.get("yearColumn"));
+        assertEquals(1901, after.get("yearColumn"));
         assertEquals(
             new BigDecimal("12345678901234567890123456789012345.123456789012345678901234567891"),
             after.get("decimalColumn"));
@@ -201,7 +201,7 @@ public class StreamingIT extends IntegrationTestBase {
         List<SourceRecord> records = consumeRecordsByTopic(4).allRecordsInOrder();
 
         List<Long> ids = new ArrayList<>();
-        List<String> operations = Arrays.asList(new String[]{"c", "c", "d", null});
+        List<String> operations = Arrays.asList("c", "c", "d", null);
 
         assertEquals(4, records.size());
         for (int i = 0; i < records.size(); i++) {
@@ -249,7 +249,7 @@ public class StreamingIT extends IntegrationTestBase {
         List<SourceRecord> records = consumeRecordsByTopic(6).allRecordsInOrder();
 
         List<Long> ids = new ArrayList<>();
-        List<String> operations = Arrays.asList(new String[]{"c", "c", "c", "d", "u", "c"});
+        List<String> operations = Arrays.asList("c", "c", "c", "d", "u", "c");
 
         assertEquals(6, records.size());
         for (int i = 0; i < records.size(); i++) {
@@ -296,9 +296,9 @@ public class StreamingIT extends IntegrationTestBase {
 
         List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
 
-        List<String> names = Arrays.asList(new String[]{"Adalbert", "Alice", "Bob"});
-        List<Integer> ages = Arrays.asList(new Integer[]{22, 23, 24});
-        List<String> operations = Arrays.asList(new String[]{"c", "c", "c"});
+        List<String> names = Arrays.asList("Adalbert", "Alice", "Bob");
+        List<Integer> ages = Arrays.asList(22, 23, 24);
+        List<String> operations = Arrays.asList("c", "c", "c");
 
         for (int i = 0; i < records.size(); i++) {
           SourceRecord record = records.get(i);
@@ -671,6 +671,7 @@ public class StreamingIT extends IntegrationTestBase {
       record = records.get(0);
       value = (Struct) record.value();
       assertEquals(Integer.valueOf(2), value.getStruct("after").getInt32("a"));
+      assertEquals("op", value.getString("op"));
       assertEquals("b", value.getStruct("after").getString("b"));
       stopConnector();
     }

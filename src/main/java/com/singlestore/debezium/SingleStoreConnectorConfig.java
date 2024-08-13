@@ -15,32 +15,18 @@ import io.debezium.schema.DefaultTopicNamingStrategy;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
-import org.apache.kafka.common.config.ConfigValue;
 
 /**
  * The configuration properties.
  */
 public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfig {
 
-  protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
-
   public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
       .withDefault(SingleStoreSourceInfoStructMaker.class.getName());
-
-  public Map<String, ConfigValue> validate() {
-    return getConfig().validate(ALL_FIELDS);
-  }
-
-  protected static final int DEFAULT_PORT = 3306;
-
-  public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
-      .withDefault(DEFAULT_PORT);
-
   public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
       .withDisplayName("Snapshot mode")
       .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
@@ -51,7 +37,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
           + "Select one of the following snapshot options: "
           + "'initial' (default): If the connector does not detect any offsets for the logical server name, it performs a full snapshot that captures the current state of the configured tables. After the snapshot completes, the connector begins to stream changes.; "
           + "'initial_only': Similar to the 'initial' mode, the connector performs a full snapshot. Once the snapshot is complete, the connector stops, and does not stream any changes.");
-
   public static final Field CONNECTION_TIMEOUT_MS = Field.create("connect.timeout.ms")
       .withDisplayName("Connection Timeout (ms)")
       .withType(ConfigDef.Type.INT)
@@ -62,7 +47,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
           "Maximum time to wait after trying to connect to the database before timing out, given in milliseconds. Defaults to 30 seconds (30,000 ms).")
       .withDefault(30 * 1000)
       .withValidation(Field::isPositiveInteger);
-
   public static final Field DRIVER_PARAMETERS = Field.create(DRIVER_CONFIG_PREFIX + "parameters")
       .withDisplayName("JDBC Additional Parameters")
       .withType(ConfigDef.Type.STRING)
@@ -74,7 +58,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
               +
               "available in the `SingleStore Connection String Parameters\n" +
               "<https://docs.singlestore.com/cloud/developer-resources/connect-with-application-development-tools/connect-with-java-jdbc/the-singlestore-jdbc-driver/#connection-string-parameters>`_.");
-
   public static final Field SSL_MODE = Field.create("database.ssl.mode")
       .withDisplayName("SSL mode")
       .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLE)
@@ -87,7 +70,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
           + "'verify_ca' to use a secure (encrypted) connection but additionally verify the server TLS certificate against the configured Certificate Authority "
           + "(CA) certificates, or fail if no valid matching CA certificates are found; or"
           + "'verify-full' like 'verify-ca' but additionally verify that the server certificate matches the host to which the connection is attempted.");
-
   public static final Field SSL_KEYSTORE = Field.create("database.ssl.keystore")
       .withDisplayName("SSL Keystore")
       .withType(ConfigDef.Type.STRING)
@@ -96,7 +78,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       .withImportance(ConfigDef.Importance.MEDIUM)
       .withDescription("The location of the key store file. "
           + "This is optional and can be used for two-way authentication between the client and the SingleStore Server.");
-
   public static final Field SSL_KEYSTORE_PASSWORD = Field.create("database.ssl.keystore.password")
       .withDisplayName("SSL Keystore Password")
       .withType(ConfigDef.Type.PASSWORD)
@@ -105,7 +86,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       .withImportance(ConfigDef.Importance.MEDIUM)
       .withDescription("The password for the key store file. "
           + "This is optional and only needed if 'database.ssl.keystore' is configured.");
-
   public static final Field SSL_TRUSTSTORE = Field.create("database.ssl.truststore")
       .withDisplayName("SSL Truststore")
       .withType(ConfigDef.Type.STRING)
@@ -114,7 +94,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       .withImportance(ConfigDef.Importance.MEDIUM)
       .withDescription(
           "The location of the trust store file for the server certificate verification.");
-
   public static final Field SSL_TRUSTSTORE_PASSWORD = Field
       .create("database.ssl.truststore.password")
       .withDisplayName("SSL Truststore Password")
@@ -124,7 +103,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       .withImportance(ConfigDef.Importance.MEDIUM)
       .withDescription("The password for the trust store file. "
           + "Used to check the integrity of the truststore, and unlock the truststore.");
-
   public static final Field SSL_SERVER_CERT = Field.create("database.ssl.server.cert")
       .withDisplayName("SSL Server's Certificate")
       .withType(ConfigDef.Type.PASSWORD)
@@ -133,7 +111,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       .withImportance(ConfigDef.Importance.MEDIUM)
       .withDescription("Server's certificate in DER format or the server's CA certificate. " +
           "The certificate is added to the trust store, which allows the connection to trust a self-signed certificate.");
-
   public static final Field TABLE_NAME = Field.create(DATABASE_CONFIG_PREFIX + "table")
       .withDisplayName("Table")
       .withType(ConfigDef.Type.STRING)
@@ -142,7 +119,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       .withImportance(Importance.HIGH)
       .required()
       .withDescription("The name of the table from which the connector should capture changes");
-
   public static final Field POPULATE_INTERNAL_ID = Field.create("populate.internal.id")
       .withDisplayName("Add internalId to the `after` field of the event message")
       .withType(ConfigDef.Type.BOOLEAN)
@@ -151,7 +127,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       .withDescription(
           "Specifies whether to add internalId to the `after` field of the event message")
       .withDefault(false);
-
   public static final Field OFFSETS = Field.create("offsets")
       .withDisplayName(
           "Offsets from which to start observing when 'snapshot.mode' is 'schema_only'")
@@ -161,12 +136,23 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       .withDescription(
           "When specified and 'snapshot.mode' is 'schema_only' - connector will start streaming changes from these offsets. "
               + "Should be provided as a comma separated list of hex offsets per each partitions. "
-              + "Example: 0000000000000077000000000000000E000000000000E06E,0x0000000000000077000000000000000E000000000000E087,0000000000000077000000000000000E000000000000E088");
-
-
+              + "Example: 0000000000000077000000000000000E000000000000E06E,0x0000000000000077000000000000000E000000000000E087,0000000000000077000000000000000E000000000000E088")
+      .withValidation((config, field, problems) -> {
+        SingleStoreConnectorConfig connectorConfig = new SingleStoreConnectorConfig(config);
+        if (connectorConfig.getSnapshotMode() == SnapshotMode.SCHEMA_ONLY
+            && connectorConfig.offsets().isEmpty()) {
+          problems.accept(field, connectorConfig.offsets(),
+              "'offsets' parameter is required when 'snapshot.mode' is 'schema_only'");
+          return 1;
+        }
+        return 0;
+      });
   public static final Field TOPIC_NAMING_STRATEGY = CommonConnectorConfig.TOPIC_NAMING_STRATEGY
       .withDefault(DefaultTopicNamingStrategy.class.getName());
-
+  protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
+  protected static final int DEFAULT_PORT = 3306;
+  public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
+      .withDefault(DEFAULT_PORT);
   private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION
       .edit()
       .name("SingleStore")
@@ -217,12 +203,10 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
           SOURCE_INFO_STRUCT_MAKER,
           POPULATE_INTERNAL_ID)
       .create();
-
   /**
    * The set of {@link Field}s defined as part of this configuration.
    */
   public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
-
   private final Configuration config;
   private final SnapshotMode snapshotMode;
   private final Duration connectionTimeout;
@@ -246,17 +230,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
         .ofMillis(config.getLong(SingleStoreConnectorConfig.CONNECTION_TIMEOUT_MS));
     this.populateInternalId = config.getBoolean(SingleStoreConnectorConfig.POPULATE_INTERNAL_ID);
     this.offsets = config.getList(SingleStoreConnectorConfig.OFFSETS);
-  }
-
-  private static class SystemTablesPredicate implements TableFilter {
-
-    protected static final List<String> SYSTEM_SCHEMAS = Arrays
-        .asList("information_schema", "cluster", "memsql");
-
-    @Override
-    public boolean isIncluded(TableId t) {
-      return t.catalog() != null && !SYSTEM_SCHEMAS.contains(t.catalog().toLowerCase());
-    }
   }
 
   public static ConfigDef configDef() {
@@ -363,40 +336,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       this.shouldStream = shouldStream;
     }
 
-    @Override
-    public String getValue() {
-      return value;
-    }
-
-    /**
-     * Whether this snapshotting mode should include the schema.
-     */
-    public boolean includeSchema() {
-      return includeSchema;
-    }
-
-    /**
-     * Whether this snapshotting mode should include the actual data or just the schema of captured
-     * tables.
-     */
-    public boolean includeData() {
-      return includeData;
-    }
-
-    /**
-     * Whether the snapshot mode is followed by streaming.
-     */
-    public boolean shouldStream() {
-      return shouldStream;
-    }
-
-    /**
-     * Whether the snapshot should be executed.
-     */
-    public boolean shouldSnapshot() {
-      return includeSchema || includeData;
-    }
-
     /**
      * Determine if the supplied value is one of the predefined options.
      *
@@ -429,6 +368,40 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
         mode = parse(defaultValue);
       }
       return mode;
+    }
+
+    @Override
+    public String getValue() {
+      return value;
+    }
+
+    /**
+     * Whether this snapshotting mode should include the schema.
+     */
+    public boolean includeSchema() {
+      return includeSchema;
+    }
+
+    /**
+     * Whether this snapshotting mode should include the actual data or just the schema of captured
+     * tables.
+     */
+    public boolean includeData() {
+      return includeData;
+    }
+
+    /**
+     * Whether the snapshot mode is followed by streaming.
+     */
+    public boolean shouldStream() {
+      return shouldStream;
+    }
+
+    /**
+     * Whether the snapshot should be executed.
+     */
+    public boolean shouldSnapshot() {
+      return includeSchema || includeData;
     }
   }
 
@@ -465,11 +438,6 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       this.value = value;
     }
 
-    @Override
-    public String getValue() {
-      return value;
-    }
-
     /**
      * Determine if the supplied value is one of the predefined options.
      *
@@ -502,6 +470,22 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
         mode = parse(defaultValue);
       }
       return mode;
+    }
+
+    @Override
+    public String getValue() {
+      return value;
+    }
+  }
+
+  private static class SystemTablesPredicate implements TableFilter {
+
+    protected static final List<String> SYSTEM_SCHEMAS = Arrays
+        .asList("information_schema", "cluster", "memsql");
+
+    @Override
+    public boolean isIncluded(TableId t) {
+      return t.catalog() != null && !SYSTEM_SCHEMAS.contains(t.catalog().toLowerCase());
     }
   }
 
