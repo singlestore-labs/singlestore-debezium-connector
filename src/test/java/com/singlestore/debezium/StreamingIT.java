@@ -100,22 +100,22 @@ public class StreamingIT extends IntegrationTestBase {
         // TODO: PLAT-6910 BIT type is returned in reversed order
         assertArrayEquals("hgfedcba".getBytes(), (byte[]) after.get("bitColumn"));
         assertEquals((short) -128, after.get("tinyintColumn"));
-        assertEquals((int) -8388608, after.get("mediumintColumn"));
+        assertEquals(-8388608, after.get("mediumintColumn"));
         assertEquals((short) -32768, after.get("smallintColumn"));
-        assertEquals((int) -2147483648, after.get("intColumn"));
-        assertEquals((int) -2147483648, after.get("integerColumn"));
-        assertEquals((long) -9223372036854775808l, after.get("bigintColumn"));
+        assertEquals(-2147483648, after.get("intColumn"));
+        assertEquals(-2147483648, after.get("integerColumn"));
+        assertEquals(-9223372036854775808L, after.get("bigintColumn"));
         assertEquals((float) -100.01, after.get("floatColumn"));
-        assertEquals((double) -1000.01, after.get("doubleColumn"));
-        assertEquals((double) -1000.01, after.get("realColumn"));
-        assertEquals((int) -354285, after.get("dateColumn"));
-        assertEquals((int) 0, after.get("timeColumn"));
+        assertEquals(-1000.01, after.get("doubleColumn"));
+        assertEquals(-1000.01, after.get("realColumn"));
+        assertEquals(-354285, after.get("dateColumn"));
+        assertEquals(0, after.get("timeColumn"));
         assertEquals((long) 0, after.get("time6Column"));
-        assertEquals((long) -30610224000000l, after.get("datetimeColumn"));
-        assertEquals((long) -30610224000000000l, after.get("datetime6Column"));
+        assertEquals(-30610224000000L, after.get("datetimeColumn"));
+        assertEquals(-30610224000000000L, after.get("datetime6Column"));
         assertEquals((long) 1000, after.get("timestampColumn"));
         assertEquals((long) 1000000, after.get("timestamp6Column"));
-        assertEquals((int) 1901, after.get("yearColumn"));
+        assertEquals(1901, after.get("yearColumn"));
         assertEquals(
             new BigDecimal("12345678901234567890123456789012345.123456789012345678901234567891"),
             after.get("decimalColumn"));
@@ -168,7 +168,7 @@ public class StreamingIT extends IntegrationTestBase {
         SourceRecord record = records.get(0);
 
         Struct source = (Struct) ((Struct) record.value()).get("source");
-        assertEquals(source.get("version"), "0.1.5");
+        assertEquals(source.get("version"), "0.1.6-beta");
         assertEquals(source.get("connector"), "singlestore");
         assertEquals(source.get("name"), "singlestore_topic");
         assertNotNull(source.get("ts_ms"));
@@ -201,7 +201,7 @@ public class StreamingIT extends IntegrationTestBase {
         List<SourceRecord> records = consumeRecordsByTopic(4).allRecordsInOrder();
 
         List<Long> ids = new ArrayList<>();
-        List<String> operations = Arrays.asList(new String[]{"c", "c", "d", null});
+        List<String> operations = Arrays.asList("c", "c", "d", null);
 
         assertEquals(4, records.size());
         for (int i = 0; i < records.size(); i++) {
@@ -249,7 +249,7 @@ public class StreamingIT extends IntegrationTestBase {
         List<SourceRecord> records = consumeRecordsByTopic(6).allRecordsInOrder();
 
         List<Long> ids = new ArrayList<>();
-        List<String> operations = Arrays.asList(new String[]{"c", "c", "c", "d", "u", "c"});
+        List<String> operations = Arrays.asList("c", "c", "c", "d", "u", "c");
 
         assertEquals(6, records.size());
         for (int i = 0; i < records.size(); i++) {
@@ -296,9 +296,9 @@ public class StreamingIT extends IntegrationTestBase {
 
         List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
 
-        List<String> names = Arrays.asList(new String[]{"Adalbert", "Alice", "Bob"});
-        List<Integer> ages = Arrays.asList(new Integer[]{22, 23, 24});
-        List<String> operations = Arrays.asList(new String[]{"c", "c", "c"});
+        List<String> names = Arrays.asList("Adalbert", "Alice", "Bob");
+        List<Integer> ages = Arrays.asList(22, 23, 24);
+        List<String> operations = Arrays.asList("c", "c", "c");
 
         for (int i = 0; i < records.size(); i++) {
           SourceRecord record = records.get(i);
@@ -625,6 +625,55 @@ public class StreamingIT extends IntegrationTestBase {
         );
         stopConnector();
       }
+    }
+  }
+
+  @Test
+  public void schemaOnly() throws Exception {
+    try (SingleStoreConnection createTableConn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("product"))) {
+      createTableConn.execute(
+          "CREATE ROWSTORE TABLE IF NOT EXISTS schemaOnly(a INT, b TEXT);"
+              + "DELETE FROM schemaOnly WHERE 1 = 1;"
+              + "SNAPSHOT DATABASE db;"
+              + "INSERT INTO schemaOnly VALUES(1, 'a');"
+              + "SNAPSHOT DATABASE db");
+
+      Configuration config = defaultJdbcConfigWithTable("schemaOnly");
+      start(SingleStoreConnector.class, config);
+      assertConnectorIsRunning();
+      List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+      assertEquals(1, records.size());
+
+      SourceRecord record = records.get(0);
+      Struct value = (Struct) record.value();
+      assertEquals(Integer.valueOf(1), value.getStruct("after").getInt32("a"));
+      assertEquals("a", value.getStruct("after").getString("b"));
+      List<String> offsets = value.getStruct("source").getArray("offsets");
+
+      waitForStreamingToStart();
+      stopConnector();
+
+      config = config.edit()
+          .withDefault(SingleStoreConnectorConfig.OFFSETS, String.join(",", offsets))
+          .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE, "schema_only")
+          .build();
+
+      createTableConn.execute("INSERT INTO schemaOnly VALUES(2, 'b');");
+
+      start(SingleStoreConnector.class, config);
+      waitForStreamingToStart();
+      assertConnectorIsRunning();
+
+      records = consumeRecordsByTopic(1).allRecordsInOrder();
+      assertEquals(1, records.size());
+
+      record = records.get(0);
+      value = (Struct) record.value();
+      assertEquals(Integer.valueOf(2), value.getStruct("after").getInt32("a"));
+      assertEquals("c", value.getString("op"));
+      assertEquals("b", value.getStruct("after").getString("b"));
+      stopConnector();
     }
   }
 }

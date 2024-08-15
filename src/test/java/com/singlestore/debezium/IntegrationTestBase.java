@@ -27,18 +27,18 @@ import org.testcontainers.containers.wait.strategy.Wait;
 
 abstract class IntegrationTestBase extends AbstractConnectorTest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IntegrationTestBase.class);
-  private static GenericContainer<?> SINGLESTORE_SERVER;
-  private static final String TEST_IMAGE = System.getProperty("singlestore.image",
-      "ghcr.io/singlestore-labs/singlestoredb-dev:latest");
-  static Integer TEST_PORT = Integer.parseInt(System.getProperty("singlestore.port", "3306"));
   static final String TEST_SERVER = System.getProperty("singlestore.hostname", "localhost");
+  static final String TEST_DATABASE = "db";
+  static final String TEST_TOPIC_PREFIX = "singlestore_topic";
   private static final String TEST_SERVER_VERSION = System.getProperty("singlestore.version", "");
   private static final String TEST_USER = System.getProperty("singlestore.user", "root");
   private static final String TEST_PASSWORD = System.getProperty("singlestore.password", "root");
-  static final String TEST_DATABASE = "db";
-  static final String TEST_TOPIC_PREFIX = "singlestore_topic";
+  private static final Logger LOGGER = LoggerFactory.getLogger(IntegrationTestBase.class);
+  private static final String TEST_IMAGE = System.getProperty("singlestore.image",
+      "ghcr.io/singlestore-labs/singlestoredb-dev:latest");
   private static final String SINGLESTORE_LICENSE = System.getenv("SINGLESTORE_LICENSE");
+  static Integer TEST_PORT = Integer.parseInt(System.getProperty("singlestore.port", "3306"));
+  private static GenericContainer<?> SINGLESTORE_SERVER;
 
   @BeforeClass
   public static void init() throws Exception {
@@ -76,12 +76,6 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
     }
   }
 
-  @Before
-  public void refreshTables() throws Exception {
-    deleteAllDataTables();
-    clearConsumedEvents();
-  }
-
   /**
    * Obtain a default DB connection.
    *
@@ -89,28 +83,6 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
    */
   public static SingleStoreConnection create() {
     return new SingleStoreConnection(defaultJdbcConnectionConfig());
-  }
-
-  protected void clearConsumedEvents() {
-    consumedLines.clear();
-  }
-
-  protected void waitForSnapshotToBeCompleted() throws InterruptedException {
-    waitForSnapshotToBeCompleted("singlestore", "singlestore_topic");
-  }
-
-  protected void waitForSnapshotWithCustomMetricsToBeCompleted(Map<String, String> props)
-      throws InterruptedException {
-    waitForSnapshotWithCustomMetricsToBeCompleted("singlestore", "singlestore_topic", props);
-  }
-
-  protected void waitForStreamingToStart() throws InterruptedException {
-    waitForStreamingRunning("singlestore", "singlestore_topic");
-  }
-
-  protected void waitForStreamingWithCustomMetricsToStart(Map<String, String> props)
-      throws InterruptedException {
-    waitForStreamingWithCustomMetricsToStart("singlestore", "singlestore_topic", props);
   }
 
   /**
@@ -219,6 +191,34 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
 
   protected static String topicName(String suffix) {
     return TEST_SERVER + "." + suffix;
+  }
+
+  @Before
+  public void refreshTables() throws Exception {
+    deleteAllDataTables();
+    clearConsumedEvents();
+  }
+
+  protected void clearConsumedEvents() {
+    consumedLines.clear();
+  }
+
+  protected void waitForSnapshotToBeCompleted() throws InterruptedException {
+    waitForSnapshotToBeCompleted("singlestore", "singlestore_topic");
+  }
+
+  protected void waitForSnapshotWithCustomMetricsToBeCompleted(Map<String, String> props)
+      throws InterruptedException {
+    waitForSnapshotWithCustomMetricsToBeCompleted("singlestore", "singlestore_topic", props);
+  }
+
+  protected void waitForStreamingToStart() throws InterruptedException {
+    waitForStreamingRunning("singlestore", "singlestore_topic");
+  }
+
+  protected void waitForStreamingWithCustomMetricsToStart(Map<String, String> props)
+      throws InterruptedException {
+    waitForStreamingWithCustomMetricsToStart("singlestore", "singlestore_topic", props);
   }
 
   public static class TestAppender extends AppenderBase<ILoggingEvent> {

@@ -39,7 +39,7 @@ in specific columns.
 ### Installation
 
 * Download
-  the [SingleStore connector for Debezium plugin archive](https://github.com/singlestore-labs/singlestore-debezium-connector/releases/download/v0.1.5/singlestore-debezium-connector-0.1.5-plugin.tar.gz).
+  the [SingleStore connector for Debezium plugin archive](https://github.com/singlestore-labs/singlestore-debezium-connector/releases/download/v0.1.6-beta/singlestore-debezium-connector-0.1.6-beta-plugin.tar.gz).
 * Extract the archive to a directory.
 * Add the directory from the previous step to Kafka Connect’s plugin path.
   Set the `plugin.path` property in the `connect-distributed.properties` file.
@@ -232,7 +232,7 @@ operation that inserts data in the `t` table:
          "a":33
       },
       "source":{
-         "version":"0.1.5",
+         "version":"0.1.6-beta",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197043473,
@@ -267,7 +267,7 @@ as the preceding create event.
          "a":22
       },
       "source":{
-         "version":"0.1.5",
+         "version":"0.1.6-beta",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197446500,
@@ -309,7 +309,7 @@ update event examples.
       "before":null,
       "after":null,
       "source":{
-         "version":"0.1.5",
+         "version":"0.1.6-beta",
          "connector":"singlestore",
          "name":"singlestore",
          "ts_ms":1706197665407,
