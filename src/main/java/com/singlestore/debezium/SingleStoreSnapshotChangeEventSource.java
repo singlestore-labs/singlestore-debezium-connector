@@ -450,7 +450,7 @@ public class SingleStoreSnapshotChangeEventSource extends
     String snapshotSelectColumns = columns.stream()
         .collect(Collectors.joining(", "));//todo use in observe query
     return Optional.of(
-        SingleStoreConnection.generateObserveQuery(tableId, snapshotContext.offset.offsets()));
+        jdbcConnection.generateObserveQuery(tableId, snapshotContext.offset.offsets()));
   }
 
   @Override

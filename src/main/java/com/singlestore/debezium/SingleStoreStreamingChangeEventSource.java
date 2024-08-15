@@ -76,7 +76,7 @@ public class SingleStoreStreamingChangeEventSource implements
       t.start();
 
       dispatcher.dispatchConnectorEvent(partition, ObserveStreamingStartedEvent.INSTANCE);
-      String query = SingleStoreConnection.generateObserveQuery(table, offsetContext.offsets());
+      String query = connection.generateObserveQuery(table, offsetContext.offsets());
       try (
           Statement stmt = conn.createStatement();
           ResultSet rs = stmt.executeQuery(query)

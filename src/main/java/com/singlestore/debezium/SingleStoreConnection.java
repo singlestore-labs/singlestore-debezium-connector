@@ -12,6 +12,7 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.util.Strings;
+import javax.swing.text.html.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,13 +45,12 @@ public class SingleStoreConnection extends JdbcConnection {
     this.connectionConfig = connectionConfig;
   }
 
-  public static String generateObserveQuery(TableId table, List<String> offsets) {
-    return String.format("OBSERVE * FROM %s BEGIN AT (%s)",
-        table.toQuotedString('`'), offsets
+  public String generateObserveQuery(TableId table, List<String> offsets) {
+    return observeQuery(null, Set.of(table), Optional.empty(), Optional.empty(),
+        Optional.of(String.format("(%s)", offsets
             .stream()
             .map(o -> o == null ? "NULL" : "'" + o + "'")
-            .collect(Collectors.joining(","))
-    );
+            .collect(Collectors.joining(",")))), Optional.empty());
   }
 
   public boolean isRowstoreTable(TableId tableId) throws SQLException {
