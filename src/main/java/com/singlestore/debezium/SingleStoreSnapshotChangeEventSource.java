@@ -231,7 +231,17 @@ public class SingleStoreSnapshotChangeEventSource extends
           rows, table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
       snapshotProgressListener.dataCollectionSnapshotCompleted(partition, table.id(), rows);
     } catch (SQLException e) {
-      throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
+      SQLException error = e;
+      if (error.getMessage().contains(
+          "The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
+          &&
+          error.getErrorCode() == 2851 &&
+          error.getSQLState().equals("HY000")
+      ) {
+        error = new StaleOffsetException(error);
+      }
+
+      throw new ConnectException("Snapshotting of table " + table.id() + " failed", error);
     }
   }
 

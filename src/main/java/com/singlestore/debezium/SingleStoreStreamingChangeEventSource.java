@@ -136,16 +136,17 @@ public class SingleStoreStreamingChangeEventSource implements
       }
     } catch (SQLException e) {
       // TODO: handle schema change event
+      SQLException error = e;
       if (!(!context.isRunning() &&
-          e.getMessage().contains("Query execution was interrupted") &&
-          e.getErrorCode() == 1317 &&
-          e.getSQLState().equals("70100"))) {
+          error.getMessage().contains("Query execution was interrupted") &&
+          error.getErrorCode() == 1317 &&
+          error.getSQLState().equals("70100"))) {
         String msg;
-        if (e.getMessage().contains(
+        if (error.getMessage().contains(
             "The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
             &&
-            e.getErrorCode() == 2851 &&
-            e.getSQLState().equals("HY000")
+            error.getErrorCode() == 2851 &&
+            error.getSQLState().equals("HY000")
         ) {
           msg = "Offset the connector is trying to resume from is considered stale.\n"
               + "Therefore, the connector cannot resume streaming.\n"
@@ -155,15 +156,17 @@ public class SingleStoreStreamingChangeEventSource implements
               + "To help prevent failures related to stale offsets, you can increase the value of the following engine variables in SingleStore:\n"
               + " * 'snapshots_to_keep' - Defines the number of snapshots to keep for backup and replication.\n"
               + " * 'snapshot_trigger_size' - Defines the size of transaction logs in bytes, which, when reached, triggers a snapshot that is written to disk.";
+          error = new StaleOffsetException(error);
         } else {
           msg =
-              e.getMessage() + " Error code: " + e.getErrorCode() + "; SQLSTATE: " + e.getSQLState()
+              error.getMessage() + " Error code: " + error.getErrorCode() + "; SQLSTATE: "
+                  + error.getSQLState()
                   + ".";
         }
 
         LOGGER.error(msg);
 
-        errorHandler.setProducerThrowable(new DebeziumException(msg, e));
+        errorHandler.setProducerThrowable(new DebeziumException(msg, error));
       }
     }
   }
