@@ -671,7 +671,7 @@ public class StreamingIT extends IntegrationTestBase {
       record = records.get(0);
       value = (Struct) record.value();
       assertEquals(Integer.valueOf(2), value.getStruct("after").getInt32("a"));
-      assertEquals("op", value.getString("op"));
+      assertEquals("c", value.getString("op"));
       assertEquals("b", value.getStruct("after").getString("b"));
       stopConnector();
     }
