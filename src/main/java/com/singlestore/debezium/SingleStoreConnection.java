@@ -12,6 +12,7 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.util.Strings;
+import javax.swing.text.html.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,17 +33,24 @@ import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
 public class SingleStoreConnection extends JdbcConnection {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(
-          SingleStoreConnection.class);
+      SingleStoreConnection.class);
   private static final String QUOTED_CHARACTER = "`";
   protected static final String URL_PATTERN = "jdbc:singlestore://${hostname}:${port}/?connectTimeout=${connectTimeout}";
   protected static final String URL_PATTERN_DATABASE = "jdbc:singlestore://${hostname}:${port}/${dbname}?connectTimeout=${connectTimeout}";
-
   private final SingleStoreConnectionConfiguration connectionConfig;
 
   public SingleStoreConnection(SingleStoreConnectionConfiguration connectionConfig) {
     super(connectionConfig.jdbcConfig, connectionConfig.factory,
         SingleStoreConnection::validateServerVersion, QUOTED_CHARACTER, QUOTED_CHARACTER);
     this.connectionConfig = connectionConfig;
+  }
+
+  public String generateObserveQuery(TableId table, List<String> offsets) {
+    return observeQuery(null, Set.of(table), Optional.empty(), Optional.empty(),
+        Optional.of(String.format("(%s)", offsets
+            .stream()
+            .map(o -> o == null ? "NULL" : "'" + o + "'")
+            .collect(Collectors.joining(",")))), Optional.empty());
   }
 
   public boolean isRowstoreTable(TableId tableId) throws SQLException {
@@ -59,6 +67,16 @@ public class SingleStoreConnection extends JdbcConnection {
         });
 
     return res.get();
+  }
+
+  private static void validateServerVersion(Statement statement) throws SQLException {
+    DatabaseMetaData metaData = statement.getConnection().getMetaData();
+    int majorVersion = metaData.getDatabaseMajorVersion();
+    int minorVersion = metaData.getDatabaseMinorVersion();
+    if (majorVersion < 8 || (majorVersion == 8 && minorVersion < 5)) {
+      throw new SQLException(
+          "CDC feature is not supported in a version of SingleStore lower than 8.5");
+    }
   }
 
   public void addIsRowstoreAttribute(Tables tables) throws SQLException {
@@ -80,16 +98,6 @@ public class SingleStoreConnection extends JdbcConnection {
     super.readSchema(tables, databaseCatalog, schemaNamePattern, tableFilter, columnFilter,
         removeTablesNotFoundInJdbc);
     addIsRowstoreAttribute(tables);
-  }
-
-  private static void validateServerVersion(Statement statement) throws SQLException {
-    DatabaseMetaData metaData = statement.getConnection().getMetaData();
-    int majorVersion = metaData.getDatabaseMajorVersion();
-    int minorVersion = metaData.getDatabaseMinorVersion();
-    if (majorVersion < 8 || (majorVersion == 8 && minorVersion < 5)) {
-      throw new SQLException(
-          "CDC feature is not supported in a version of SingleStore lower than 8.5");
-    }
   }
 
   /**
@@ -141,23 +149,24 @@ public class SingleStoreConnection extends JdbcConnection {
       Optional<OBSERVE_OUTPUT_FORMAT> format,
       Optional<String> outputConfig, Optional<String> offSetConfig, Optional<String> recordFilter,
       ResultSetConsumer resultSetConsumer) throws SQLException {
-    final String query = observeQuery(fieldFilter, tableFilter, format, outputConfig, offSetConfig, recordFilter);
+    final String query = observeQuery(fieldFilter, tableFilter, format, outputConfig, offSetConfig,
+        recordFilter);
     return query(query, resultSetConsumer);
   }
 
   private String observeQuery(Set<ColumnId> fieldFilter, Set<TableId> tableFilter,
-                              Optional<OBSERVE_OUTPUT_FORMAT> format,
-                              Optional<String> outputConfig, Optional<String> offSetConfig, Optional<String> recordFilter) {
+      Optional<OBSERVE_OUTPUT_FORMAT> format,
+      Optional<String> outputConfig, Optional<String> offSetConfig, Optional<String> recordFilter) {
     StringBuilder query = new StringBuilder("OBSERVE ");
     if (fieldFilter != null && !fieldFilter.isEmpty()) {
       query.append(fieldFilter.stream().map(this::quotedColumnIdString)
-              .collect(Collectors.joining(","))).append(" FROM ");
+          .collect(Collectors.joining(","))).append(" FROM ");
     } else {
       query.append("* FROM ");
     }
     if (tableFilter != null && !tableFilter.isEmpty()) {
       query.append(
-              tableFilter.stream().map(this::quotedTableIdString).collect(Collectors.joining(",")));
+          tableFilter.stream().map(this::quotedTableIdString).collect(Collectors.joining(",")));
     } else {
       query.append("*");
     }
@@ -174,16 +183,21 @@ public class SingleStoreConnection extends JdbcConnection {
    * @param offset to validate
    * @return true if streaming is possible for given offset, false otherwise
    */
-  public boolean validateOffset(Set<TableId> tableFilter, SingleStorePartition partition, SingleStoreOffsetContext offset) {
-    List<String> offsets = offset.offsets().stream().filter(Objects::nonNull).map(o -> "'" + o + "'").collect(Collectors.toList());
+  public boolean validateOffset(Set<TableId> tableFilter, SingleStorePartition partition,
+      SingleStoreOffsetContext offset) {
+    List<String> offsets = offset.offsets().stream().filter(Objects::nonNull)
+        .map(o -> "'" + o + "'").collect(Collectors.toList());
     Optional<String> offsetParam = Optional.of("(" + String.join(",", offsets) + ")");
-    final String query = observeQuery(null, tableFilter, Optional.empty(), Optional.empty(), offsetParam, Optional.empty());
+    final String query = observeQuery(null, tableFilter, Optional.empty(), Optional.empty(),
+        offsetParam, Optional.empty());
     //sometimes same observe query is failed after second time execution with the same offset
-    try (Statement statement = connection().createStatement(); AutoClosableResultSetWrapper rsWrapper = AutoClosableResultSetWrapper.from(statement.executeQuery(query))) {
+    try (Statement statement = connection().createStatement(); AutoClosableResultSetWrapper rsWrapper = AutoClosableResultSetWrapper.from(
+        statement.executeQuery(query))) {
       rsWrapper.getResultSet().next();
     } catch (SQLException e) {
-      if (e.getMessage().contains("The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
-              && e.getErrorCode() == 2851 && e.getSQLState().equals("HY000")) {
+      if (e.getMessage().contains(
+          "The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
+          && e.getErrorCode() == 2851 && e.getSQLState().equals("HY000")) {
         LOGGER.warn("Failed to validate offset {}", offsetParam.get());
         return false;
       } else {

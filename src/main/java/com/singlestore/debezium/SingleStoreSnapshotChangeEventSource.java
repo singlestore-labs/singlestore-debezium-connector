@@ -1,6 +1,5 @@
 package com.singlestore.debezium;
 
-import com.singlestore.debezium.exception.WrongOffsetException;
 import com.singlestore.debezium.util.ObserveResultSetUtils;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.jdbc.JdbcConnection;
@@ -20,28 +19,22 @@ import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
-
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.OptionalLong;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,13 +45,10 @@ public class SingleStoreSnapshotChangeEventSource extends
   private static final Logger LOGGER = LoggerFactory
       .getLogger(SingleStoreSnapshotChangeEventSource.class);
 
-  private final Set<String> OFFSET_SET = new HashSet<>();
-  private volatile boolean offsetIsWrong;
   private final SingleStoreConnectorConfig connectorConfig;
   private final SingleStoreConnection jdbcConnection;
   private final SingleStoreDatabaseSchema schema;
   private final SnapshotProgressListener<SingleStorePartition> snapshotProgressListener;
-  private final MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory;
 
   public SingleStoreSnapshotChangeEventSource(SingleStoreConnectorConfig connectorConfig,
       MainConnectionProvidingConnectionFactory<SingleStoreConnection> jdbcConnectionFactory,
@@ -72,7 +62,6 @@ public class SingleStoreSnapshotChangeEventSource extends
     this.jdbcConnection = jdbcConnectionFactory.mainConnection();
     this.schema = schema;
     this.snapshotProgressListener = snapshotProgressListener;
-    this.jdbcConnectionFactory = jdbcConnectionFactory;
   }
 
   @Override
@@ -85,7 +74,6 @@ public class SingleStoreSnapshotChangeEventSource extends
 
     Connection connection = null;
     Exception exceptionWhileSnapshot = null;
-    Queue<JdbcConnection> connectionPool = null;
     try {
       Set<Pattern> dataCollectionsToBeSnapshotted = getDataCollectionPattern(
           snapshottingTask.getDataCollections());
@@ -116,9 +104,8 @@ public class SingleStoreSnapshotChangeEventSource extends
 
       if (snapshottingTask.snapshotData()) {
         LOGGER.info("Snapshot step 4.a - Creating connection pool");
-        connectionPool = createConnectionPool(ctx);
         LOGGER.info("Snapshot step 5 - Snapshotting data");
-        createDataEvents(context, ctx, connectionPool);
+        createDataEvents(context, ctx, jdbcConnection);
       } else {
         LOGGER.info("Snapshot step 5 - Skipping snapshotting of data");
         releaseDataSnapshotLocks(ctx);
@@ -155,126 +142,39 @@ public class SingleStoreSnapshotChangeEventSource extends
   private void createDataEvents(ChangeEventSource.ChangeEventSourceContext sourceContext,
       RelationalSnapshotChangeEventSource.RelationalSnapshotContext<SingleStorePartition,
           SingleStoreOffsetContext> snapshotContext,
-      Queue<JdbcConnection> connectionPool) throws Exception {
+      JdbcConnection conn) throws Exception {
     tryStartingSnapshot(snapshotContext);
 
     EventDispatcher.SnapshotReceiver<SingleStorePartition> snapshotReceiver = dispatcher
         .getSnapshotChangeEventReceiver();
-    int snapshotMaxThreads = connectionPool.size();
-    LOGGER.info("Creating snapshot with {} worker thread(s)", snapshotMaxThreads);
-    ExecutorService executorService = Executors.newFixedThreadPool(snapshotMaxThreads);
-    CompletionService<SingleStoreOffsetContext> completionService = new ExecutorCompletionService<>(
-        executorService);
-    Queue<SingleStoreOffsetContext> offsets = new ConcurrentLinkedQueue<>();
-    offsets.add(snapshotContext.offset);
-    for (int i = 1; i < snapshotMaxThreads; i++) {
-      offsets.add(copyOffset(snapshotContext));
-    }
 
-    Map<TableId, String> queryTables = new HashMap<>();
-    Map<TableId, OptionalLong> rowCountTables = new LinkedHashMap<>();
-    for (TableId tableId : snapshotContext.capturedTables) {
-      final String selectStatement = determineSnapshotSelect(snapshotContext, tableId);
-      LOGGER.info("For table '{}' using select statement: '{}'", tableId, selectStatement);
-      queryTables.put(tableId, selectStatement);
-      final OptionalLong rowCount = rowCountForTable(tableId);
-      rowCountTables.put(tableId, rowCount);
-    }
+    // We must have only one table
+    assert (snapshotContext.capturedTables.size() == 1);
+    TableId table = snapshotContext.capturedTables.iterator().next();
+    final String selectStatement = determineSnapshotSelect(snapshotContext, table);
 
-    int tableCount = rowCountTables.size();
-    List<Callable<SingleStoreOffsetContext>> dataEventTasks = new ArrayList<>(tableCount);
-    CyclicBarrier barrier = new CyclicBarrier(tableCount);
-    int tableOrder = 1;
-    for (TableId tableId : rowCountTables.keySet()) {
-      boolean firstTable = tableOrder == 1 && snapshotMaxThreads == 1;
-      boolean lastTable = tableOrder == tableCount && snapshotMaxThreads == 1;
-      String selectStatement = queryTables.get(tableId);
-      OptionalLong rowCount = rowCountTables.get(tableId);
-      Callable<SingleStoreOffsetContext> callable = createDataEventsForTableCallable(sourceContext,
-          snapshotContext, snapshotReceiver,
-          snapshotContext.tables.forTable(tableId), firstTable, lastTable, tableOrder++, tableCount,
-          selectStatement,
-          rowCount, offsets, connectionPool, barrier);
-      dataEventTasks.add(callable);
-    }
-    List<SingleStoreOffsetContext> commitSnapshotOffsetList = new ArrayList<>(tableCount);
-    try {
-      for (Callable<SingleStoreOffsetContext> callable : dataEventTasks) {
-        completionService.submit(callable);
-      }
-      for (int i = 0; i < dataEventTasks.size(); i++) {
-        commitSnapshotOffsetList.add(completionService.take().get());
-      }
-    } catch (ExecutionException e) {
-      if (e.getCause() != null && e.getCause() instanceof WrongOffsetException) {
-        throw new WrongOffsetException(e.getCause());
-      } else {
-        throw e;
-      }
-    } finally {
-      offsetIsWrong = false;
-      OFFSET_SET.clear();
-      barrier.reset();
-      executorService.shutdownNow();
-    }
-    commitSnapshotOffsetList.forEach(o -> {
-      List<String> offsetList = o.offsets();
-      for (int i = 0; i < offsetList.size(); i++) {
-        if (offsetList.get(i) != null) {
-          snapshotContext.offset.update(i, o.txId(), offsetList.get(i));
-        }
-      }
-    });
+    doCreateDataEventsForTable(sourceContext, snapshotContext, snapshotContext.offset,
+        snapshotReceiver, snapshotContext.tables.forTable(table), selectStatement,
+        conn);
 
-    for (SingleStoreOffsetContext offset : offsets) {
-      offset.preSnapshotCompletion();
-    }
+    snapshotContext.offset.preSnapshotCompletion();
     snapshotReceiver.completeSnapshot();
-    for (SingleStoreOffsetContext offset : offsets) {
-      offset.postSnapshotCompletion();
-    }
+    snapshotContext.offset.postSnapshotCompletion();
   }
 
-  private Callable<SingleStoreOffsetContext> createDataEventsForTableCallable(
-      ChangeEventSource.ChangeEventSourceContext sourceContext,
-      RelationalSnapshotChangeEventSource.RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> snapshotContext,
-      EventDispatcher.SnapshotReceiver<SingleStorePartition> snapshotReceiver, Table table,
-      boolean firstTable, boolean lastTable, int tableOrder,
-      int tableCount, String selectStatement, OptionalLong rowCount,
-      Queue<SingleStoreOffsetContext> offsets, Queue<JdbcConnection> connectionPool,
-      CyclicBarrier barrier) {
-    return () -> {
-      JdbcConnection connection = connectionPool.poll();
-      SingleStoreOffsetContext offset = offsets.poll();
-      try {
-        return doCreateDataEventsForTable(sourceContext, snapshotContext, offset, snapshotReceiver,
-            table,
-            firstTable, lastTable, tableOrder, tableCount, selectStatement, rowCount, connection,
-            barrier);
-      } finally {
-        offsets.add(offset);
-        connectionPool.add(connection);
-      }
-    };
-  }
-
-  private SingleStoreOffsetContext doCreateDataEventsForTable(
+  private void doCreateDataEventsForTable(
       ChangeEventSource.ChangeEventSourceContext sourceContext,
       RelationalSnapshotChangeEventSource.RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> snapshotContext,
       SingleStoreOffsetContext offset,
       EventDispatcher.SnapshotReceiver<SingleStorePartition> snapshotReceiver, Table table,
-      boolean firstTable, boolean lastTable, int tableOrder, int tableCount,
-      String selectStatement, OptionalLong rowCount, JdbcConnection jdbcConnection,
-      CyclicBarrier barrier)
+      String selectStatement, JdbcConnection jdbcConnection)
       throws InterruptedException {
     SingleStorePartition partition = snapshotContext.partition;
     if (!sourceContext.isRunning()) {
       throw new InterruptedException("Interrupted while snapshotting table " + table.id());
     }
-    SingleStoreOffsetContext commitOffset = copyOffset(snapshotContext);
     long exportStart = clock.currentTimeInMillis();
-    LOGGER.info("Exporting data from table '{}' ({} of {} tables)", table.id(), tableOrder,
-        tableCount);
+    LOGGER.info("Exporting data from table '{}'", table.id());
     Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(jdbcConnection, offset,
         table.id());
     try (Statement statement = jdbcConnection.connection().createStatement();
@@ -287,107 +187,61 @@ public class SingleStoreSnapshotChangeEventSource extends
                   connectorConfig.populateInternalId());
       long rows = 0;
       Threads.Timer logTimer = getTableScanLogTimer();
-      boolean hasNext = validateBeginSnapshotResultSet(rs);
-      barrier.await();
+
       int numPartitions = snapshotContext.offset.offsets().size();
-      if (hasNext) {
-        while (hasNext && numPartitions > 0) {
-          if (offsetIsWrong) {
-            throw new InterruptedException("Interrupted while snapshotting table " + table.id()
-                + ", because of wrong StartSnapshot offset");
+      List<Boolean> snapshotCommitted = new ArrayList<>(Collections.nCopies(numPartitions, false));
+      while (numPartitions > 0 && rs.next()) {
+        LOGGER.trace(
+            "Snapshot record, type: {}, internalId: {}, partitionId: {}, offset: {} values: {}",
+            ObserveResultSetUtils.snapshotType(rs),
+            ObserveResultSetUtils.internalId(rs),
+            ObserveResultSetUtils.partitionId(rs),
+            ObserveResultSetUtils.offset(rs),
+            ObserveResultSetUtils.rowToArray(rs, columnPostitions));
+
+        int partitionId = ObserveResultSetUtils.partitionId(rs);
+        if (ObserveResultSetUtils.isCommitSnapshot(rs)) {
+          numPartitions--;
+          snapshotCommitted.set(partitionId, true);
+        } else if (!ObserveResultSetUtils.isBeginSnapshot(rs)
+            && !snapshotCommitted.get(partitionId)) {
+          rows++;
+          final Object[] row = ObserveResultSetUtils.rowToArray(rs, columnPostitions);
+          final Long internalId = ObserveResultSetUtils.internalId(rs);
+          if (logTimer.expired()) {
+            long stop = clock.currentTimeInMillis();
+            LOGGER.info("\t Exported {} records for table '{}' after {}", rows, table.id(),
+                Strings.duration(stop - exportStart));
+            snapshotProgressListener.rowsScanned(partition, table.id(), rows);
+            logTimer = getTableScanLogTimer();
           }
-          LOGGER.trace(
-              "Snapshot record, type: {}, internalId: {}, partitionId: {}, offset: {} values: {}",
-              ObserveResultSetUtils.snapshotType(rs),
-              ObserveResultSetUtils.internalId(rs),
-              ObserveResultSetUtils.partitionId(rs),
-              ObserveResultSetUtils.offset(rs),
-              ObserveResultSetUtils.rowToArray(rs, columnPostitions));
-          if (ObserveResultSetUtils.isBeginSnapshot(rs)) {
-            hasNext = rs.next();
-          } else if (ObserveResultSetUtils.isCommitSnapshot(rs)) {
-            numPartitions--;
-            updateSnapshotOffset(commitOffset, rs);
-            if (numPartitions == 0) {
-              break;
-            }
-            hasNext = rs.next();
-          } else {
-            rows++;
-            final Object[] row = ObserveResultSetUtils.rowToArray(rs, columnPostitions);
-            final Long internalId = ObserveResultSetUtils.internalId(rs);
-            if (logTimer.expired()) {
-              long stop = clock.currentTimeInMillis();
-              if (rowCount.isPresent()) {
-                LOGGER.info("\t Exported {} of {} records for table '{}' after {}", rows,
-                    rowCount.getAsLong(),
-                    table.id(), Strings.duration(stop - exportStart));
-              } else {
-                LOGGER.info("\t Exported {} records for table '{}' after {}", rows, table.id(),
-                    Strings.duration(stop - exportStart));
-              }
-              snapshotProgressListener.rowsScanned(partition, table.id(), rows);
-              logTimer = getTableScanLogTimer();
-            }
-            updateSnapshotOffset(offset, rs);
-            hasNext = rs.next();
-            setSnapshotMarker(offset, firstTable, lastTable, rows == 1,
-                ObserveResultSetUtils.isCommitSnapshot(rs) && numPartitions == 1);
-            dispatcher.dispatchSnapshotEvent(partition, table.id(),
-                getChangeRecordEmitter(partition, offset, table.id(), table, row,
-                    internalId,
-                    sourceTableSnapshotTimestamp), snapshotReceiver);
+          updateSnapshotOffset(offset, rs);
+          if (rows == 1) {
+            offset.markSnapshotRecord(SnapshotRecord.FIRST);
           }
+          dispatcher.dispatchSnapshotEvent(partition, table.id(),
+              getChangeRecordEmitter(partition, offset, table.id(), table, row,
+                  internalId,
+                  sourceTableSnapshotTimestamp), snapshotReceiver);
         }
-      } else {
-        setSnapshotMarker(offset, firstTable, lastTable, false, true);
       }
+
       LOGGER.info(
-          "\t Finished exporting {} records for table '{}' ({} of {} tables); total duration '{}'",
-          rows, table.id(), tableOrder, tableCount,
-          Strings.duration(clock.currentTimeInMillis() - exportStart));
+          "\t Finished exporting {} records for table '{}'; total duration '{}'",
+          rows, table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
       snapshotProgressListener.dataCollectionSnapshotCompleted(partition, table.id(), rows);
-    } catch (SQLException | BrokenBarrierException e) {
-      throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
-    }
-    return commitOffset;
-  }
-
-  private boolean validateBeginSnapshotResultSet(ResultSet rs) throws SQLException {
-    if (rs.next()) {
-      if (!ObserveResultSetUtils.isBeginSnapshot(rs)) {
-        LOGGER.warn(
-            "Observe query first row response must be of 'BeginSnapshot' type, skip snapshotting");
-        return false;
+    } catch (SQLException e) {
+      SQLException error = e;
+      if (error.getMessage().contains(
+          "The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
+          &&
+          error.getErrorCode() == 2851 &&
+          error.getSQLState().equals("HY000")
+      ) {
+        error = new StaleOffsetException(error);
       }
-      String offset = ObserveResultSetUtils.offset(rs);
-      validateBeginOffset(offset);
-      return rs.next();
-    }
-    return false;
-  }
 
-  private synchronized void validateBeginOffset(String offset) {
-    OFFSET_SET.add(offset);
-    if (OFFSET_SET.size() > 1) {
-      offsetIsWrong = true;
-      throw new WrongOffsetException("StartSnapshot offset is wrong.");
-    }
-  }
-
-  private void setSnapshotMarker(SingleStoreOffsetContext offset, boolean firstTable,
-      boolean lastTable, boolean firstRecordInTable,
-      boolean lastRecordInTable) {
-    if (lastRecordInTable && lastTable) {
-      offset.markSnapshotRecord(SnapshotRecord.LAST);
-    } else if (firstRecordInTable && firstTable) {
-      offset.markSnapshotRecord(SnapshotRecord.FIRST);
-    } else if (lastRecordInTable) {
-      offset.markSnapshotRecord(SnapshotRecord.LAST_IN_DATA_COLLECTION);
-    } else if (firstRecordInTable) {
-      offset.markSnapshotRecord(SnapshotRecord.FIRST_IN_DATA_COLLECTION);
-    } else {
-      offset.markSnapshotRecord(SnapshotRecord.TRUE);
+      throw new ConnectException("Snapshotting of table " + table.id() + " failed", error);
     }
   }
 
@@ -480,29 +334,6 @@ public class SingleStoreSnapshotChangeEventSource extends
         .filter(tid -> pattern.asMatchPredicate()
             .test(connectorConfig.getTableIdMapper().toString(tid)))
         .sorted();
-  }
-
-  private Queue<JdbcConnection> createConnectionPool(
-      final RelationalSnapshotContext<SingleStorePartition, SingleStoreOffsetContext> ctx)
-      throws SQLException {
-    Queue<JdbcConnection> connectionPool = new ConcurrentLinkedQueue<>();
-    connectionPool.add(jdbcConnection);
-
-    int snapshotMaxThreads = ctx.capturedTables.size();
-    if (snapshotMaxThreads > 1) {
-      Optional<String> firstQuery = getSnapshotConnectionFirstSelect(ctx,
-          ctx.capturedTables.iterator().next());
-      for (int i = 1; i < snapshotMaxThreads; i++) {
-        JdbcConnection conn = jdbcConnectionFactory.newConnection().setAutoCommit(false);
-        connectionPoolConnectionCreated(ctx, conn);
-        connectionPool.add(conn);
-        if (firstQuery.isPresent()) {
-          conn.execute(firstQuery.get());
-        }
-      }
-    }
-    LOGGER.info("Created connection pool with {} threads", snapshotMaxThreads);
-    return connectionPool;
   }
 
   private void rollbackTransaction(Connection connection) {
@@ -628,7 +459,8 @@ public class SingleStoreSnapshotChangeEventSource extends
       TableId tableId, List<String> columns) {
     String snapshotSelectColumns = columns.stream()
         .collect(Collectors.joining(", "));//todo use in observe query
-    return Optional.of(String.format("OBSERVE * FROM %s.%s", tableId.catalog(), tableId.table()));
+    return Optional.of(
+        jdbcConnection.generateObserveQuery(tableId, snapshotContext.offset.offsets()));
   }
 
   @Override

@@ -16,7 +16,6 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,14 +44,6 @@ public class SingleStoreStreamingChangeEventSource implements
     this.errorHandler = errorHandler;
     this.schema = schema;
     this.clock = clock;
-  }
-
-  private String getOffsetStr(SingleStoreOffsetContext offsetContext) {
-    return "(" +
-        offsetContext.offsets()
-            .stream()
-            .map(o -> o == null ? "NULL" : "'" + o + "'")
-            .collect(Collectors.joining(",")) + ")";
   }
 
   @Override
@@ -85,11 +76,10 @@ public class SingleStoreStreamingChangeEventSource implements
       t.start();
 
       dispatcher.dispatchConnectorEvent(partition, ObserveStreamingStartedEvent.INSTANCE);
-      String query = String.format("OBSERVE * FROM %s BEGIN AT %s",
-          connection.quotedTableIdString(table), getOffsetStr(offsetContext));
+      String query = connection.generateObserveQuery(table, offsetContext.offsets());
       try (
           Statement stmt = conn.createStatement();
-          ResultSet rs = stmt.executeQuery(query);
+          ResultSet rs = stmt.executeQuery(query)
       ) {
         List<Integer> columnPositions =
             ObserveResultSetUtils.columnPositions(rs, schema.tableFor(table).columns(),
@@ -146,16 +136,17 @@ public class SingleStoreStreamingChangeEventSource implements
       }
     } catch (SQLException e) {
       // TODO: handle schema change event
+      SQLException error = e;
       if (!(!context.isRunning() &&
-          e.getMessage().contains("Query execution was interrupted") &&
-          e.getErrorCode() == 1317 &&
-          e.getSQLState().equals("70100"))) {
+          error.getMessage().contains("Query execution was interrupted") &&
+          error.getErrorCode() == 1317 &&
+          error.getSQLState().equals("70100"))) {
         String msg;
-        if (e.getMessage().contains(
+        if (error.getMessage().contains(
             "The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
             &&
-            e.getErrorCode() == 2851 &&
-            e.getSQLState().equals("HY000")
+            error.getErrorCode() == 2851 &&
+            error.getSQLState().equals("HY000")
         ) {
           msg = "Offset the connector is trying to resume from is considered stale.\n"
               + "Therefore, the connector cannot resume streaming.\n"
@@ -165,15 +156,17 @@ public class SingleStoreStreamingChangeEventSource implements
               + "To help prevent failures related to stale offsets, you can increase the value of the following engine variables in SingleStore:\n"
               + " * 'snapshots_to_keep' - Defines the number of snapshots to keep for backup and replication.\n"
               + " * 'snapshot_trigger_size' - Defines the size of transaction logs in bytes, which, when reached, triggers a snapshot that is written to disk.";
+          error = new StaleOffsetException(error);
         } else {
           msg =
-              e.getMessage() + " Error code: " + e.getErrorCode() + "; SQLSTATE: " + e.getSQLState()
+              error.getMessage() + " Error code: " + error.getErrorCode() + "; SQLSTATE: "
+                  + error.getSQLState()
                   + ".";
         }
 
         LOGGER.error(msg);
 
-        errorHandler.setProducerThrowable(new DebeziumException(msg, e));
+        errorHandler.setProducerThrowable(new DebeziumException(msg, error));
       }
     }
   }

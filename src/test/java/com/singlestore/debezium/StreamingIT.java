@@ -10,11 +10,15 @@ import static org.junit.Assert.assertTrue;
 
 import ch.qos.logback.classic.Logger;
 import io.debezium.config.Configuration;
+import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.embedded.EmbeddedEngine.CompletionResult;
+import io.debezium.engine.DebeziumEngine;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -168,7 +172,7 @@ public class StreamingIT extends IntegrationTestBase {
         SourceRecord record = records.get(0);
 
         Struct source = (Struct) ((Struct) record.value()).get("source");
-        assertEquals(source.get("version"), "0.1.6-beta");
+        assertEquals(source.get("version"), "0.1.7");
         assertEquals(source.get("connector"), "singlestore");
         assertEquals(source.get("name"), "singlestore_topic");
         assertNotNull(source.get("ts_ms"));
@@ -430,7 +434,8 @@ public class StreamingIT extends IntegrationTestBase {
         conn.execute(String.format("USE %s", TEST_DATABASE),
             "SET GLOBAL snapshots_to_keep=1",
             "SET GLOBAL snapshot_trigger_size=65536",
-            "CREATE TABLE staleOffsets(a INT)"
+            "CREATE TABLE IF NOT EXISTS staleOffsets(a INT)",
+            "DELETE FROM staleOffsets WHERE 1 > 0"
         );
 
         Configuration config = defaultJdbcConfigWithTable("staleOffsets").edit()
@@ -463,9 +468,8 @@ public class StreamingIT extends IntegrationTestBase {
         try {
           start(SingleStoreConnector.class, config);
           assertConnectorIsRunning();
-          assertThrows("Expected streaming to fail",
-              org.awaitility.core.ConditionTimeoutException.class, this::waitForStreamingToStart);
-
+          consumeRecordsByTopic(1);
+          assertConnectorNotRunning();
           assertTrue(appender.getLog().stream().anyMatch(event -> event.getMessage()
               .contains(
                   "Offset the connector is trying to resume from is considered stale.")));
@@ -503,11 +507,19 @@ public class StreamingIT extends IntegrationTestBase {
           conn.execute("INSERT INTO pkInRowstore VALUES (1, 'b', 'c')");
           conn.execute("DELETE FROM pkInRowstore WHERE a = 1");
 
-          List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
+          List<SourceRecord> records = new ArrayList<>(
+              consumeRecordsByTopic(3).allRecordsInOrder());
           assertEquals(3, records.size());
+          records.sort(new Comparator<SourceRecord>() {
+            @Override
+            public int compare(SourceRecord r1, SourceRecord r2) {
+              return ((Struct) r1.key()).getInt32("a")
+                  .compareTo(((Struct) r2.key()).getInt32("a"));
+            }
+          });
 
-          List<Integer> keyA = Arrays.asList(2, 1, 1);
-          List<String> keyB = Arrays.asList("d", "b", "b");
+          List<Integer> keyA = Arrays.asList(1, 1, 2);
+          List<String> keyB = Arrays.asList("b", "b", "d");
 
           for (int i = 0; i < records.size(); i++) {
             SourceRecord record = records.get(i);

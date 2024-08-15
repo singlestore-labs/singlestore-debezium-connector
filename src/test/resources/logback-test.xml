@@ -13,8 +13,12 @@
     <appender-ref ref="CONSOLE"/>
   </logger>
 
-  <logger name="io.debezium.jdbc.JdbcConnection" level="trace" additivity="false">
+  <logger name="io.debezium" level="trace" additivity="false">
     <appender-ref ref="CONSOLE"/>
   </logger>
-
+  <!--
+    <logger name="io.debezium.jdbc.JdbcConnection" level="trace" additivity="false">
+      <appender-ref ref="CONSOLE"/>
+    </logger>
+  -->
 </configuration>

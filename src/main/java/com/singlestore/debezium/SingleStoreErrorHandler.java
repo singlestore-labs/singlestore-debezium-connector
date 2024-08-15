@@ -22,4 +22,11 @@ public class SingleStoreErrorHandler extends ErrorHandler {
         WrongOffsetException.class);
   }
 
+  protected boolean isRetriable(Throwable throwable) {
+    if (throwable instanceof StaleOffsetException) {
+      return false;
+    }
+
+    return super.isRetriable(throwable);
+  }
 }
