@@ -105,6 +105,7 @@ public class SingleStoreSnapshotChangeEventSource extends
       if (snapshottingTask.snapshotData()) {
         LOGGER.info("Snapshot step 4.a - Creating connection pool");
         LOGGER.info("Snapshot step 5 - Snapshotting data");
+
         createDataEvents(context, ctx, jdbcConnection);
       } else {
         LOGGER.info("Snapshot step 5 - Skipping snapshotting of data");
@@ -150,8 +151,15 @@ public class SingleStoreSnapshotChangeEventSource extends
 
     // We must have only one table
     assert (snapshotContext.capturedTables.size() == 1);
+    LOGGER.info("Captured tables : {}", snapshotContext.capturedTables);
     TableId table = snapshotContext.capturedTables.iterator().next();
     final String selectStatement = determineSnapshotSelect(snapshotContext, table);
+
+    notificationService.initialSnapshotNotificationService().notifyTableInProgress(
+            snapshotContext.partition,
+            snapshotContext.offset,
+            table.table(),
+            snapshotContext.capturedTables);
 
     doCreateDataEventsForTable(sourceContext, snapshotContext, snapshotContext.offset,
         snapshotReceiver, snapshotContext.tables.forTable(table), selectStatement,
@@ -230,7 +238,15 @@ public class SingleStoreSnapshotChangeEventSource extends
           "\t Finished exporting {} records for table '{}'; total duration '{}'",
           rows, table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
       snapshotProgressListener.dataCollectionSnapshotCompleted(partition, table.id(), rows);
+
+      notificationService.initialSnapshotNotificationService().notifyCompletedTableSuccessfully(snapshotContext.partition,
+          snapshotContext.offset, table.id().table(), rows, snapshotContext.capturedTables);
     } catch (SQLException e) {
+
+      notificationService.initialSnapshotNotificationService().notifyCompletedTableWithError(snapshotContext.partition,
+          snapshotContext.offset,
+          table.id().table());
+
       SQLException error = e;
       if (error.getMessage().contains(
           "The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
@@ -299,7 +315,8 @@ public class SingleStoreSnapshotChangeEventSource extends
       }
     }
 
-    ctx.capturedTables = addSignalingCollectionAndSort(capturedTables);
+    Set<TableId> signallingCollectionAndSort = addSignalingCollectionAndSort(capturedTables);
+    ctx.capturedTables = signallingCollectionAndSort;
     ctx.capturedSchemaTables = capturedSchemaTables
         .stream()
         .sorted()
@@ -310,22 +327,25 @@ public class SingleStoreSnapshotChangeEventSource extends
     String tableIncludeList = connectorConfig.tableIncludeList();
     String signalingDataCollection = connectorConfig.getSignalingDataCollectionId();
     List<Pattern> captureTablePatterns = new ArrayList<>();
+
+    Set<TableId> result = new HashSet<>();
     if (!Strings.isNullOrBlank(tableIncludeList)) {
       captureTablePatterns.addAll(Strings.listOfRegex(tableIncludeList, Pattern.CASE_INSENSITIVE));
+    } else {
+      result = capturedTables
+              .stream()
+              .sorted().collect(Collectors.toCollection(LinkedHashSet::new));
     }
     if (!Strings.isNullOrBlank(signalingDataCollection)) {
       captureTablePatterns.addAll(getSignalDataCollectionPattern(signalingDataCollection));
     }
     if (captureTablePatterns.size() > 0) {
-      return captureTablePatterns
-          .stream()
-          .flatMap(pattern -> toTableIds(capturedTables, pattern))
-          .collect(Collectors.toCollection(LinkedHashSet::new));
+      result.addAll(captureTablePatterns
+              .stream()
+              .flatMap(pattern -> toTableIds(capturedTables, pattern))
+              .collect(Collectors.toCollection(LinkedHashSet::new)));
     }
-    return capturedTables
-        .stream()
-        .sorted()
-        .collect(Collectors.toCollection(LinkedHashSet::new));
+    return result;
   }
 
   private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {

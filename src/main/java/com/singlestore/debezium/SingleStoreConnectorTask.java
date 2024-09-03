@@ -48,6 +48,10 @@ public class SingleStoreConnectorTask extends
     return Module.version();
   }
 
+  public SingleStoreDatabaseSchema schema() {
+      return schema;
+  }
+
   @Override
   protected Iterable<Field> getAllConfigurationFields() {
     return SingleStoreConnectorConfig.ALL_FIELDS;
