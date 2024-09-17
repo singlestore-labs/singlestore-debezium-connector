@@ -367,8 +367,6 @@ to a semantic type in the corresponding event field.
 | INT                     | INT32        
 | BIGINT                  | INT64        
 
-> Note: `BIT` type is returned in reversed order.
-
 ### Real numbers
 
 | SingleStoreDB data type | Literal type 

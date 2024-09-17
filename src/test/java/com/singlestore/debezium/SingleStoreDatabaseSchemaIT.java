@@ -71,7 +71,7 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
           org.apache.kafka.connect.data.Date.builder().optional().build(),
           SchemaBuilder.int32().defaultValue(10).optional().build(),
           SchemaBuilder.float64().optional().build(),
-          Bits.builder(18).optional().build()
+          Bits.builder(64).optional().build()
       );
     } catch (SQLException e) {
       Assert.fail(e.getMessage());

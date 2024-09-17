@@ -1,6 +1,9 @@
 package com.singlestore.debezium;
 
 import com.singlestore.jdbc.SingleStoreBlob;
+import io.debezium.data.Bits;
+import java.sql.Types;
+import java.util.BitSet;
 import org.locationtech.jts.io.ParseException;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -94,6 +97,8 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
       case "MEDIUMBLOB":
       case "BLOB":
         return SchemaBuilder.bytes();
+      case "BIT":
+        return Bits.builder(64);
     }
     SchemaBuilder builder = super.schemaBuilder(column);
     logger.debug("JdbcValueConverters returned '{}' for column '{}'",
@@ -138,8 +143,61 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
     return super.converter(column, fieldDefn);
   }
 
-  protected ByteOrder byteOrderOfBitType() {
-    return ByteOrder.LITTLE_ENDIAN;
+  @Override
+  protected ValueConverter convertBits(Column column, Field fieldDefn) {
+    int numBits = column.length();
+    int numBytes = numBits / Byte.SIZE + (numBits % Byte.SIZE == 0 ? 0 : 1);
+    return (data) -> convertBits(column, fieldDefn, data, numBytes);
+  }
+
+  /**
+   * Converts a value object for an expected JDBC type of {@link Types#BIT} of length 2+.
+   *
+   * @param column    the column definition describing the {@code data} value; never null
+   * @param fieldDefn the field definition; never null
+   * @param data      the data object to be converted into a {@link Date Kafka Connect date} type;
+   *                  never null
+   * @param numBytes  the number of bytes that should be included in the resulting byte[]
+   * @return the converted value, or null if the conversion could not be made and the column allows
+   * nulls
+   * @throws IllegalArgumentException if the value could not be converted but the column does not
+   *                                  allow nulls
+   */
+  @Override
+  protected Object convertBits(Column column, Field fieldDefn, Object data, int numBytes) {
+    return convertValue(column, fieldDefn, data, new byte[0], (r) -> {
+      byte[] bytes;
+      if (data instanceof byte[]) {
+        bytes = (byte[]) data;
+      } else if (data instanceof BitSet) {
+        bytes = ((BitSet) data).toByteArray();
+
+        // BitSet in SingleStore JDBC driver returns bytes in wrong order
+        int i = 0;
+        int j = bytes.length - 1;
+        byte tmp;
+        while (j > i) {
+          tmp = bytes[j];
+          bytes[j] = bytes[i];
+          bytes[i] = tmp;
+          ++i;
+          --j;
+        }
+      } else {
+        throw new IllegalArgumentException("Invalid data type of BIT column");
+      }
+
+      r.deliver(padBigEndian(numBytes, bytes));
+    });
+  }
+
+  protected byte[] padBigEndian(int numBytes, byte[] data) {
+    if (data.length < numBytes) {
+      byte[] padded = new byte[numBytes];
+      System.arraycopy(data, 0, padded, numBytes - data.length, data.length);
+      return padded;
+    }
+    return data;
   }
 
   /**
