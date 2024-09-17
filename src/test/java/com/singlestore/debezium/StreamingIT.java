@@ -158,6 +158,73 @@ public class StreamingIT extends IntegrationTestBase {
   }
 
   @Test
+  public void bit1Column() throws Exception {
+    try (SingleStoreConnection conn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
+      conn.execute("CREATE TABLE IF NOT EXISTS bitColumn(bitColumn BIT)");
+      conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
+      Configuration config = defaultJdbcConfigWithTable("bitColumn");
+      start(SingleStoreConnector.class, config);
+      assertConnectorIsRunning();
+      waitForStreamingToStart();
+      try {
+        conn.execute("INSERT INTO `bitColumn` VALUES ('1')" // geographypointColumn
+        );
+
+        List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+        assertEquals(1, records.size());
+
+        SourceRecord record = records.get(0);
+        Struct value = (Struct) record.value();
+        Struct after = (Struct) value.get("after");
+        Struct source = (Struct) value.get("source");
+
+        assertEquals(true, record.sourceOffset().get("snapshot_completed"));
+        assertEquals("false", source.get("snapshot"));
+
+        byte[] res = {0, 0, 0, 0, 0, 0, 0, '1'};
+        assertArrayEquals(res, (byte[]) after.get("bitColumn"));
+      } finally {
+        stopConnector();
+      }
+    }
+  }
+
+  @Test
+  public void bitColumnDefault() throws Exception {
+    try (SingleStoreConnection conn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
+      conn.execute(
+          "CREATE TABLE IF NOT EXISTS bitColumnDefault(bitColumn BIT(64) DEFAULT '1234567')");
+      conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
+      Configuration config = defaultJdbcConfigWithTable("bitColumnDefault");
+      start(SingleStoreConnector.class, config);
+      assertConnectorIsRunning();
+      waitForStreamingToStart();
+      try {
+        conn.execute("INSERT INTO `bitColumnDefault` VALUES ()" // geographypointColumn
+        );
+
+        List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+        assertEquals(1, records.size());
+
+        SourceRecord record = records.get(0);
+        Struct value = (Struct) record.value();
+        Struct after = (Struct) value.get("after");
+        Struct source = (Struct) value.get("source");
+
+        assertEquals(true, record.sourceOffset().get("snapshot_completed"));
+        assertEquals("false", source.get("snapshot"));
+
+        byte[] res = {0, '1', '2', '3', '4', '5', '6', '7'};
+        assertArrayEquals(res, (byte[]) after.get("bitColumn"));
+      } finally {
+        stopConnector();
+      }
+    }
+  }
+
+  @Test
   public void populatesSourceInfo() throws SQLException, InterruptedException {
     try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("purchased"))) {
