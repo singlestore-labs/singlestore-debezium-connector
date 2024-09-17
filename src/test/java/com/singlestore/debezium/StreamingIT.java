@@ -170,7 +170,7 @@ public class StreamingIT extends IntegrationTestBase {
       assertConnectorIsRunning();
       waitForStreamingToStart();
       try {
-        conn.execute("INSERT INTO `bitColumn` VALUES ('1')"
+        conn.execute("INSERT INTO `bitColumn` VALUES (b'00000001')"
         );
 
         List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
