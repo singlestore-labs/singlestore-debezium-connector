@@ -170,7 +170,7 @@ public class StreamingIT extends IntegrationTestBase {
       assertConnectorIsRunning();
       waitForStreamingToStart();
       try {
-        conn.execute("INSERT INTO `bitColumn` VALUES ('1')" // geographypointColumn
+        conn.execute("INSERT INTO `bitColumn` VALUES ('1')"
         );
 
         List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
@@ -204,7 +204,7 @@ public class StreamingIT extends IntegrationTestBase {
       assertConnectorIsRunning();
       waitForStreamingToStart();
       try {
-        conn.execute("INSERT INTO `bitColumnDefault` VALUES ()" // geographypointColumn
+        conn.execute("INSERT INTO `bitColumnDefault` VALUES ()"
         );
 
         List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
