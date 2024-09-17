@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 
 import ch.qos.logback.classic.Logger;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
 import io.debezium.engine.DebeziumEngine;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.kafka.connect.data.ConnectSchema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
@@ -212,12 +214,18 @@ public class StreamingIT extends IntegrationTestBase {
         Struct value = (Struct) record.value();
         Struct after = (Struct) value.get("after");
         Struct source = (Struct) value.get("source");
+        byte[] defValue = (byte[]) record
+            .valueSchema()
+            .field("after").schema()
+            .field("bitColumn").schema()
+            .defaultValue();
 
         assertEquals(true, record.sourceOffset().get("snapshot_completed"));
         assertEquals("false", source.get("snapshot"));
 
-        byte[] res = {0, '1', '2', '3', '4', '5', '6', '7'};
-        assertArrayEquals(res, (byte[]) after.get("bitColumn"));
+        byte[] expected = {0, '1', '2', '3', '4', '5', '6', '7'};
+        assertArrayEquals(expected, defValue);
+        assertArrayEquals(expected, (byte[]) after.get("bitColumn"));
       } finally {
         stopConnector();
       }
