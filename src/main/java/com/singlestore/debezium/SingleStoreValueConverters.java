@@ -89,6 +89,7 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
           }
         }
         return org.apache.kafka.connect.data.Timestamp.builder();
+      case "BSON":
       case "TINYBLOB":
       case "LONGBLOB":
       case "MEDIUMBLOB":
@@ -129,6 +130,7 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
       case "DATETIME":
       case "TIMESTAMP":
         return data -> convertTimeStamp(column, fieldDefn, data);
+      case "BSON":
       case "TINYBLOB":
       case "LONGBLOB":
       case "MEDIUMBLOB":
