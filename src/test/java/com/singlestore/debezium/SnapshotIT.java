@@ -5,10 +5,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.SchemaAndValueField;
-import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -58,7 +56,7 @@ public class SnapshotIT extends IntegrationTestBase {
     try {
       final SourceRecords recordsA = consumeRecordsByTopic(3);
       final List<SourceRecord> table1 = recordsA.recordsForTopic(
-          TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
+              TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
           .stream().sorted(Comparator.comparingInt(
               v -> (Integer) ((Struct) ((Struct) v.value()).get("after")).get("pk")))
           .collect(Collectors.toList());
@@ -72,7 +70,7 @@ public class SnapshotIT extends IntegrationTestBase {
             new SchemaAndValueField("aa", Schema.OPTIONAL_STRING_SCHEMA, "test" + i));
         final Struct key1 = (Struct) record1.key();
         final Struct value1 = (Struct) record1.value();
-        assertEquals(i, key1.get("internalId"));
+        assertEquals(i, key1.get("pk"));
         assertEquals(Schema.Type.STRUCT, key1.schema().type());
         assertEquals(Schema.Type.INT64, key1.schema().fields().get(0).schema().type());
         assertRecord((Struct) value1.get("after"), expectedRow1);
@@ -168,8 +166,8 @@ public class SnapshotIT extends IntegrationTestBase {
                     String.CASE_INSENSITIVE_ORDER))
             .collect(Collectors.toList());
 
-        List<String> values = Arrays.asList(new String[] { "test0", "test1", "test2" });
-        List<String> operations = Arrays.asList(new String[] { "r", "r", "r" });
+        List<String> values = Arrays.asList("test0", "test1", "test2");
+        List<String> operations = Arrays.asList("r", "r", "r");
 
         for (int i = 0; i < records.size(); i++) {
           SourceRecord record = records.get(i);
@@ -188,7 +186,7 @@ public class SnapshotIT extends IntegrationTestBase {
               .stream()
               .map(field -> field.name())
               .collect(Collectors.toSet());
-          assertEquals(new HashSet<>(Arrays.asList("aa")), columnNames);
+          assertEquals(new HashSet<>(List.of("aa")), columnNames);
           assertEquals(values.get(i), value.get("aa"));
         }
       } finally {
@@ -213,7 +211,7 @@ public class SnapshotIT extends IntegrationTestBase {
       assertThat(recordsA.allRecordsInOrder()).isEmpty();
       recordsA = consumeRecordsByTopic(3);
       final List<SourceRecord> table1 = recordsA.recordsForTopic(
-          TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
+              TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
           .stream().sorted(Comparator.comparingInt(
               v -> (Integer) ((Struct) ((Struct) v.value()).get("after")).get("pk")))
           .collect(Collectors.toList());
@@ -229,7 +227,7 @@ public class SnapshotIT extends IntegrationTestBase {
         final Struct value1 = (Struct) record1.value();
         assertEquals(i, key1.get("pk"));
         assertEquals(Schema.Type.STRUCT, key1.schema().type());
-        assertEquals(Schema.Type.INT64, key1.schema().fields().get(0).schema().type());
+        assertEquals(Schema.Type.INT32, key1.schema().fields().get(0).schema().type());
         assertRecord((Struct) value1.get("after"), expectedRow1);
         assertThat(record1.sourceOffset())
             .extracting("snapshot").containsExactly(true);

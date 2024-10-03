@@ -1,231 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns="http://maven.apache.org/POM/4.0.0"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-
-  <groupId>com.singlestore</groupId>
   <artifactId>singlestore-debezium-connector</artifactId>
-  <version>0.1.7</version>
-  <name>singlestore-debezium-connector</name>
-  <description>SingleStore Debezium Connector</description>
-  <url>https://github.com/singlestore-labs/singlestore-debezium-connector</url>
-
-  <organization>
-    <name>SingleStore</name>
-    <url>https://www.singlestore.com/</url>
-  </organization>
-
-  <developers>
-    <developer>
-      <id>singlestore</id>
-      <name>SingleStore</name>
-      <email>team@singlestore.com</email>
-      <organization>SingleStore</organization>
-      <organizationUrl>https://www.singlestore.com/</organizationUrl>
-    </developer>
-  </developers>
-
-  <scm>
-    <url>git://git@github.com:singlestore-labs/singlestore-debezium-connector.git</url>
-    <connection>scm:git:git@github.com:singlestore-labs/singlestore-debezium-connector.git
-    </connection>
-    <developerConnection>
-      scm:git:git@github.com:singlestore-labs/singlestore-debezium-connector.git
-    </developerConnection>
-    <tag>singlestore-debezium-connector-0.1.7</tag>
-  </scm>
-
-  <licenses>
-    <license>
-      <name>Apache License, Version 2.0</name>
-      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
-
-  <properties>
-    <maven.compiler.source>11</maven.compiler.source>
-    <maven.compiler.target>11</maven.compiler.target>
-
-    <version.debezium>2.5.1.Final</version.debezium>
-    <version.kafka>3.6.1</version.kafka>
-    <version.singlestore.jdbc.driver>1.2.0</version.singlestore.jdbc.driver>
-    <version.jts.io>1.19.0</version.jts.io>
-
-    <version.kafka-connect-avro-converter>7.5.1</version.kafka-connect-avro-converter>
-    <version.connect-json>3.6.1</version.connect-json>
-    <version.org.slf4j>2.0.4</version.org.slf4j>
-    <version.logback-classic>1.4.14</version.logback-classic>
-    <version.testcontainers>1.19.3</version.testcontainers>
-    <version.awaitility>4.2.0</version.awaitility>
-    <version.mockito>3.0.0</version.mockito>
-    <version.junit>4.13.2</version.junit>
-    <version.assertj-core>3.11.1</version.assertj-core>
-
-    <version.assembly.plugin>3.6.0</version.assembly.plugin>
-    <version.failsafe.plugin>3.2.3</version.failsafe.plugin>
-
-    <!--
-      Specify the properties that will be used for setting up the integration tests' Docker container.
-      Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
-      work on all platforms. We'll set some of these as system properties during integration testing.
-    -->
-    <singlestore.image>ghcr.io/singlestore-labs/singlestoredb-dev:latest</singlestore.image>
-    <singlestore.version>dev:92a8a199-13fd-462d-a9ec-58ef94754473</singlestore.version>
-    <singlestore.license>${env.SINGLESTORE_LICENSE}</singlestore.license>
-    <singlestore.host>127.0.0.1</singlestore.host>
-    <singlestore.port>3306</singlestore.port>
-    <singlestore.user>root</singlestore.user>
-    <singlestore.password>root</singlestore.password>
-  </properties>
-
-  <repositories>
-    <repository>
-      <id>confluent</id>
-      <name>Confluent</name>
-      <url>https://packages.confluent.io/maven/</url>
-      <snapshots>
-        <enabled>true</enabled>
-        <updatePolicy>never</updatePolicy>
-      </snapshots>
-    </repository>
-  </repositories>
-
-  <dependencies>
-    <dependency>
-      <groupId>io.debezium</groupId>
-      <artifactId>debezium-core</artifactId>
-      <version>${version.debezium}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.kafka</groupId>
-      <artifactId>connect-api</artifactId>
-      <version>${version.kafka}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.singlestore</groupId>
-      <artifactId>singlestore-jdbc-client</artifactId>
-      <version>${version.singlestore.jdbc.driver}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.locationtech.jts.io</groupId>
-      <artifactId>jts-io-common</artifactId>
-      <version>${version.jts.io}</version>
-    </dependency>
-    <!--logging-->
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>${version.org.slf4j}</version>
-      <optional>true</optional>
-    </dependency>
-    <!-- Testing -->
-    <dependency>
-      <groupId>io.debezium</groupId>
-      <artifactId>debezium-core</artifactId>
-      <version>${version.debezium}</version>
-      <type>test-jar</type>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.debezium</groupId>
-      <artifactId>debezium-embedded</artifactId>
-      <version>${version.debezium}</version>
-      <type>test-jar</type>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.debezium</groupId>
-      <artifactId>debezium-embedded</artifactId>
-      <version>${version.debezium}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.confluent</groupId>
-      <artifactId>kafka-connect-avro-converter</artifactId>
-      <version>${version.kafka-connect-avro-converter}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.kafka</groupId>
-      <artifactId>connect-json</artifactId>
-      <version>${version.connect-json}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
-      <scope>test</scope>
-      <version>${version.logback-classic}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>testcontainers</artifactId>
-      <version>${version.testcontainers}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.awaitility</groupId>
-      <artifactId>awaitility</artifactId>
-      <version>${version.awaitility}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
-      <version>${version.mockito}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <scope>test</scope>
-      <version>${version.junit}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.assertj</groupId>
-      <artifactId>assertj-core</artifactId>
-      <scope>test</scope>
-      <version>${version.assertj-core}</version>
-    </dependency>
-  </dependencies>
-
-  <distributionManagement>
-    <snapshotRepository>
-      <id>ossrh</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-    </snapshotRepository>
-    <repository>
-      <id>ossrh</id>
-      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-    </repository>
-  </distributionManagement>
 
   <build>
     <plugins>
       <plugin>
-        <groupId>io.fabric8</groupId>
         <artifactId>docker-maven-plugin</artifactId>
         <configuration>
-          <watchInterval>500</watchInterval>
-          <logDate>default</logDate>
-          <verbose>true</verbose>
           <images>
             <image>
               <!-- A Docker image with SingleStoreDB cluster -->
               <name>${singlestore.image}</name>
               <run>
+                <env>
+                  <ROOT_PASSWORD>${singlestore.password}</ROOT_PASSWORD>
+                  <SINGLESTORE_LICENSE>${singlestore.license}</SINGLESTORE_LICENSE>
+                  <SINGLESTORE_VERSION>${singlestore.version}</SINGLESTORE_VERSION>
+                </env>
                 <namingStrategy>none</namingStrategy>
                 <ports>
                   <port>${singlestore.port}:3306</port>
                 </ports>
-                <env>
-                  <SINGLESTORE_LICENSE>${singlestore.license}</SINGLESTORE_LICENSE>
-                  <ROOT_PASSWORD>${singlestore.password}</ROOT_PASSWORD>
-                  <SINGLESTORE_VERSION>${singlestore.version}</SINGLESTORE_VERSION>
-                </env>
                 <!-- Uncomment this to see database logs in the test output
                 <log>
                     <prefix>SingleStoreDB &gt;&gt;&gt; </prefix>
@@ -234,34 +31,38 @@
                 </log>
                 -->
                 <wait>
-                  <time>300000</time> <!-- 300 seconds max -->
-                  <log>Log Opened</log>
+                  <log>Log Opened</log> <!-- 300 seconds max -->
+                  <time>300000</time>
                 </wait>
               </run>
             </image>
           </images>
+          <logDate>default</logDate>
+          <verbose>true</verbose>
+          <watchInterval>500</watchInterval>
         </configuration>
-        <!--
-        Connect this plugin to the maven lifecycle around the integration-test phase:
-        start the container in pre-integration-test and stop it in post-integration-test.
-        -->
         <executions>
           <execution>
-            <id>start</id>
-            <phase>pre-integration-test</phase>
             <goals>
               <goal>build</goal>
               <goal>start</goal>
             </goals>
+            <id>start</id>
+            <phase>pre-integration-test</phase>
           </execution>
           <execution>
-            <id>stop</id>
-            <phase>post-integration-test</phase>
             <goals>
               <goal>stop</goal>
             </goals>
+            <id>stop</id>
+            <phase>post-integration-test</phase>
           </execution>
         </executions>
+        <!--
+        Connect this plugin to the maven lifecycle around the integration-test phase:
+        start the container in pre-integration-test and stop it in post-integration-test.
+        -->
+        <groupId>io.fabric8</groupId>
       </plugin>
       <!--
       Unlike surefire, the failsafe plugin ensures 'post-integration-test' phase always runs, even
@@ -269,87 +70,85 @@
       after the integration tests (defined as '*IT.java') are run.
       -->
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>integration-test</id>
-            <goals>
-              <goal>integration-test</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>verify</id>
-            <goals>
-              <goal>verify</goal>
-            </goals>
-          </execution>
-        </executions>
         <configuration>
+          <enableAssertions>true</enableAssertions>
           <includes>
             <include>**/*</include>
           </includes>
-          <enableAssertions>true</enableAssertions>
           <systemPropertyVariables>
             <!-- Make these available to the tests via system properties -->
             <singlestore.hostname>${singlestore.host}</singlestore.hostname>
+            <singlestore.password>${singlestore.password}</singlestore.password>
             <singlestore.port>${singlestore.port}</singlestore.port>
             <singlestore.user>${singlestore.user}</singlestore.user>
-            <singlestore.password>${singlestore.password}</singlestore.password>
             <singlestore.version>${singlestore.version}</singlestore.version>
           </systemPropertyVariables>
         </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-gpg-plugin</artifactId>
-        <version>3.0.1</version>
         <executions>
           <execution>
-            <phase>verify</phase>
+            <goals>
+              <goal>integration-test</goal>
+            </goals>
+            <id>integration-test</id>
+          </execution>
+          <execution>
+            <goals>
+              <goal>verify</goal>
+            </goals>
+            <id>verify</id>
+          </execution>
+        </executions>
+        <groupId>org.apache.maven.plugins</groupId>
+      </plugin>
+      <plugin>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <executions>
+          <execution>
             <goals>
               <goal>sign</goal>
             </goals>
+            <phase>verify</phase>
           </execution>
         </executions>
+        <groupId>org.apache.maven.plugins</groupId>
+        <version>3.0.1</version>
       </plugin>
       <plugin>
-        <groupId>org.sonatype.plugins</groupId>
         <artifactId>nexus-staging-maven-plugin</artifactId>
-        <version>1.6.13</version>
-        <extensions>true</extensions>
+        <configuration>
+          <autoReleaseAfterClose>true</autoReleaseAfterClose>
+          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+          <serverId>ossrh</serverId>
+          <stagingProgressTimeoutMinutes>15</stagingProgressTimeoutMinutes>
+        </configuration>
         <executions>
           <execution>
             <phase>deploy</phase>
           </execution>
         </executions>
-        <configuration>
-          <serverId>ossrh</serverId>
-          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-          <autoReleaseAfterClose>true</autoReleaseAfterClose>
-          <stagingProgressTimeoutMinutes>15</stagingProgressTimeoutMinutes>
-        </configuration>
+        <extensions>true</extensions>
+        <groupId>org.sonatype.plugins</groupId>
+        <version>1.6.13</version>
       </plugin>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.9.1</version>
         <configuration>
           <additionalparam>-Xdoclint:none</additionalparam>
         </configuration>
         <executions>
           <execution>
-            <id>attach-javadocs</id>
             <goals>
               <goal>jar</goal>
             </goals>
+            <id>attach-javadocs</id>
           </execution>
         </executions>
+        <groupId>org.apache.maven.plugins</groupId>
+        <version>2.9.1</version>
       </plugin>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
-        <version>3.2.1</version>
         <executions>
           <execution>
             <!--package phase-->
@@ -358,13 +157,15 @@
             </goals>
           </execution>
         </executions>
+        <groupId>org.apache.maven.plugins</groupId>
+        <version>3.2.1</version>
       </plugin>
     </plugins>
     <resources>
       <!-- Apply the properties set in the POM to the resource files -->
       <resource>
-        <filtering>true</filtering>
         <directory>src/main/resources</directory>
+        <filtering>true</filtering>
         <includes>
           <include>*</include>
           <include>**/*</include>
@@ -372,46 +173,245 @@
       </resource>
     </resources>
   </build>
+  <dependencies>
+    <dependency>
+      <artifactId>debezium-core</artifactId>
+      <groupId>io.debezium</groupId>
+      <version>${version.debezium}</version>
+    </dependency>
+    <dependency>
+      <artifactId>connect-api</artifactId>
+      <groupId>org.apache.kafka</groupId>
+      <scope>provided</scope>
+      <version>${version.kafka}</version>
+    </dependency>
+    <dependency>
+      <artifactId>singlestore-jdbc-client</artifactId>
+      <groupId>com.singlestore</groupId>
+      <version>${version.singlestore.jdbc.driver}</version>
+    </dependency>
+    <dependency>
+      <artifactId>jts-io-common</artifactId>
+      <groupId>org.locationtech.jts.io</groupId>
+      <version>${version.jts.io}</version>
+    </dependency>
+    <!--logging-->
+    <dependency>
+      <artifactId>slf4j-api</artifactId>
+      <groupId>org.slf4j</groupId>
+      <optional>true</optional>
+      <version>${version.org.slf4j}</version>
+    </dependency>
+    <!-- Testing -->
+    <dependency>
+      <artifactId>debezium-core</artifactId>
+      <groupId>io.debezium</groupId>
+      <scope>test</scope>
+      <type>test-jar</type>
+      <version>${version.debezium}</version>
+    </dependency>
+    <dependency>
+      <artifactId>debezium-embedded</artifactId>
+      <groupId>io.debezium</groupId>
+      <scope>test</scope>
+      <type>test-jar</type>
+      <version>${version.debezium}</version>
+    </dependency>
+    <dependency>
+      <artifactId>debezium-embedded</artifactId>
+      <groupId>io.debezium</groupId>
+      <scope>test</scope>
+      <version>${version.debezium}</version>
+    </dependency>
+    <dependency>
+      <artifactId>kafka-connect-avro-converter</artifactId>
+      <groupId>io.confluent</groupId>
+      <scope>test</scope>
+      <version>${version.kafka-connect-avro-converter}</version>
+    </dependency>
+    <dependency>
+      <artifactId>connect-json</artifactId>
+      <groupId>org.apache.kafka</groupId>
+      <scope>test</scope>
+      <version>${version.connect-json}</version>
+    </dependency>
+    <dependency>
+      <artifactId>logback-classic</artifactId>
+      <groupId>ch.qos.logback</groupId>
+      <scope>test</scope>
+      <version>${version.logback-classic}</version>
+    </dependency>
+    <dependency>
+      <artifactId>testcontainers</artifactId>
+      <groupId>org.testcontainers</groupId>
+      <scope>test</scope>
+      <version>${version.testcontainers}</version>
+    </dependency>
+    <dependency>
+      <artifactId>awaitility</artifactId>
+      <groupId>org.awaitility</groupId>
+      <scope>test</scope>
+      <version>${version.awaitility}</version>
+    </dependency>
+    <dependency>
+      <artifactId>mockito-core</artifactId>
+      <groupId>org.mockito</groupId>
+      <scope>test</scope>
+      <version>${version.mockito}</version>
+    </dependency>
+    <dependency>
+      <artifactId>junit</artifactId>
+      <groupId>junit</groupId>
+      <scope>test</scope>
+      <version>${version.junit}</version>
+    </dependency>
+    <dependency>
+      <artifactId>assertj-core</artifactId>
+      <groupId>org.assertj</groupId>
+      <scope>test</scope>
+      <version>${version.assertj-core}</version>
+    </dependency>
+  </dependencies>
+  <description>SingleStore Debezium Connector</description>
+  <developers>
+    <developer>
+      <email>team@singlestore.com</email>
+      <id>singlestore</id>
+      <name>SingleStore</name>
+      <organization>SingleStore</organization>
+      <organizationUrl>https://www.singlestore.com/</organizationUrl>
+    </developer>
+  </developers>
+  <distributionManagement>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+  </distributionManagement>
+  <groupId>com.singlestore</groupId>
+
+  <licenses>
+    <license>
+      <distribution>repo</distribution>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <name>singlestore-debezium-connector</name>
+
+  <organization>
+    <name>SingleStore</name>
+    <url>https://www.singlestore.com/</url>
+  </organization>
 
   <profiles>
     <profile>
-      <id>assembly</id>
       <activation>
         <activeByDefault>false</activeByDefault>
       </activation>
       <build>
         <plugins>
           <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-assembly-plugin</artifactId>
-            <version>${version.assembly.plugin}</version>
             <dependencies>
               <dependency>
-                <groupId>io.debezium</groupId>
                 <artifactId>debezium-assembly-descriptors</artifactId>
+                <groupId>io.debezium</groupId>
                 <version>${version.debezium}</version>
               </dependency>
             </dependencies>
             <executions>
               <execution>
-                <id>default</id>
-                <phase>package</phase>
+                <configuration>
+                  <attach>true</attach>
+                  <descriptorRefs>
+                    <descriptorRef>connector-distribution</descriptorRef>
+                  </descriptorRefs>  <!-- we want attach & deploy these to Maven -->
+                  <finalName>${project.artifactId}-${project.version}</finalName>
+                  <tarLongFileMode>posix</tarLongFileMode>
+                </configuration>
                 <goals>
                   <goal>single</goal>
                 </goals>
-                <configuration>
-                  <finalName>${project.artifactId}-${project.version}</finalName>
-                  <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
-                  <descriptorRefs>
-                    <descriptorRef>connector-distribution</descriptorRef>
-                  </descriptorRefs>
-                  <tarLongFileMode>posix</tarLongFileMode>
-                </configuration>
+                <id>default</id>
+                <phase>package</phase>
               </execution>
             </executions>
+            <groupId>org.apache.maven.plugins</groupId>
+            <version>${version.assembly.plugin}</version>
           </plugin>
         </plugins>
       </build>
+      <id>assembly</id>
     </profile>
   </profiles>
+
+  <properties>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
+
+    <singlestore.host>127.0.0.1</singlestore.host>
+    <singlestore.image>ghcr.io/singlestore-labs/singlestoredb-dev:latest</singlestore.image>
+    <singlestore.license>${env.SINGLESTORE_LICENSE}</singlestore.license>
+    <singlestore.password>root</singlestore.password>
+
+    <singlestore.port>3306</singlestore.port>
+    <singlestore.user>root</singlestore.user>
+    <singlestore.version>8.7.16</singlestore.version>
+    <version.assembly.plugin>3.6.0</version.assembly.plugin>
+    <version.assertj-core>3.11.1</version.assertj-core>
+    <version.awaitility>4.2.0</version.awaitility>
+    <version.connect-json>3.6.1</version.connect-json>
+    <version.debezium>2.5.1.Final</version.debezium>
+    <version.failsafe.plugin>3.2.3</version.failsafe.plugin>
+
+    <version.jts.io>1.19.0</version.jts.io>
+    <version.junit>4.13.2</version.junit>
+
+    <!--
+      Specify the properties that will be used for setting up the integration tests' Docker container.
+      Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
+      work on all platforms. We'll set some of these as system properties during integration testing.
+    -->
+    <version.kafka>3.6.1</version.kafka>
+    <version.kafka-connect-avro-converter>7.5.1</version.kafka-connect-avro-converter>
+    <version.logback-classic>1.4.14</version.logback-classic>
+    <version.mockito>3.0.0</version.mockito>
+    <version.org.slf4j>2.0.4</version.org.slf4j>
+    <version.singlestore.jdbc.driver>1.2.0</version.singlestore.jdbc.driver>
+    <version.testcontainers>1.19.3</version.testcontainers>
+  </properties>
+
+  <repositories>
+    <repository>
+      <id>confluent</id>
+      <name>Confluent</name>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>never</updatePolicy>
+      </snapshots>
+      <url>https://packages.confluent.io/maven/</url>
+    </repository>
+  </repositories>
+
+  <scm>
+    <connection>scm:git:git@github.com:singlestore-labs/singlestore-debezium-connector.git
+    </connection>
+    <developerConnection>
+      scm:git:git@github.com:singlestore-labs/singlestore-debezium-connector.git
+    </developerConnection>
+    <tag>singlestore-debezium-connector-0.1.7</tag>
+    <url>git://git@github.com:singlestore-labs/singlestore-debezium-connector.git</url>
+  </scm>
+
+  <url>https://github.com/singlestore-labs/singlestore-debezium-connector</url>
+
+  <version>0.1.7</version>
 </project>

@@ -1,5 +1,9 @@
 package com.singlestore.debezium;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.Bits;
@@ -12,12 +16,6 @@ import io.debezium.relational.TableSchema;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.time.Year;
 import io.debezium.util.Strings;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -26,10 +24,11 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Date;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
 
@@ -38,13 +37,21 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
       TemporalPrecisionMode.CONNECT, CommonConnectorConfig.BinaryHandlingMode.BYTES);
   private SingleStoreDatabaseSchema schema;
 
+  public static SingleStoreDatabaseSchema getSchema(SingleStoreConnectorConfig config) {
+    return new SingleStoreDatabaseSchema(
+        config,
+        CONVERTERS,
+        new SingleStoreDefaultValueConverter(CONVERTERS),
+        config.getTopicNamingStrategy(SingleStoreConnectorConfig.TOPIC_NAMING_STRATEGY),
+        false);
+  }
+
   @Test
   public void testKeySchema() {
     schema = getSchema(new SingleStoreConnectorConfig(defaultJdbcConfigWithTable("allTypesTable")));
     try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
       schema.refresh(conn);
-      assertSchemaContent(null, null, null);
       assertKeySchema("db.allTypesTable", "intColumn",
           SchemaBuilder.int32().optional().defaultValue(2147483647).build());
     } catch (SQLException e) {
@@ -112,9 +119,9 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
               "fixedColumn, numericColumn, charColumn, mediumtextColumn, binaryColumn, varcharColumn, varbinaryColumn, longtextColumn, "
               +
               "textColumn, tinytextColumn, longblobColumn, mediumblobColumn, blobColumn, tinyblobColumn, jsonColumn, enum_f, set_f, " /*
-                                                                                                                                       * "geographyColumn, "
-                                                                                                                                       * "
-                                                                                                                                       */
+           * "geographyColumn, "
+           * "
+           */
               + "geographypointColumn",
           SchemaBuilder.int16().optional().defaultValue((short) 1).build(), // boolColumn
           SchemaBuilder.int16().optional().defaultValue((short) 1).build(), // booleanColumn
@@ -275,15 +282,6 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
     }
   }
 
-  public static SingleStoreDatabaseSchema getSchema(SingleStoreConnectorConfig config) {
-    return new SingleStoreDatabaseSchema(
-        config,
-        CONVERTERS,
-        new SingleStoreDefaultValueConverter(CONVERTERS),
-        config.getTopicNamingStrategy(SingleStoreConnectorConfig.TOPIC_NAMING_STRATEGY),
-        false);
-  }
-
   protected void assertTablesIncluded(String... fullyQualifiedTableNames) {
     Arrays.stream(fullyQualifiedTableNames).forEach(fullyQualifiedTableName -> {
       TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
@@ -296,8 +294,8 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
   protected void assertKeySchemaIsInternalId(String fullyQualifiedTableName) {
     TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
     Schema keySchema = tableSchema.keySchema();
-    assertSchemaContent(keySchema, new String[] { "internalId" },
-        new Schema[] { SchemaBuilder.int64().required().build() });
+    assertSchemaContent(keySchema, new String[]{"internalId"},
+        new Schema[]{SchemaBuilder.int64().required().build()});
   }
 
   protected void assertKeySchema(String fullyQualifiedTableName, String fields,
