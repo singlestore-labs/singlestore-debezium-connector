@@ -58,7 +58,7 @@ public class SnapshotIT extends IntegrationTestBase {
     try {
       final SourceRecords recordsA = consumeRecordsByTopic(3);
       final List<SourceRecord> table1 = recordsA.recordsForTopic(
-              TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
+          TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
           .stream().sorted(Comparator.comparingInt(
               v -> (Integer) ((Struct) ((Struct) v.value()).get("after")).get("pk")))
           .collect(Collectors.toList());
@@ -72,14 +72,14 @@ public class SnapshotIT extends IntegrationTestBase {
             new SchemaAndValueField("aa", Schema.OPTIONAL_STRING_SCHEMA, "test" + i));
         final Struct key1 = (Struct) record1.key();
         final Struct value1 = (Struct) record1.value();
-        assertNotNull(key1.get("internalId"));
+        assertEquals(i, key1.get("internalId"));
         assertEquals(Schema.Type.STRUCT, key1.schema().type());
         assertEquals(Schema.Type.INT64, key1.schema().fields().get(0).schema().type());
         assertRecord((Struct) value1.get("after"), expectedRow1);
         assertThat(record1.sourceOffset())
             .extracting("snapshot").containsExactly(true);
-        //              assertThat(record1.sourceOffset())
-        //                        .extracting("snapshot_completed").containsExactly(i == 2);
+        // assertThat(record1.sourceOffset())
+        // .extracting("snapshot_completed").containsExactly(i == 2);
         assertNull(value1.get("before"));
       }
     } finally {
@@ -108,8 +108,8 @@ public class SnapshotIT extends IntegrationTestBase {
       assertRecord((Struct) value1.get("after"), expectedRow1);
       assertThat(record1.sourceOffset())
           .extracting("snapshot").containsExactly(true);
-      //          assertThat(record1.sourceOffset())
-      //                  .extracting("snapshot_completed").containsExactly(false);
+      // assertThat(record1.sourceOffset())
+      // .extracting("snapshot_completed").containsExactly(false);
       assertNull(value1.get("before"));
       assertNotNull(key1.get("internalId"));
       assertEquals(Schema.Type.STRUCT, key1.schema().type());
@@ -168,8 +168,8 @@ public class SnapshotIT extends IntegrationTestBase {
                     String.CASE_INSENSITIVE_ORDER))
             .collect(Collectors.toList());
 
-        List<String> values = Arrays.asList(new String[]{"test0", "test1", "test2"});
-        List<String> operations = Arrays.asList(new String[]{"r", "r", "r"});
+        List<String> values = Arrays.asList(new String[] { "test0", "test1", "test2" });
+        List<String> operations = Arrays.asList(new String[] { "r", "r", "r" });
 
         for (int i = 0; i < records.size(); i++) {
           SourceRecord record = records.get(i);
@@ -213,7 +213,7 @@ public class SnapshotIT extends IntegrationTestBase {
       assertThat(recordsA.allRecordsInOrder()).isEmpty();
       recordsA = consumeRecordsByTopic(3);
       final List<SourceRecord> table1 = recordsA.recordsForTopic(
-              TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
+          TEST_TOPIC_PREFIX + "." + TEST_DATABASE + ".A")
           .stream().sorted(Comparator.comparingInt(
               v -> (Integer) ((Struct) ((Struct) v.value()).get("after")).get("pk")))
           .collect(Collectors.toList());
@@ -227,7 +227,7 @@ public class SnapshotIT extends IntegrationTestBase {
             new SchemaAndValueField("aa", Schema.OPTIONAL_STRING_SCHEMA, "test" + i));
         final Struct key1 = (Struct) record1.key();
         final Struct value1 = (Struct) record1.value();
-        assertNotNull(key1.get("internalId"));
+        assertEquals(i, key1.get("pk"));
         assertEquals(Schema.Type.STRUCT, key1.schema().type());
         assertEquals(Schema.Type.INT64, key1.schema().fields().get(0).schema().type());
         assertRecord((Struct) value1.get("after"), expectedRow1);
@@ -277,8 +277,8 @@ public class SnapshotIT extends IntegrationTestBase {
           for (int i = 0; i < records.size(); i++) {
             SourceRecord record = records.get(i);
             Struct key = (Struct) record.key();
-            assertEquals(key.getInt32("a"), keyA.get(i));
-            assertEquals(key.getString("b"), keyB.get(i));
+            assertEquals(keyA.get(i), key.getInt32("a"));
+            assertEquals(keyB.get(i), key.getString("b"));
           }
         } finally {
           stopConnector();

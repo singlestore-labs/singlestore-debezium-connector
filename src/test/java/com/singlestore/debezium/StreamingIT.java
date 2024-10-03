@@ -43,7 +43,7 @@ public class StreamingIT extends IntegrationTestBase {
         conn.execute("INSERT INTO `allTypesTable` VALUES (\n" + "TRUE, " + // boolColumn
             "TRUE, " + // booleanColumn
             "'abcdefgh', " + // bitColumn
-            "-128, " +  // tinyintColumn
+            "-128, " + // tinyintColumn
             "-8388608, " + // mediumintColumn
             "-32768, " + // smallintColumn
             "-2147483648, " + // intColumn
@@ -57,28 +57,28 @@ public class StreamingIT extends IntegrationTestBase {
             // It is converted to 24h - time during reading of the result
             "'0:00:00', " + // timeColumn
             "'0:00:00.000000', " + // time6Column
-            "'1000-01-01 00:00:00', " +  // datetimeColumn
+            "'1000-01-01 00:00:00', " + // datetimeColumn
             "'1000-01-01 00:00:00.000000', " + // datetime6Column
-            "'1970-01-01 00:00:01', " +  // timestampColumn
-            "'1970-01-01 00:00:01.000000', " +  // timestamp6Column
-            "1901, " +  // yearColumn
+            "'1970-01-01 00:00:01', " + // timestampColumn
+            "'1970-01-01 00:00:01.000000', " + // timestamp6Column
+            "1901, " + // yearColumn
             "12345678901234567890123456789012345.123456789012345678901234567891, " +
             // decimalColumn
             "1234567890, " + // decColumn
             "1234567890, " + // fixedColumn
-            "1234567890, " +  // numericColumn
+            "1234567890, " + // numericColumn
             "'a', " + // charColumn
-            "'abc', " +  // mediumtextColumn
+            "'abc', " + // mediumtextColumn
             "'a', " + // binaryColumn
-            "'abc', " +  // varcharColumn
-            "'abc', " +  // varbinaryColumn
-            "'abc', " +  // longtextColumn
-            "'abc', " +  // textColumn
-            "'abc', " +  // tinytextColumn
-            "'abc', " +  // longblobColumn
-            "'abc', " +  // mediumblobColumn
-            "'abc', " +  // blobColumn
-            "'abc', " +  // tinyblobColumn
+            "'abc', " + // varcharColumn
+            "'abc', " + // varbinaryColumn
+            "'abc', " + // longtextColumn
+            "'abc', " + // textColumn
+            "'abc', " + // tinytextColumn
+            "'abc', " + // longblobColumn
+            "'abc', " + // mediumblobColumn
+            "'abc', " + // blobColumn
+            "'abc', " + // tinyblobColumn
             "'{}', " + // jsonColumn
             "'val1', " + // enum_f
             "'v1', " + // set_f
@@ -268,7 +268,7 @@ public class StreamingIT extends IntegrationTestBase {
           }
 
           Struct key = (Struct) record.key();
-          ids.add(key.getInt64("internalId"));
+          ids.add(key.getInt64("id"));
         }
 
         assertEquals(ids.get(0), ids.get(3));
@@ -435,8 +435,7 @@ public class StreamingIT extends IntegrationTestBase {
             "SET GLOBAL snapshots_to_keep=1",
             "SET GLOBAL snapshot_trigger_size=65536",
             "CREATE TABLE IF NOT EXISTS staleOffsets(a INT)",
-            "DELETE FROM staleOffsets WHERE 1 > 0"
-        );
+            "DELETE FROM staleOffsets WHERE 1 > 0");
 
         Configuration config = defaultJdbcConfigWithTable("staleOffsets").edit()
             .withDefault("offset.flush.interval.ms", "20").build();
@@ -478,8 +477,7 @@ public class StreamingIT extends IntegrationTestBase {
         }
       } finally {
         conn.execute("SET GLOBAL snapshots_to_keep=2",
-            "SET GLOBAL snapshot_trigger_size=2147483648"
-        );
+            "SET GLOBAL snapshot_trigger_size=2147483648");
         stopConnector();
       }
     }
@@ -524,8 +522,8 @@ public class StreamingIT extends IntegrationTestBase {
           for (int i = 0; i < records.size(); i++) {
             SourceRecord record = records.get(i);
             Struct key = (Struct) record.key();
-            assertEquals(key.getInt32("a"), keyA.get(i));
-            assertEquals(key.getString("b"), keyB.get(i));
+            assertEquals(keyA.get(i), key.getInt32("a"));
+            assertEquals(keyB.get(i), key.getString("b"));
           }
         } finally {
           stopConnector();
@@ -573,8 +571,8 @@ public class StreamingIT extends IntegrationTestBase {
           for (int i = 0; i < records.size(); i++) {
             SourceRecord record = records.get(i);
             Struct key = (Struct) record.key();
-            assertEquals(key.getInt32("a"), keyA.get(i));
-            assertEquals(key.getString("b"), keyB.get(i));
+            assertEquals(keyA.get(i), key.getInt32("a"));
+            assertEquals(keyB.get(i), key.getString("b"));
           }
         } finally {
           stopConnector();
@@ -583,7 +581,8 @@ public class StreamingIT extends IntegrationTestBase {
     }
   }
 
-  //Offset is validated successfully and offset is not reset, streaming should proceed after connector is restarted
+  // Offset is validated successfully and offset is not reset, streaming should
+  // proceed after connector is restarted
   @Test
   public void testValidOffsetInWhenNeededSnapshotMode() throws Exception {
     String table = "validOffsets1";
@@ -591,8 +590,7 @@ public class StreamingIT extends IntegrationTestBase {
         defaultJdbcConnectionConfig())) {
       conn.execute(String.format("USE %s", TEST_DATABASE),
           String.format("DROP TABLE IF EXISTS %s", table),
-          String.format("CREATE TABLE %s(a INT)", table)
-      );
+          String.format("CREATE TABLE %s(a INT)", table));
       Configuration config = defaultJdbcConfigWithTable(table).edit()
           .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE,
               SingleStoreConnectorConfig.SnapshotMode.WHEN_NEEDED)
@@ -622,7 +620,7 @@ public class StreamingIT extends IntegrationTestBase {
       Thread.sleep(100);
       records = consumeRecordsByTopic(10).allRecordsInOrder();
       assertEquals(10, records.size());
-      //expected offset is not reset and stream type records are consumed
+      // expected offset is not reset and stream type records are consumed
       assertNotNull("must be a stream type record",
           records.get(0).sourceOffset().get("snapshot_completed"));
       assertTrue("must be a stream type record",
@@ -632,7 +630,8 @@ public class StreamingIT extends IntegrationTestBase {
     }
   }
 
-  //Offset is failed to validate and reset, after connector is restarted snapshot reading should be executed
+  // Offset is failed to validate and reset, after connector is restarted snapshot
+  // reading should be executed
   @Test
   public void testStaleOffsetInWhenNeededSnapshotMode() throws Exception {
     String table = "staleOffsets2";
@@ -643,8 +642,7 @@ public class StreamingIT extends IntegrationTestBase {
             "SET GLOBAL snapshots_to_keep=1",
             "SET GLOBAL snapshot_trigger_size=65536",
             String.format("DROP TABLE IF EXISTS %s", table),
-            String.format("CREATE TABLE %s(a INT)", table)
-        );
+            String.format("CREATE TABLE %s(a INT)", table));
         Configuration config = defaultJdbcConfigWithTable(table).edit()
             .withDefault(OFFSET_FLUSH_INTERVAL_MS, 20)
             .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE,
@@ -675,15 +673,14 @@ public class StreamingIT extends IntegrationTestBase {
 
         Thread.sleep(1000);
         records = consumeRecordsByTopic(10000).allRecordsInOrder();
-        //expected offset is reset and snapshot type records are consumed
+        // expected offset is reset and snapshot type records are consumed
         assertNotNull("must be a snapshot type record",
             records.get(0).sourceOffset().get("snapshot"));
         assertTrue("must be a snapshot type record",
             Boolean.parseBoolean(records.get(0).sourceOffset().get("snapshot").toString()));
       } finally {
         conn.execute("SET GLOBAL snapshots_to_keep=2",
-            "SET GLOBAL snapshot_trigger_size=2147483648"
-        );
+            "SET GLOBAL snapshot_trigger_size=2147483648");
         stopConnector();
       }
     }
