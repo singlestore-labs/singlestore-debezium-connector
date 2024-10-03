@@ -286,4 +286,51 @@ public class SnapshotIT extends IntegrationTestBase {
       }
     }
   }
+
+  @Test
+  public void testPKInColumnstore() throws Exception {
+    try (SingleStoreConnection createTableConn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("product"))) {
+      createTableConn.execute(
+          "CREATE TABLE IF NOT EXISTS pkInColumnstoreSnapshot(a INT, b TEXT, c TEXT, PRIMARY KEY(a, b));"
+              + "DELETE FROM pkInColumnstoreSnapshot WHERE 1 = 1;");
+      try (SingleStoreConnection conn = new SingleStoreConnection(
+          defaultJdbcConnectionConfigWithTable("pkInColumnstoreSnapshot"))) {
+        conn.execute("INSERT INTO pkInColumnstoreSnapshot VALUES (2, 'd', 'e')");
+        conn.execute("INSERT INTO pkInColumnstoreSnapshot VALUES (1, 'b', 'c')");
+        conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
+
+        Configuration config = defaultJdbcConfigWithTable("pkInColumnstoreSnapshot");
+        config = config.edit().withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
+            "db.pkInColumnstoreSnapshot.a,db.pkInColumnstoreSnapshot.c").build();
+        start(SingleStoreConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+        try {
+          List<SourceRecord> records = new ArrayList<>(
+              consumeRecordsByTopic(2).allRecordsInOrder());
+          assertEquals(2, records.size());
+          records.sort(new Comparator<SourceRecord>() {
+            @Override
+            public int compare(SourceRecord r1, SourceRecord r2) {
+              return ((Struct) r1.key()).getInt32("a")
+                  .compareTo(((Struct) r2.key()).getInt32("a"));
+            }
+          });
+
+          List<Integer> keyA = Arrays.asList(1, 2);
+          List<String> keyB = Arrays.asList("b", "d");
+
+          for (int i = 0; i < records.size(); i++) {
+            SourceRecord record = records.get(i);
+            Struct key = (Struct) record.key();
+            assertEquals(key.getInt32("a"), keyA.get(i));
+            assertEquals(key.getString("b"), keyB.get(i));
+          }
+        } finally {
+          stopConnector();
+        }
+      }
+    }
+  }
 }

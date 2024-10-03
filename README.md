@@ -154,9 +154,9 @@ describes the structure of the payload, while the payload contains the actual da
 
 ### Change event keys
 
-The change event key payload for rowstore tables that have a primary key consists of primary key
+The change event key payload for tables that have a primary key consists of primary key
 fields.
-The change event key payload for all other tables consists of a single field named `internalid`.
+The change event key payload for all other tables consists of a single field named `InternalId`.
 It represents a unique ID assigned to each row in the database.
 
 ```

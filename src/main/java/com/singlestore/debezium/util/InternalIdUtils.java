@@ -23,8 +23,7 @@ public final class InternalIdUtils {
   }
 
   private static boolean useInternalIdAsKey(Table table) {
-    return table.primaryKeyColumnNames().isEmpty() ||
-        !table.attributeWithName("IS_ROWSTORE").asBoolean();
+    return table.primaryKeyColumnNames().isEmpty();
   }
 
   public static Struct generateKey(Table table, TableSchema tableSchema, Object[] values,

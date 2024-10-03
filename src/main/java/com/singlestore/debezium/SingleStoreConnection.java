@@ -53,22 +53,6 @@ public class SingleStoreConnection extends JdbcConnection {
             .collect(Collectors.joining(",")))), Optional.empty());
   }
 
-  public boolean isRowstoreTable(TableId tableId) throws SQLException {
-    AtomicBoolean res = new AtomicBoolean(false);
-    prepareQuery(
-        "SELECT storage_type = 'INMEMORY_ROWSTORE' as isRowstore FROM information_schema.tables WHERE table_schema = ? && table_name = ?",
-        statement -> {
-          statement.setString(1, tableId.catalog());
-          statement.setString(2, tableId.table());
-        },
-        rs -> {
-          rs.next();
-          res.set(rs.getBoolean(1));
-        });
-
-    return res.get();
-  }
-
   private static void validateServerVersion(Statement statement) throws SQLException {
     DatabaseMetaData metaData = statement.getConnection().getMetaData();
     int majorVersion = metaData.getDatabaseMajorVersion();
@@ -79,25 +63,12 @@ public class SingleStoreConnection extends JdbcConnection {
     }
   }
 
-  public void addIsRowstoreAttribute(Tables tables) throws SQLException {
-    for (TableId tableId : tables.tableIds()) {
-      Attribute isRowstore = Attribute.editor()
-          .name("IS_ROWSTORE")
-          .value(isRowstoreTable(tableId))
-          .create();
-
-      tables.updateTable(tableId, table ->
-          table.edit().addAttribute(isRowstore).create());
-    }
-  }
-
   @Override
   public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern,
       TableFilter tableFilter, ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
       throws SQLException {
     super.readSchema(tables, databaseCatalog, schemaNamePattern, tableFilter, columnFilter,
         removeTablesNotFoundInJdbc);
-    addIsRowstoreAttribute(tables);
   }
 
   /**

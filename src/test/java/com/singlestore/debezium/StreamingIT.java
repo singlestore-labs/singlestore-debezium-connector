@@ -534,6 +534,55 @@ public class StreamingIT extends IntegrationTestBase {
     }
   }
 
+  @Test
+  public void testPKInColumnstore() throws Exception {
+    try (SingleStoreConnection createTableConn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("product"))) {
+      createTableConn.execute(
+          "CREATE TABLE IF NOT EXISTS pkInColumnstore(a INT, b TEXT, c TEXT, PRIMARY KEY(a, b));"
+              + "DELETE FROM pkInColumnstore WHERE 1 = 1;");
+      try (SingleStoreConnection conn = new SingleStoreConnection(
+          defaultJdbcConnectionConfigWithTable("pkInColumnstore"))) {
+        Configuration config = defaultJdbcConfigWithTable("pkInColumnstore");
+        config = config.edit().withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
+            "db.pkInColumnstore.a,db.pkInColumnstore.c").build();
+        conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
+        start(SingleStoreConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+
+        try {
+          conn.execute("INSERT INTO pkInColumnstore VALUES (2, 'd', 'e')");
+          conn.execute("INSERT INTO pkInColumnstore VALUES (1, 'b', 'c')");
+          conn.execute("DELETE FROM pkInColumnstore WHERE a = 1");
+
+          List<SourceRecord> records = new ArrayList<>(
+              consumeRecordsByTopic(3).allRecordsInOrder());
+          assertEquals(3, records.size());
+          records.sort(new Comparator<SourceRecord>() {
+            @Override
+            public int compare(SourceRecord r1, SourceRecord r2) {
+              return ((Struct) r1.key()).getInt32("a")
+                  .compareTo(((Struct) r2.key()).getInt32("a"));
+            }
+          });
+
+          List<Integer> keyA = Arrays.asList(1, 1, 2);
+          List<String> keyB = Arrays.asList("b", "b", "d");
+
+          for (int i = 0; i < records.size(); i++) {
+            SourceRecord record = records.get(i);
+            Struct key = (Struct) record.key();
+            assertEquals(key.getInt32("a"), keyA.get(i));
+            assertEquals(key.getString("b"), keyB.get(i));
+          }
+        } finally {
+          stopConnector();
+        }
+      }
+    }
+  }
+
   //Offset is validated successfully and offset is not reset, streaming should proceed after connector is restarted
   @Test
   public void testValidOffsetInWhenNeededSnapshotMode() throws Exception {
