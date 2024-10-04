@@ -19,26 +19,33 @@ public final class ObserveResultSetUtils {
   private static final String BEGIN_SNAPSHOT = "BeginSnapshot";
   private static final String COMMIT_SNAPSHOT = "CommitSnapshot";
 
-  public static List<Integer> columnPositions(ResultSet resultSet, List<Column> columns,
-      Boolean populateInternalId) throws SQLException {
+  public static List<Integer> columnPositions(ResultSet resultSet, List<Column> columns)
+      throws SQLException {
     List<Integer> positions = new ArrayList<>();
     for (int i = 0; i < columns.size(); i++) {
       String columnName = columns.get(i).name();
       positions.add(resultSet.findColumn(columnName));
     }
 
-    if (populateInternalId) {
-      positions.add(resultSet.findColumn(METADATA_COLUMNS[6]));
-    }
-
     return positions;
   }
 
-  public static Object[] rowToArray(ResultSet rs, List<Integer> positions) throws SQLException {
-    final Object[] row = new Object[positions.size()];
+  public static Object[] rowToArray(ResultSet rs, List<Integer> positions,
+      Boolean populateInternalId) throws SQLException {
+    final Object[] row;
+    if (populateInternalId) {
+      row = new Object[positions.size() + 1];
+    } else {
+      row = new Object[positions.size()];
+    }
+
     for (int i = 0; i < positions.size(); i++) {
       row[i] = rs.getObject(positions.get(i));
     }
+    if (populateInternalId) {
+      row[positions.size()] = internalId(rs);
+    }
+
     return row;
   }
 
@@ -51,6 +58,10 @@ public final class ObserveResultSetUtils {
   }
 
   private static String bytesToHex(byte[] bytes) {
+    if (bytes == null) {
+      return null;
+    }
+
     char[] res = new char[bytes.length * 2];
 
     int j = 0;
@@ -86,8 +97,8 @@ public final class ObserveResultSetUtils {
     return rs.getString(METADATA_COLUMNS[5]);
   }
 
-  public static Long internalId(ResultSet rs) throws SQLException {
-    return rs.getLong(METADATA_COLUMNS[6]);
+  public static String internalId(ResultSet rs) throws SQLException {
+    return bytesToHex(rs.getBytes(METADATA_COLUMNS[6]));
   }
 
   private ObserveResultSetUtils() {

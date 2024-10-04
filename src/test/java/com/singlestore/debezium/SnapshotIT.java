@@ -72,7 +72,7 @@ public class SnapshotIT extends IntegrationTestBase {
         final Struct value1 = (Struct) record1.value();
         assertEquals(i, key1.get("pk"));
         assertEquals(Schema.Type.STRUCT, key1.schema().type());
-        assertEquals(Schema.Type.INT64, key1.schema().fields().get(0).schema().type());
+        assertEquals(Schema.Type.INT32, key1.schema().fields().get(0).schema().type());
         assertRecord((Struct) value1.get("after"), expectedRow1);
         assertThat(record1.sourceOffset())
             .extracting("snapshot").containsExactly(true);
@@ -111,7 +111,7 @@ public class SnapshotIT extends IntegrationTestBase {
       assertNull(value1.get("before"));
       assertNotNull(key1.get("internalId"));
       assertEquals(Schema.Type.STRUCT, key1.schema().type());
-      assertEquals(Schema.Type.INT64, key1.schema().fields().get(0).schema().type());
+      assertEquals(Schema.Type.STRING, key1.schema().fields().get(0).schema().type());
 
     } finally {
       stopConnector();

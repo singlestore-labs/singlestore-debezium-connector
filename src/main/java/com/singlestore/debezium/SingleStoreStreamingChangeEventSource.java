@@ -82,8 +82,7 @@ public class SingleStoreStreamingChangeEventSource implements
           ResultSet rs = stmt.executeQuery(query)
       ) {
         List<Integer> columnPositions =
-            ObserveResultSetUtils.columnPositions(rs, schema.tableFor(table).columns(),
-                connectorConfig.populateInternalId());
+            ObserveResultSetUtils.columnPositions(rs, schema.tableFor(table).columns());
         try {
           while (rs.next() && context.isRunning()) {
             LOGGER.trace(
@@ -92,7 +91,8 @@ public class SingleStoreStreamingChangeEventSource implements
                 ObserveResultSetUtils.internalId(rs),
                 ObserveResultSetUtils.partitionId(rs),
                 ObserveResultSetUtils.offset(rs),
-                ObserveResultSetUtils.rowToArray(rs, columnPositions));
+                ObserveResultSetUtils.rowToArray(rs, columnPositions,
+                    connectorConfig.populateInternalId()));
             Operation operation;
             switch (rs.getString("Type")) {
               case "Insert":
@@ -111,12 +111,13 @@ public class SingleStoreStreamingChangeEventSource implements
             String offset = ObserveResultSetUtils.offset(rs);
             Integer partitionId = ObserveResultSetUtils.partitionId(rs);
             String txId = ObserveResultSetUtils.txId(rs);
-            Long internalId = ObserveResultSetUtils.internalId(rs);
+            String internalId = ObserveResultSetUtils.internalId(rs);
 
             offsetContext.event(table, Instant.now());
             offsetContext.update(partitionId, txId, offset);
 
-            Object[] after = ObserveResultSetUtils.rowToArray(rs, columnPositions);
+            Object[] after = ObserveResultSetUtils.rowToArray(rs, columnPositions,
+                connectorConfig.populateInternalId());
 
             dispatcher.dispatchDataChangeEvent(partition, table,
                 new SingleStoreChangeRecordEmitter(

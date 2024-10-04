@@ -173,15 +173,15 @@ It represents a unique ID assigned to each row in the database.
       ]
    },
    "payload":{ (2)
-      "InternalId":1152921504606847003
+      "InternalId": "100000000000000600000007"
    }
 }
 ```
 
-| Item | Field name | Description                                                                                                                                                                                                       
-|------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-| 1    | `schema`   | Specifies a Kafka Connect schema that describes the structure of the key's `payload`.                                                                                                                             
-| 2    | `payload`  | For rowstore tables that have a primary key, contains primary key fields. For all other tables, contains a single field `internalId` used to specify the ID of the row for which this change event was generated. 
+| Item | Field name | Description                                                                                                                                                                                              
+|------|------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| 1    | `schema`   | Specifies a Kafka Connect schema that describes the structure of the key's `payload`.                                                                                                                    
+| 2    | `payload`  | For tables that have a primary key, contains primary key fields. For all other tables, contains a single field `internalId` used to specify the ID of the row for which this change event was generated. 
 
 ### Change event values
 

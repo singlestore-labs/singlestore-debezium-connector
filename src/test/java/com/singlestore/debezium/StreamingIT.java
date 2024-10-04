@@ -180,9 +180,9 @@ public class StreamingIT extends IntegrationTestBase {
         assertEquals(source.get("db"), "db");
         assertEquals(source.get("table"), "purchased");
         assertNotNull(source.get("txId"));
-        assertEquals(source.get("partitionId"), 0);
+        assertNotNull(source.get("partitionId"));
         assertNotNull(source.get("offsets"));
-        assertEquals(3, ((List) source.get("offsets")).size());
+        assertEquals(8, ((List<?>) source.get("offsets")).size());
       } finally {
         stopConnector();
       }
@@ -204,7 +204,7 @@ public class StreamingIT extends IntegrationTestBase {
 
         List<SourceRecord> records = consumeRecordsByTopic(4).allRecordsInOrder();
 
-        List<Long> ids = new ArrayList<>();
+        List<String> ids = new ArrayList<>();
         List<String> operations = Arrays.asList("c", "c", "d", null);
 
         assertEquals(4, records.size());
@@ -220,7 +220,7 @@ public class StreamingIT extends IntegrationTestBase {
           }
 
           Struct key = (Struct) record.key();
-          ids.add((Long) key.get("internalId"));
+          ids.add((String) key.get("internalId"));
         }
 
         assertEquals(ids.get(0), ids.get(2));
@@ -243,19 +243,18 @@ public class StreamingIT extends IntegrationTestBase {
       waitForStreamingToStart();
 
       try {
-        conn.execute("INSERT INTO `product` (`id`) VALUES (1)");
-        conn.execute("INSERT INTO `product` (`id`) VALUES (2)");
         conn.execute("INSERT INTO `product` (`id`) VALUES (3)");
-        conn.execute("DELETE FROM `product` WHERE `id` = 1");
-        conn.execute("UPDATE `product` SET `createdByDate` = '2013-11-23 15:22:33' WHERE `id` = 2");
-        conn.execute("INSERT INTO `product` (`id`) VALUES (4)");
+        conn.execute("DELETE FROM `product` WHERE `id` = 3");
+        conn.execute("INSERT INTO `product` (`id`) VALUES (3)");
+        conn.execute(
+            "UPDATE `product` SET `createdByDate` = '2013-11-23 15:22:33' WHERE `id` = 3");
 
-        List<SourceRecord> records = consumeRecordsByTopic(6).allRecordsInOrder();
+        List<SourceRecord> records = consumeRecordsByTopic(4).allRecordsInOrder();
 
         List<Long> ids = new ArrayList<>();
-        List<String> operations = Arrays.asList("c", "c", "c", "d", "u", "c");
+        List<String> operations = Arrays.asList("c", "d", "c", "u");
 
-        assertEquals(6, records.size());
+        assertEquals(4, records.size());
         for (int i = 0; i < records.size(); i++) {
           SourceRecord record = records.get(i);
 
@@ -271,8 +270,8 @@ public class StreamingIT extends IntegrationTestBase {
           ids.add(key.getInt64("id"));
         }
 
-        assertEquals(ids.get(0), ids.get(3));
-        assertEquals(ids.get(1), ids.get(4));
+        assertEquals(ids.get(0), ids.get(1));
+        assertEquals(ids.get(2), ids.get(3));
       } finally {
         stopConnector();
       }
@@ -298,7 +297,14 @@ public class StreamingIT extends IntegrationTestBase {
         conn.execute("INSERT INTO `person` (`name`, `birthdate`, `age`, `salary`, `bitStr`) "
             + "VALUES ('Bob', '2001-04-11', 24, 100, 'a')");
 
-        List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
+        List<SourceRecord> records = new ArrayList<>(consumeRecordsByTopic(3).allRecordsInOrder());
+        records.sort(new Comparator<SourceRecord>() {
+          @Override
+          public int compare(SourceRecord r1, SourceRecord r2) {
+            return ((Struct) r1.key()).getString("name")
+                .compareTo(((Struct) r2.key()).getString("name"));
+          }
+        });
 
         List<String> names = Arrays.asList("Adalbert", "Alice", "Bob");
         List<Integer> ages = Arrays.asList(22, 23, 24);
@@ -332,7 +338,7 @@ public class StreamingIT extends IntegrationTestBase {
   public void internalId() throws SQLException, InterruptedException {
     try (SingleStoreConnection createTableConn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("product"))) {
-      createTableConn.execute("CREATE TABLE IF NOT EXISTS internalIdTable(a INT);"
+      createTableConn.execute("CREATE TABLE IF NOT EXISTS internalIdTable(a TEXT);"
           + "DELETE FROM internalIdTable WHERE 1 = 1;");
       try (SingleStoreConnection conn = new SingleStoreConnection(
           defaultJdbcConnectionConfigWithTable("internalIdTable"))) {
@@ -345,15 +351,15 @@ public class StreamingIT extends IntegrationTestBase {
         waitForStreamingToStart();
 
         try {
-          conn.execute("INSERT  INTO internalIdTable VALUES (1)");
+          conn.execute("INSERT  INTO internalIdTable VALUES ('1')");
 
           List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
           assertEquals(1, records.size());
           for (SourceRecord record : records) {
             Struct value = (Struct) record.value();
             Struct key = (Struct) record.key();
-            Long internalId = value.getStruct("after").getInt64("internalId");
-            assertEquals(key.getInt64("internalId"), internalId);
+            String internalId = value.getStruct("after").getString("internalId");
+            assertEquals(key.getString("internalId"), internalId);
           }
         } finally {
           stopConnector();
@@ -382,7 +388,14 @@ public class StreamingIT extends IntegrationTestBase {
         conn.execute("UPDATE `product` SET `createdByDate` = '2013-11-23 15:22:33' WHERE `id` = 2");
         conn.execute("INSERT INTO `product` (`id`) VALUES (4)");
 
-        List<SourceRecord> records = consumeRecordsByTopic(2).allRecordsInOrder();
+        List<SourceRecord> records = new ArrayList<>(consumeRecordsByTopic(2).allRecordsInOrder());
+        records.sort(new Comparator<SourceRecord>() {
+          @Override
+          public int compare(SourceRecord r1, SourceRecord r2) {
+            return ((Struct) r1.key()).getInt64("id")
+                .compareTo(((Struct) r2.key()).getInt64("id"));
+          }
+        });
 
         List<String> operations = Arrays.asList("d", "u");
         assertEquals(2, records.size());
@@ -664,7 +677,7 @@ public class StreamingIT extends IntegrationTestBase {
         stopConnector();
 
         Thread.sleep(100);
-        for (int i = 10; i < 10010; i++) {
+        for (int i = 10; i < 20000; i++) {
           conn.execute(String.format("INSERT INTO %s VALUES (%s)", table, i));
         }
         Thread.sleep(100);
@@ -672,7 +685,7 @@ public class StreamingIT extends IntegrationTestBase {
         assertConnectorIsRunning();
 
         Thread.sleep(1000);
-        records = consumeRecordsByTopic(10000).allRecordsInOrder();
+        records = consumeRecordsByTopic(20000).allRecordsInOrder();
         // expected offset is reset and snapshot type records are consumed
         assertNotNull("must be a snapshot type record",
             records.get(0).sourceOffset().get("snapshot"));

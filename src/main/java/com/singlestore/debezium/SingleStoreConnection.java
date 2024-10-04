@@ -156,8 +156,14 @@ public class SingleStoreConnection extends JdbcConnection {
    */
   public boolean validateOffset(Set<TableId> tableFilter, SingleStorePartition partition,
       SingleStoreOffsetContext offset) {
-    List<String> offsets = offset.offsets().stream().filter(Objects::nonNull)
-        .map(o -> "'" + o + "'").collect(Collectors.toList());
+    List<String> offsets = offset.offsets().stream()
+        .map(o -> {
+          if (o == null) {
+            return "NULL";
+          } else {
+            return "'" + o + "'";
+          }
+        }).collect(Collectors.toList());
     Optional<String> offsetParam = Optional.of("(" + String.join(",", offsets) + ")");
     final String query = observeQuery(null, tableFilter, Optional.empty(), Optional.empty(),
         offsetParam, Optional.empty());
