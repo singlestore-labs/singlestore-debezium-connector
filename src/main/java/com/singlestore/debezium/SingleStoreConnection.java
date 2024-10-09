@@ -1,5 +1,6 @@
 package com.singlestore.debezium;
 
+import com.singlestore.jdbc.DatabaseMetaData;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -16,7 +17,6 @@ import javax.swing.text.html.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
@@ -54,12 +54,9 @@ public class SingleStoreConnection extends JdbcConnection {
   }
 
   private static void validateServerVersion(Statement statement) throws SQLException {
-    DatabaseMetaData metaData = statement.getConnection().getMetaData();
-    int majorVersion = metaData.getDatabaseMajorVersion();
-    int minorVersion = metaData.getDatabaseMinorVersion();
-    if (majorVersion < 8 || (majorVersion == 8 && minorVersion < 5)) {
-      throw new SQLException(
-          "CDC feature is not supported in a version of SingleStore lower than 8.5");
+    DatabaseMetaData metaData = (DatabaseMetaData) statement.getConnection().getMetaData();
+    if (metaData.getVersion().versionGreaterOrEqual(8, 7, 16)) {
+      throw new SQLException("The lowest supported version of SingleStore is 8.7.16");
     }
   }
 
@@ -359,7 +356,8 @@ public class SingleStoreConnection extends JdbcConnection {
   }
 
   @Override
-  protected List<String> readPrimaryKeyOrUniqueIndexNames(DatabaseMetaData metadata, TableId id)
+  protected List<String> readPrimaryKeyOrUniqueIndexNames(java.sql.DatabaseMetaData metadata,
+      TableId id)
       throws SQLException {
     return readPrimaryKeyNames(metadata, id);
   }

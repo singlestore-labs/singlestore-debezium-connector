@@ -9,11 +9,11 @@
     </layout>
   </appender>
 
-  <logger name="com.singlestore.debezium" level="trace" additivity="false">
+  <logger name="com.singlestore.debezium" level="debug" additivity="false">
     <appender-ref ref="CONSOLE"/>
   </logger>
 
-  <logger name="io.debezium" level="trace" additivity="false">
+  <logger name="io.debezium" level="debug" additivity="false">
     <appender-ref ref="CONSOLE"/>
   </logger>
   <!--
