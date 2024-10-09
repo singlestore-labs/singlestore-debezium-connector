@@ -28,8 +28,8 @@ public class SnapshotIT extends IntegrationTestBase {
   @Before
   public void initTestData() {
     String statements =
-        "DROP TABLE IF EXISTS" + TEST_DATABASE + ".A;" +
-            "DROP TABLE IF EXISTS" + TEST_DATABASE + ".B;" +
+        "DROP TABLE IF EXISTS " + TEST_DATABASE + ".A;" +
+            "DROP TABLE IF EXISTS " + TEST_DATABASE + ".B;" +
             "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE
             + ".A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
             "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE + ".B (aa INT, bb VARCHAR(20));" +
