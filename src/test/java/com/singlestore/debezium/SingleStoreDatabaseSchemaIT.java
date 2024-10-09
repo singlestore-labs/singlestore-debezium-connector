@@ -204,43 +204,44 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
 
   @Test
   public void testUpdateTableSchema() {
-    String statements = "CREATE DATABASE IF NOT EXISTS d3; " +
-        "DROP TABLE IF EXISTS d3.A;" +
-        "DROP TABLE IF EXISTS d3.B;" +
-        "DROP TABLE IF EXISTS d3.C;" +
-        "CREATE ROWSTORE TABLE d3.A (pk INT, aa VARCHAR(10), ab INT, PRIMARY KEY(pk));" +
-        "CREATE TABLE d3.B (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));";
+    String statements = String.format("USE %s;", TEST_DATABASE) +
+        "DROP TABLE IF EXISTS A;" +
+        "DROP TABLE IF EXISTS B;" +
+        "DROP TABLE IF EXISTS C;" +
+        "CREATE ROWSTORE TABLE A (pk INT, aa VARCHAR(10), ab INT, PRIMARY KEY(pk));" +
+        "CREATE TABLE B (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));";
     execute(statements);
     Configuration configuration = defaultJdbcConfigBuilder()
-        .with(SingleStoreConnectorConfig.DATABASE_NAME, "d3")
+        .with(SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
         .with(SingleStoreConnectorConfig.TABLE_NAME, "A")
         .build();
     schema = getSchema(new SingleStoreConnectorConfig(configuration));
     try (SingleStoreConnection conn = new SingleStoreConnection(
         new SingleStoreConnection.SingleStoreConnectionConfiguration(configuration))) {
       schema.refresh(conn);
-      assertTablesIncluded("d3.A");
-      assertTablesExcluded("d3.B");
-      assertTableSchema("d3.A", "pk, aa",
+      assertTablesIncluded(TEST_DATABASE + ".A");
+      assertTablesExcluded(TEST_DATABASE + ".B");
+      assertTableSchema(TEST_DATABASE + ".A", "pk, aa",
           SchemaBuilder.int32().required().defaultValue(0).build(),
           SchemaBuilder.string().optional().build());
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }
-    String updateStatements = "DROP TABLE d3.B;" +
-        "CREATE TABLE d3.C(pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
-        "ALTER TABLE d3.A MODIFY COLUMN ab DOUBLE;" +
-        "ALTER TABLE d3.A DROP COLUMN aa;" +
-        "ALTER TABLE d3.A ADD COLUMN ac CHAR(1) default 'a';";
+    String updateStatements = String.format("USE %s;", TEST_DATABASE) +
+        "DROP TABLE B;" +
+        "CREATE TABLE C(pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
+        "ALTER TABLE A MODIFY COLUMN ab DOUBLE;" +
+        "ALTER TABLE A DROP COLUMN aa;" +
+        "ALTER TABLE A ADD COLUMN ac CHAR(1) default 'a';";
     execute(updateStatements);
     schema = getSchema(new SingleStoreConnectorConfig(configuration));
     try (SingleStoreConnection conn = new SingleStoreConnection(
         new SingleStoreConnection.SingleStoreConnectionConfiguration(configuration))) {
       schema.refresh(conn);
-      assertTablesIncluded("d3.A");
-      assertTablesExcluded("d3.B");
-      assertTablesExcluded("d3.C");
-      assertTableSchema("d3.A", "pk, ab, ac",
+      assertTablesIncluded(TEST_DATABASE + ".A");
+      assertTablesExcluded(TEST_DATABASE + ".B");
+      assertTablesExcluded(TEST_DATABASE + ".C");
+      assertTableSchema(TEST_DATABASE + ".A", "pk, ab, ac",
           SchemaBuilder.int32().required().defaultValue(0).build(),
           SchemaBuilder.float64().optional().build(),
           SchemaBuilder.string().optional().defaultValue("a").build());
@@ -251,12 +252,12 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
 
   @Test
   public void testApplyFilters() {
-    String statements = "CREATE DATABASE IF NOT EXISTS d1; " +
-        "DROP TABLE IF EXISTS d1.A;" +
-        "CREATE TABLE d1.A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));";
+    String statements = String.format("DROP TABLE IF EXISTS %s.A;" +
+            "CREATE TABLE %s.A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));", TEST_DATABASE,
+        TEST_DATABASE);
     execute(statements);
     Configuration configuration = defaultJdbcConfigBuilder()
-        .with(SingleStoreConnectorConfig.DATABASE_NAME, "d1")
+        .with(SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
         .with(SingleStoreConnectorConfig.TABLE_NAME, "A")
         .with(SingleStoreConnectorConfig.COLUMN_EXCLUDE_LIST, ".*aa")
         .build();
@@ -264,12 +265,12 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
     try (SingleStoreConnection conn = new SingleStoreConnection(
         new SingleStoreConnection.SingleStoreConnectionConfiguration(configuration))) {
       schema.refresh(conn);
-      assertColumnsExcluded("d1.A.aa");
+      assertColumnsExcluded(TEST_DATABASE + ".A.aa");
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }
     configuration = defaultJdbcConfigBuilder()
-        .with(SingleStoreConnectorConfig.DATABASE_NAME, "d1")
+        .with(SingleStoreConnectorConfig.DATABASE_NAME, TEST_DATABASE)
         .with(SingleStoreConnectorConfig.TABLE_NAME, "A")
         .with(SingleStoreConnectorConfig.COLUMN_EXCLUDE_LIST, ".*p.*")
         .build();
@@ -277,7 +278,7 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
     try (SingleStoreConnection conn = new SingleStoreConnection(
         new SingleStoreConnection.SingleStoreConnectionConfiguration(configuration))) {
       schema.refresh(conn);
-      assertColumnsExcluded("d1.A.pk");
+      assertColumnsExcluded(TEST_DATABASE + ".A.pk");
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }

@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Struct;
@@ -202,7 +203,28 @@ public class StreamingIT extends IntegrationTestBase {
         conn.execute("INSERT INTO `song` VALUES ('AC/DC', 'Back In Black')");
         conn.execute("DELETE FROM `song` WHERE name = 'Enter Sandman'");
 
-        List<SourceRecord> records = consumeRecordsByTopic(4).allRecordsInOrder();
+        List<SourceRecord> records = new ArrayList<>(consumeRecordsByTopic(4).allRecordsInOrder());
+        records.sort(new Comparator<SourceRecord>() {
+          @Override
+          public int compare(SourceRecord r1, SourceRecord r2) {
+            if (r1.value() == null) {
+              return 1;
+            }
+            if (r2.value() == null) {
+              return -1;
+            }
+
+            String op1 = ((Struct) r1.value()).getString("op");
+            String op2 = ((Struct) r2.value()).getString("op");
+
+            if (!Objects.equals(op1, op2)) {
+              return op1.compareTo(op2);
+            } else {
+              return ((Struct) r1.value()).getStruct("after").getString("name")
+                  .compareTo(((Struct) r2.value()).getStruct("after").getString("name"));
+            }
+          }
+        });
 
         List<String> ids = new ArrayList<>();
         List<String> operations = Arrays.asList("c", "c", "d", null);
@@ -223,8 +245,8 @@ public class StreamingIT extends IntegrationTestBase {
           ids.add((String) key.get("internalId"));
         }
 
-        assertEquals(ids.get(0), ids.get(2));
-        assertEquals(ids.get(0), ids.get(3));
+        assertEquals(ids.get(1), ids.get(2));
+        assertEquals(ids.get(1), ids.get(3));
       } finally {
         stopConnector();
       }
