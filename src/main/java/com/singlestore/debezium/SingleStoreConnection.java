@@ -55,7 +55,7 @@ public class SingleStoreConnection extends JdbcConnection {
 
   private static void validateServerVersion(Statement statement) throws SQLException {
     DatabaseMetaData metaData = (DatabaseMetaData) statement.getConnection().getMetaData();
-    if (metaData.getVersion().versionGreaterOrEqual(8, 7, 16)) {
+    if (!metaData.getVersion().versionGreaterOrEqual(8, 7, 16)) {
       throw new SQLException("The lowest supported version of SingleStore is 8.7.16");
     }
   }
