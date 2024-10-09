@@ -36,7 +36,9 @@ public class NotificationsIT extends IntegrationTestBase {
   @Before
   public void initTestData() {
     String statements =
-        "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE
+        "DROP TABLE IF EXISTS" + TEST_DATABASE + ".AN;" +
+            "DROP TABLE IF EXISTS" + TEST_DATABASE + ".BN;" +
+            "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE
             + ".AN (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
             "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE + ".BN (aa INT, bb VARCHAR(20));" +
             "DELETE FROM " + TEST_DATABASE + ".AN WHERE 1 = 1;" +
