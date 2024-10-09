@@ -52,8 +52,7 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
     try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
       schema.refresh(conn);
-      assertKeySchema("db.allTypesTable", "intColumn",
-          SchemaBuilder.int32().optional().defaultValue(2147483647).build());
+      assertKeySchemaIsInternalId("db.allTypesTable");
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }
@@ -62,7 +61,8 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
     try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("person"))) {
       schema.refresh(conn);
-      assertKeySchemaIsInternalId("db.person");
+      assertKeySchema("db.person", "name",
+          SchemaBuilder.string().build());
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }
@@ -165,7 +165,8 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
               .build(), // timestampColumn
           org.apache.kafka.connect.data.Timestamp.builder().optional()
               .defaultValue(Date.from(
-                  LocalDateTime.of(2022, 1, 19, 3, 14, 7).atZone(ZoneId.of("UTC")).toInstant()))
+                  LocalDateTime.of(2022, 1, 19, 3, 14, 7, 111000000).atZone(ZoneId.of("UTC"))
+                      .toInstant()))
               .build(), // timestamp6Column
           Year.builder().optional().defaultValue(1989).build(), // yearColumn
           SchemaBuilder.float64().defaultValue(10000.100001).optional().build(), // decimalColumn
@@ -295,7 +296,7 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
     TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
     Schema keySchema = tableSchema.keySchema();
     assertSchemaContent(keySchema, new String[]{"internalId"},
-        new Schema[]{SchemaBuilder.int64().required().build()});
+        new Schema[]{SchemaBuilder.string().required().build()});
   }
 
   protected void assertKeySchema(String fullyQualifiedTableName, String fields,

@@ -153,6 +153,10 @@ public class SingleStoreSnapshotChangeEventSource extends
     TableId table = snapshotContext.capturedTables.iterator().next();
     final String selectStatement = determineSnapshotSelect(snapshotContext, table);
 
+    if (!snapshotContext.offset.isSnapshotRunning()) {
+      snapshotContext.offset.preSnapshotStart();
+    }
+
     doCreateDataEventsForTable(sourceContext, snapshotContext, snapshotContext.offset,
         snapshotReceiver, snapshotContext.tables.forTable(table), selectStatement,
         conn);

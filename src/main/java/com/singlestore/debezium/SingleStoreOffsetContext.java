@@ -148,6 +148,7 @@ public class SingleStoreOffsetContext extends CommonOffsetContext<SourceInfo> {
 
   @Override
   public void preSnapshotStart() {
+    sourceInfo.setSnapshot(SnapshotRecord.TRUE);
     snapshotCompleted = false;
   }
 
