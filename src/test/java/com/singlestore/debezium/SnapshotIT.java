@@ -27,19 +27,20 @@ public class SnapshotIT extends IntegrationTestBase {
 
   @Before
   public void initTestData() {
-    String statements = "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE
-        + ".A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
-        "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE + ".B (aa INT, bb VARCHAR(20));" +
-        "DELETE FROM " + TEST_DATABASE + ".A WHERE pk > -1;" +
-        "DELETE FROM " + TEST_DATABASE + ".B WHERE aa > -1;" +
-        "INSERT INTO " + TEST_DATABASE + ".B VALUES(0, 'test0');" +
-        "INSERT INTO " + TEST_DATABASE + ".A VALUES(0, 'test0');" +
-        "INSERT INTO " + TEST_DATABASE + ".A VALUES(4, 'test4');" +
-        "INSERT INTO " + TEST_DATABASE + ".A VALUES(1, 'test1');" +
-        "INSERT INTO " + TEST_DATABASE + ".A VALUES(2, 'test2');" +
-        "UPDATE " + TEST_DATABASE + ".B SET bb = 'testUpdated' WHERE aa = 0;" +
-        "DELETE FROM " + TEST_DATABASE + ".A WHERE pk = 4;" +
-        "SNAPSHOT DATABASE " + TEST_DATABASE + ";";
+    String statements =
+        "DROP TABLE " + TEST_DATABASE + ".A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
+            "CREATE TABLE " + TEST_DATABASE + ".A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
+            "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE + ".B (aa INT, bb VARCHAR(20));" +
+            "DELETE FROM " + TEST_DATABASE + ".A WHERE pk > -1;" +
+            "DELETE FROM " + TEST_DATABASE + ".B WHERE aa > -1;" +
+            "INSERT INTO " + TEST_DATABASE + ".B VALUES(0, 'test0');" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(0, 'test0');" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(4, 'test4');" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(1, 'test1');" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(2, 'test2');" +
+            "UPDATE " + TEST_DATABASE + ".B SET bb = 'testUpdated' WHERE aa = 0;" +
+            "DELETE FROM " + TEST_DATABASE + ".A WHERE pk = 4;" +
+            "SNAPSHOT DATABASE " + TEST_DATABASE + ";";
     execute(statements);
   }
 
