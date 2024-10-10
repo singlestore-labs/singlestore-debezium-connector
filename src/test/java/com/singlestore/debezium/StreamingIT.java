@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Struct;
@@ -43,7 +44,7 @@ public class StreamingIT extends IntegrationTestBase {
         conn.execute("INSERT INTO `allTypesTable` VALUES (\n" + "TRUE, " + // boolColumn
             "TRUE, " + // booleanColumn
             "'abcdefgh', " + // bitColumn
-            "-128, " +  // tinyintColumn
+            "-128, " + // tinyintColumn
             "-8388608, " + // mediumintColumn
             "-32768, " + // smallintColumn
             "-2147483648, " + // intColumn
@@ -57,28 +58,28 @@ public class StreamingIT extends IntegrationTestBase {
             // It is converted to 24h - time during reading of the result
             "'0:00:00', " + // timeColumn
             "'0:00:00.000000', " + // time6Column
-            "'1000-01-01 00:00:00', " +  // datetimeColumn
+            "'1000-01-01 00:00:00', " + // datetimeColumn
             "'1000-01-01 00:00:00.000000', " + // datetime6Column
-            "'1970-01-01 00:00:01', " +  // timestampColumn
-            "'1970-01-01 00:00:01.000000', " +  // timestamp6Column
-            "1901, " +  // yearColumn
+            "'1970-01-01 00:00:01', " + // timestampColumn
+            "'1970-01-01 00:00:01.000000', " + // timestamp6Column
+            "1901, " + // yearColumn
             "12345678901234567890123456789012345.123456789012345678901234567891, " +
             // decimalColumn
             "1234567890, " + // decColumn
             "1234567890, " + // fixedColumn
-            "1234567890, " +  // numericColumn
+            "1234567890, " + // numericColumn
             "'a', " + // charColumn
-            "'abc', " +  // mediumtextColumn
+            "'abc', " + // mediumtextColumn
             "'a', " + // binaryColumn
-            "'abc', " +  // varcharColumn
-            "'abc', " +  // varbinaryColumn
-            "'abc', " +  // longtextColumn
-            "'abc', " +  // textColumn
-            "'abc', " +  // tinytextColumn
-            "'abc', " +  // longblobColumn
-            "'abc', " +  // mediumblobColumn
-            "'abc', " +  // blobColumn
-            "'abc', " +  // tinyblobColumn
+            "'abc', " + // varcharColumn
+            "'abc', " + // varbinaryColumn
+            "'abc', " + // longtextColumn
+            "'abc', " + // textColumn
+            "'abc', " + // tinytextColumn
+            "'abc', " + // longblobColumn
+            "'abc', " + // mediumblobColumn
+            "'abc', " + // blobColumn
+            "'abc', " + // tinyblobColumn
             "'{}', " + // jsonColumn
             "'val1', " + // enum_f
             "'v1', " + // set_f
@@ -180,9 +181,9 @@ public class StreamingIT extends IntegrationTestBase {
         assertEquals(source.get("db"), "db");
         assertEquals(source.get("table"), "purchased");
         assertNotNull(source.get("txId"));
-        assertEquals(source.get("partitionId"), 0);
+        assertNotNull(source.get("partitionId"));
         assertNotNull(source.get("offsets"));
-        assertEquals(3, ((List) source.get("offsets")).size());
+        assertEquals(8, ((List<?>) source.get("offsets")).size());
       } finally {
         stopConnector();
       }
@@ -202,9 +203,30 @@ public class StreamingIT extends IntegrationTestBase {
         conn.execute("INSERT INTO `song` VALUES ('AC/DC', 'Back In Black')");
         conn.execute("DELETE FROM `song` WHERE name = 'Enter Sandman'");
 
-        List<SourceRecord> records = consumeRecordsByTopic(4).allRecordsInOrder();
+        List<SourceRecord> records = new ArrayList<>(consumeRecordsByTopic(4).allRecordsInOrder());
+        records.sort(new Comparator<SourceRecord>() {
+          @Override
+          public int compare(SourceRecord r1, SourceRecord r2) {
+            if (r1.value() == null) {
+              return 1;
+            }
+            if (r2.value() == null) {
+              return -1;
+            }
 
-        List<Long> ids = new ArrayList<>();
+            String op1 = ((Struct) r1.value()).getString("op");
+            String op2 = ((Struct) r2.value()).getString("op");
+
+            if (!Objects.equals(op1, op2)) {
+              return op1.compareTo(op2);
+            } else {
+              return ((Struct) r1.value()).getStruct("after").getString("name")
+                  .compareTo(((Struct) r2.value()).getStruct("after").getString("name"));
+            }
+          }
+        });
+
+        List<String> ids = new ArrayList<>();
         List<String> operations = Arrays.asList("c", "c", "d", null);
 
         assertEquals(4, records.size());
@@ -220,11 +242,11 @@ public class StreamingIT extends IntegrationTestBase {
           }
 
           Struct key = (Struct) record.key();
-          ids.add((Long) key.get("internalId"));
+          ids.add((String) key.get("internalId"));
         }
 
-        assertEquals(ids.get(0), ids.get(2));
-        assertEquals(ids.get(0), ids.get(3));
+        assertEquals(ids.get(1), ids.get(2));
+        assertEquals(ids.get(1), ids.get(3));
       } finally {
         stopConnector();
       }
@@ -243,19 +265,18 @@ public class StreamingIT extends IntegrationTestBase {
       waitForStreamingToStart();
 
       try {
-        conn.execute("INSERT INTO `product` (`id`) VALUES (1)");
-        conn.execute("INSERT INTO `product` (`id`) VALUES (2)");
         conn.execute("INSERT INTO `product` (`id`) VALUES (3)");
-        conn.execute("DELETE FROM `product` WHERE `id` = 1");
-        conn.execute("UPDATE `product` SET `createdByDate` = '2013-11-23 15:22:33' WHERE `id` = 2");
-        conn.execute("INSERT INTO `product` (`id`) VALUES (4)");
+        conn.execute("DELETE FROM `product` WHERE `id` = 3");
+        conn.execute("INSERT INTO `product` (`id`) VALUES (3)");
+        conn.execute(
+            "UPDATE `product` SET `createdByDate` = '2013-11-23 15:22:33' WHERE `id` = 3");
 
-        List<SourceRecord> records = consumeRecordsByTopic(6).allRecordsInOrder();
+        List<SourceRecord> records = consumeRecordsByTopic(4).allRecordsInOrder();
 
         List<Long> ids = new ArrayList<>();
-        List<String> operations = Arrays.asList("c", "c", "c", "d", "u", "c");
+        List<String> operations = Arrays.asList("c", "d", "c", "u");
 
-        assertEquals(6, records.size());
+        assertEquals(4, records.size());
         for (int i = 0; i < records.size(); i++) {
           SourceRecord record = records.get(i);
 
@@ -268,11 +289,11 @@ public class StreamingIT extends IntegrationTestBase {
           }
 
           Struct key = (Struct) record.key();
-          ids.add(key.getInt64("internalId"));
+          ids.add(key.getInt64("id"));
         }
 
-        assertEquals(ids.get(0), ids.get(3));
-        assertEquals(ids.get(1), ids.get(4));
+        assertEquals(ids.get(0), ids.get(1));
+        assertEquals(ids.get(2), ids.get(3));
       } finally {
         stopConnector();
       }
@@ -298,7 +319,14 @@ public class StreamingIT extends IntegrationTestBase {
         conn.execute("INSERT INTO `person` (`name`, `birthdate`, `age`, `salary`, `bitStr`) "
             + "VALUES ('Bob', '2001-04-11', 24, 100, 'a')");
 
-        List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
+        List<SourceRecord> records = new ArrayList<>(consumeRecordsByTopic(3).allRecordsInOrder());
+        records.sort(new Comparator<SourceRecord>() {
+          @Override
+          public int compare(SourceRecord r1, SourceRecord r2) {
+            return ((Struct) r1.key()).getString("name")
+                .compareTo(((Struct) r2.key()).getString("name"));
+          }
+        });
 
         List<String> names = Arrays.asList("Adalbert", "Alice", "Bob");
         List<Integer> ages = Arrays.asList(22, 23, 24);
@@ -332,7 +360,7 @@ public class StreamingIT extends IntegrationTestBase {
   public void internalId() throws SQLException, InterruptedException {
     try (SingleStoreConnection createTableConn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("product"))) {
-      createTableConn.execute("CREATE TABLE IF NOT EXISTS internalIdTable(a INT);"
+      createTableConn.execute("CREATE TABLE IF NOT EXISTS internalIdTable(a TEXT);"
           + "DELETE FROM internalIdTable WHERE 1 = 1;");
       try (SingleStoreConnection conn = new SingleStoreConnection(
           defaultJdbcConnectionConfigWithTable("internalIdTable"))) {
@@ -345,15 +373,15 @@ public class StreamingIT extends IntegrationTestBase {
         waitForStreamingToStart();
 
         try {
-          conn.execute("INSERT  INTO internalIdTable VALUES (1)");
+          conn.execute("INSERT  INTO internalIdTable VALUES ('1')");
 
           List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
           assertEquals(1, records.size());
           for (SourceRecord record : records) {
             Struct value = (Struct) record.value();
             Struct key = (Struct) record.key();
-            Long internalId = value.getStruct("after").getInt64("internalId");
-            assertEquals(key.getInt64("internalId"), internalId);
+            String internalId = value.getStruct("after").getString("internalId");
+            assertEquals(key.getString("internalId"), internalId);
           }
         } finally {
           stopConnector();
@@ -382,7 +410,14 @@ public class StreamingIT extends IntegrationTestBase {
         conn.execute("UPDATE `product` SET `createdByDate` = '2013-11-23 15:22:33' WHERE `id` = 2");
         conn.execute("INSERT INTO `product` (`id`) VALUES (4)");
 
-        List<SourceRecord> records = consumeRecordsByTopic(2).allRecordsInOrder();
+        List<SourceRecord> records = new ArrayList<>(consumeRecordsByTopic(2).allRecordsInOrder());
+        records.sort(new Comparator<SourceRecord>() {
+          @Override
+          public int compare(SourceRecord r1, SourceRecord r2) {
+            return ((Struct) r1.key()).getInt64("id")
+                .compareTo(((Struct) r2.key()).getInt64("id"));
+          }
+        });
 
         List<String> operations = Arrays.asList("d", "u");
         assertEquals(2, records.size());
@@ -435,8 +470,7 @@ public class StreamingIT extends IntegrationTestBase {
             "SET GLOBAL snapshots_to_keep=1",
             "SET GLOBAL snapshot_trigger_size=65536",
             "CREATE TABLE IF NOT EXISTS staleOffsets(a INT)",
-            "DELETE FROM staleOffsets WHERE 1 > 0"
-        );
+            "DELETE FROM staleOffsets WHERE 1 > 0");
 
         Configuration config = defaultJdbcConfigWithTable("staleOffsets").edit()
             .withDefault("offset.flush.interval.ms", "20").build();
@@ -456,7 +490,7 @@ public class StreamingIT extends IntegrationTestBase {
 
         stopConnector();
 
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 80000; i++) {
           conn.execute("INSERT INTO staleOffsets VALUES (123456789)");
         }
 
@@ -478,8 +512,7 @@ public class StreamingIT extends IntegrationTestBase {
         }
       } finally {
         conn.execute("SET GLOBAL snapshots_to_keep=2",
-            "SET GLOBAL snapshot_trigger_size=2147483648"
-        );
+            "SET GLOBAL snapshot_trigger_size=2147483648");
         stopConnector();
       }
     }
@@ -524,8 +557,8 @@ public class StreamingIT extends IntegrationTestBase {
           for (int i = 0; i < records.size(); i++) {
             SourceRecord record = records.get(i);
             Struct key = (Struct) record.key();
-            assertEquals(key.getInt32("a"), keyA.get(i));
-            assertEquals(key.getString("b"), keyB.get(i));
+            assertEquals(keyA.get(i), key.getInt32("a"));
+            assertEquals(keyB.get(i), key.getString("b"));
           }
         } finally {
           stopConnector();
@@ -534,7 +567,57 @@ public class StreamingIT extends IntegrationTestBase {
     }
   }
 
-  //Offset is validated successfully and offset is not reset, streaming should proceed after connector is restarted
+  @Test
+  public void testPKInColumnstore() throws Exception {
+    try (SingleStoreConnection createTableConn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("product"))) {
+      createTableConn.execute(
+          "CREATE TABLE IF NOT EXISTS pkInColumnstore(a INT, b TEXT, c TEXT, PRIMARY KEY(a, b));"
+              + "DELETE FROM pkInColumnstore WHERE 1 = 1;");
+      try (SingleStoreConnection conn = new SingleStoreConnection(
+          defaultJdbcConnectionConfigWithTable("pkInColumnstore"))) {
+        Configuration config = defaultJdbcConfigWithTable("pkInColumnstore");
+        config = config.edit().withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
+            "db.pkInColumnstore.a,db.pkInColumnstore.c").build();
+        conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
+        start(SingleStoreConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+
+        try {
+          conn.execute("INSERT INTO pkInColumnstore VALUES (2, 'd', 'e')");
+          conn.execute("INSERT INTO pkInColumnstore VALUES (1, 'b', 'c')");
+          conn.execute("DELETE FROM pkInColumnstore WHERE a = 1");
+
+          List<SourceRecord> records = new ArrayList<>(
+              consumeRecordsByTopic(3).allRecordsInOrder());
+          assertEquals(3, records.size());
+          records.sort(new Comparator<SourceRecord>() {
+            @Override
+            public int compare(SourceRecord r1, SourceRecord r2) {
+              return ((Struct) r1.key()).getInt32("a")
+                  .compareTo(((Struct) r2.key()).getInt32("a"));
+            }
+          });
+
+          List<Integer> keyA = Arrays.asList(1, 1, 2);
+          List<String> keyB = Arrays.asList("b", "b", "d");
+
+          for (int i = 0; i < records.size(); i++) {
+            SourceRecord record = records.get(i);
+            Struct key = (Struct) record.key();
+            assertEquals(keyA.get(i), key.getInt32("a"));
+            assertEquals(keyB.get(i), key.getString("b"));
+          }
+        } finally {
+          stopConnector();
+        }
+      }
+    }
+  }
+
+  // Offset is validated successfully and offset is not reset, streaming should
+  // proceed after connector is restarted
   @Test
   public void testValidOffsetInWhenNeededSnapshotMode() throws Exception {
     String table = "validOffsets1";
@@ -542,8 +625,7 @@ public class StreamingIT extends IntegrationTestBase {
         defaultJdbcConnectionConfig())) {
       conn.execute(String.format("USE %s", TEST_DATABASE),
           String.format("DROP TABLE IF EXISTS %s", table),
-          String.format("CREATE TABLE %s(a INT)", table)
-      );
+          String.format("CREATE TABLE %s(a INT)", table));
       Configuration config = defaultJdbcConfigWithTable(table).edit()
           .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE,
               SingleStoreConnectorConfig.SnapshotMode.WHEN_NEEDED)
@@ -573,7 +655,7 @@ public class StreamingIT extends IntegrationTestBase {
       Thread.sleep(100);
       records = consumeRecordsByTopic(10).allRecordsInOrder();
       assertEquals(10, records.size());
-      //expected offset is not reset and stream type records are consumed
+      // expected offset is not reset and stream type records are consumed
       assertNotNull("must be a stream type record",
           records.get(0).sourceOffset().get("snapshot_completed"));
       assertTrue("must be a stream type record",
@@ -583,7 +665,8 @@ public class StreamingIT extends IntegrationTestBase {
     }
   }
 
-  //Offset is failed to validate and reset, after connector is restarted snapshot reading should be executed
+  // Offset is failed to validate and reset, after connector is restarted snapshot
+  // reading should be executed
   @Test
   public void testStaleOffsetInWhenNeededSnapshotMode() throws Exception {
     String table = "staleOffsets2";
@@ -594,8 +677,7 @@ public class StreamingIT extends IntegrationTestBase {
             "SET GLOBAL snapshots_to_keep=1",
             "SET GLOBAL snapshot_trigger_size=65536",
             String.format("DROP TABLE IF EXISTS %s", table),
-            String.format("CREATE TABLE %s(a INT)", table)
-        );
+            String.format("CREATE TABLE %s(a INT)", table));
         Configuration config = defaultJdbcConfigWithTable(table).edit()
             .withDefault(OFFSET_FLUSH_INTERVAL_MS, 20)
             .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE,
@@ -617,24 +699,24 @@ public class StreamingIT extends IntegrationTestBase {
         stopConnector();
 
         Thread.sleep(100);
-        for (int i = 10; i < 10010; i++) {
+        for (int i = 10; i < 80010; i++) {
           conn.execute(String.format("INSERT INTO %s VALUES (%s)", table, i));
         }
-        Thread.sleep(100);
+        conn.execute(String.format("SNAPSHOT DATABASE %s", TEST_DATABASE));
+        Thread.sleep(1000);
         start(SingleStoreConnector.class, config);
         assertConnectorIsRunning();
 
-        Thread.sleep(1000);
-        records = consumeRecordsByTopic(10000).allRecordsInOrder();
-        //expected offset is reset and snapshot type records are consumed
+        records = consumeRecordsByTopic(80000).allRecordsInOrder();
+        assertEquals(80000, records.size());
+        // expected offset is reset and snapshot type records are consumed
         assertNotNull("must be a snapshot type record",
             records.get(0).sourceOffset().get("snapshot"));
         assertTrue("must be a snapshot type record",
             Boolean.parseBoolean(records.get(0).sourceOffset().get("snapshot").toString()));
       } finally {
         conn.execute("SET GLOBAL snapshots_to_keep=2",
-            "SET GLOBAL snapshot_trigger_size=2147483648"
-        );
+            "SET GLOBAL snapshot_trigger_size=2147483648");
         stopConnector();
       }
     }

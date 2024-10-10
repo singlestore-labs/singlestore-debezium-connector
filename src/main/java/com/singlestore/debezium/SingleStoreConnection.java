@@ -1,5 +1,8 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.util.ObserveResultSetUtils;
+import com.singlestore.debezium.util.Utils;
+import com.singlestore.jdbc.DatabaseMetaData;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -12,11 +15,12 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.util.Strings;
+import java.sql.Connection;
+import java.sql.ResultSet;
 import javax.swing.text.html.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
@@ -53,41 +57,10 @@ public class SingleStoreConnection extends JdbcConnection {
             .collect(Collectors.joining(",")))), Optional.empty());
   }
 
-  public boolean isRowstoreTable(TableId tableId) throws SQLException {
-    AtomicBoolean res = new AtomicBoolean(false);
-    prepareQuery(
-        "SELECT storage_type = 'INMEMORY_ROWSTORE' as isRowstore FROM information_schema.tables WHERE table_schema = ? && table_name = ?",
-        statement -> {
-          statement.setString(1, tableId.catalog());
-          statement.setString(2, tableId.table());
-        },
-        rs -> {
-          rs.next();
-          res.set(rs.getBoolean(1));
-        });
-
-    return res.get();
-  }
-
   private static void validateServerVersion(Statement statement) throws SQLException {
-    DatabaseMetaData metaData = statement.getConnection().getMetaData();
-    int majorVersion = metaData.getDatabaseMajorVersion();
-    int minorVersion = metaData.getDatabaseMinorVersion();
-    if (majorVersion < 8 || (majorVersion == 8 && minorVersion < 5)) {
-      throw new SQLException(
-          "CDC feature is not supported in a version of SingleStore lower than 8.5");
-    }
-  }
-
-  public void addIsRowstoreAttribute(Tables tables) throws SQLException {
-    for (TableId tableId : tables.tableIds()) {
-      Attribute isRowstore = Attribute.editor()
-          .name("IS_ROWSTORE")
-          .value(isRowstoreTable(tableId))
-          .create();
-
-      tables.updateTable(tableId, table ->
-          table.edit().addAttribute(isRowstore).create());
+    DatabaseMetaData metaData = (DatabaseMetaData) statement.getConnection().getMetaData();
+    if (!metaData.getVersion().versionGreaterOrEqual(8, 7, 16)) {
+      throw new SQLException("The lowest supported version of SingleStore is 8.7.16");
     }
   }
 
@@ -97,7 +70,6 @@ public class SingleStoreConnection extends JdbcConnection {
       throws SQLException {
     super.readSchema(tables, databaseCatalog, schemaNamePattern, tableFilter, columnFilter,
         removeTablesNotFoundInJdbc);
-    addIsRowstoreAttribute(tables);
   }
 
   /**
@@ -177,6 +149,32 @@ public class SingleStoreConnection extends JdbcConnection {
     return query.toString();
   }
 
+  private List<String> getOldestSnapshotBeginnings(int numPartitions) {
+    List<String> res = new ArrayList<>(Collections.nCopies(numPartitions, null));
+
+    try (
+        Connection conn = connection();
+        Statement stmt = conn.createStatement();
+        ResultSet rs = stmt.executeQuery(
+            String.format(
+                "SELECT * FROM INFORMATION_SCHEMA.OBSERVE_DATABASE_OFFSETS WHERE DATABASE_NAME = %s AND OFFSET_TYPE = 'snapshot_begin'",
+                Utils.escapeString(database())))
+    ) {
+      while (rs.next()) {
+        int partition = rs.getInt("ORDINAL");
+        String offset = Utils.bytesToHex(rs.getBytes("OFFSET"));
+
+        if (res.get(partition) == null || res.get(partition).compareTo(offset) > 0) {
+          res.set(partition, offset);
+        }
+      }
+    } catch (SQLException e) {
+      LOGGER.error(e.getMessage());
+      throw new DebeziumException(e);
+    }
+    return res;
+  }
+
   /**
    * Validate observable offset before streaming.
    *
@@ -185,27 +183,22 @@ public class SingleStoreConnection extends JdbcConnection {
    */
   public boolean validateOffset(Set<TableId> tableFilter, SingleStorePartition partition,
       SingleStoreOffsetContext offset) {
-    List<String> offsets = offset.offsets().stream().filter(Objects::nonNull)
-        .map(o -> "'" + o + "'").collect(Collectors.toList());
-    Optional<String> offsetParam = Optional.of("(" + String.join(",", offsets) + ")");
-    final String query = observeQuery(null, tableFilter, Optional.empty(), Optional.empty(),
-        offsetParam, Optional.empty());
-    //sometimes same observe query is failed after second time execution with the same offset
-    try (Statement statement = connection().createStatement(); AutoClosableResultSetWrapper rsWrapper = AutoClosableResultSetWrapper.from(
-        statement.executeQuery(query))) {
-      rsWrapper.getResultSet().next();
-    } catch (SQLException e) {
-      if (e.getMessage().contains(
-          "The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
-          && e.getErrorCode() == 2851 && e.getSQLState().equals("HY000")) {
-        LOGGER.warn("Failed to validate offset {}", offsetParam.get());
-        return false;
-      } else {
-        LOGGER.error(e.getMessage());
-        throw new DebeziumException(e);
+    List<String> oldestSnapshotBeginnings = getOldestSnapshotBeginnings(offset.offsets().size());
+    List<String> offsets = offset.offsets();
+
+    for (int i = 0; i < offsets.size(); i++) {
+      String partitionOffset = offsets.get(i);
+      String oldestSnapshotBeginning = oldestSnapshotBeginnings.get(i);
+      if (partitionOffset != null && oldestSnapshotBeginning != null) {
+        if (oldestSnapshotBeginning.compareTo(partitionOffset) > 0) {
+          // Offset is stale
+          LOGGER.warn("Failed to validate offset {}", offsets);
+          return false;
+        }
       }
     }
-    LOGGER.trace("Offset {} is successfully validated", offsetParam.get());
+
+    LOGGER.trace("Offset {} is successfully validated", offset);
     return true;
   }
 
@@ -382,7 +375,8 @@ public class SingleStoreConnection extends JdbcConnection {
   }
 
   @Override
-  protected List<String> readPrimaryKeyOrUniqueIndexNames(DatabaseMetaData metadata, TableId id)
+  protected List<String> readPrimaryKeyOrUniqueIndexNames(java.sql.DatabaseMetaData metadata,
+      TableId id)
       throws SQLException {
     return readPrimaryKeyNames(metadata, id);
   }

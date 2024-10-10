@@ -153,6 +153,10 @@ public class SingleStoreSnapshotChangeEventSource extends
     TableId table = snapshotContext.capturedTables.iterator().next();
     final String selectStatement = determineSnapshotSelect(snapshotContext, table);
 
+    if (!snapshotContext.offset.isSnapshotRunning()) {
+      snapshotContext.offset.preSnapshotStart();
+    }
+
     doCreateDataEventsForTable(sourceContext, snapshotContext, snapshotContext.offset,
         snapshotReceiver, snapshotContext.tables.forTable(table), selectStatement,
         conn);
@@ -183,8 +187,7 @@ public class SingleStoreSnapshotChangeEventSource extends
       ResultSet rs = rsWrapper.getResultSet();
       List<Integer> columnPostitions =
           ObserveResultSetUtils
-              .columnPositions(rs, table.columns(),
-                  connectorConfig.populateInternalId());
+              .columnPositions(rs, table.columns());
       long rows = 0;
       Threads.Timer logTimer = getTableScanLogTimer();
 
@@ -197,7 +200,8 @@ public class SingleStoreSnapshotChangeEventSource extends
             ObserveResultSetUtils.internalId(rs),
             ObserveResultSetUtils.partitionId(rs),
             ObserveResultSetUtils.offset(rs),
-            ObserveResultSetUtils.rowToArray(rs, columnPostitions));
+            ObserveResultSetUtils.rowToArray(rs, columnPostitions,
+                connectorConfig.populateInternalId()));
 
         int partitionId = ObserveResultSetUtils.partitionId(rs);
         if (ObserveResultSetUtils.isCommitSnapshot(rs)) {
@@ -206,8 +210,9 @@ public class SingleStoreSnapshotChangeEventSource extends
         } else if (!ObserveResultSetUtils.isBeginSnapshot(rs)
             && !snapshotCommitted.get(partitionId)) {
           rows++;
-          final Object[] row = ObserveResultSetUtils.rowToArray(rs, columnPostitions);
-          final Long internalId = ObserveResultSetUtils.internalId(rs);
+          final Object[] row = ObserveResultSetUtils.rowToArray(rs, columnPostitions,
+              connectorConfig.populateInternalId());
+          final String internalId = ObserveResultSetUtils.internalId(rs);
           if (logTimer.expired()) {
             long stop = clock.currentTimeInMillis();
             LOGGER.info("\t Exported {} records for table '{}' after {}", rows, table.id(),
@@ -258,7 +263,7 @@ public class SingleStoreSnapshotChangeEventSource extends
    */
   protected ChangeRecordEmitter<SingleStorePartition> getChangeRecordEmitter(
       SingleStorePartition partition, SingleStoreOffsetContext offset, TableId tableId, Table table,
-      Object[] row, long internalId, Instant timestamp) {
+      Object[] row, String internalId, Instant timestamp) {
     offset.event(tableId, timestamp);
     return new SingleStoreSnapshotChangeRecordEmitter(partition, offset, row, internalId,
         getClock(), connectorConfig, table);

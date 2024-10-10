@@ -5,10 +5,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.SchemaAndValueField;
-import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,19 +27,22 @@ public class SnapshotIT extends IntegrationTestBase {
 
   @Before
   public void initTestData() {
-    String statements = "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE
-        + ".A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
-        "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE + ".B (aa INT, bb VARCHAR(20));" +
-        "DELETE FROM " + TEST_DATABASE + ".A WHERE pk > -1;" +
-        "DELETE FROM " + TEST_DATABASE + ".B WHERE aa > -1;" +
-        "INSERT INTO " + TEST_DATABASE + ".B VALUES(0, 'test0');" +
-        "INSERT INTO " + TEST_DATABASE + ".A VALUES(0, 'test0');" +
-        "INSERT INTO " + TEST_DATABASE + ".A VALUES(4, 'test4');" +
-        "INSERT INTO " + TEST_DATABASE + ".A VALUES(1, 'test1');" +
-        "INSERT INTO " + TEST_DATABASE + ".A VALUES(2, 'test2');" +
-        "UPDATE " + TEST_DATABASE + ".B SET bb = 'testUpdated' WHERE aa = 0;" +
-        "DELETE FROM " + TEST_DATABASE + ".A WHERE pk = 4;" +
-        "SNAPSHOT DATABASE " + TEST_DATABASE + ";";
+    String statements =
+        "DROP TABLE IF EXISTS " + TEST_DATABASE + ".A;" +
+            "DROP TABLE IF EXISTS " + TEST_DATABASE + ".B;" +
+            "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE
+            + ".A (pk INT, aa VARCHAR(10), PRIMARY KEY(pk));" +
+            "CREATE TABLE IF NOT EXISTS " + TEST_DATABASE + ".B (aa INT, bb VARCHAR(20));" +
+            "DELETE FROM " + TEST_DATABASE + ".A WHERE pk > -1;" +
+            "DELETE FROM " + TEST_DATABASE + ".B WHERE aa > -1;" +
+            "INSERT INTO " + TEST_DATABASE + ".B VALUES(0, 'test0');" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(0, 'test0');" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(4, 'test4');" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(1, 'test1');" +
+            "INSERT INTO " + TEST_DATABASE + ".A VALUES(2, 'test2');" +
+            "UPDATE " + TEST_DATABASE + ".B SET bb = 'testUpdated' WHERE aa = 0;" +
+            "DELETE FROM " + TEST_DATABASE + ".A WHERE pk = 4;" +
+            "SNAPSHOT DATABASE " + TEST_DATABASE + ";";
     execute(statements);
   }
 
@@ -72,14 +73,14 @@ public class SnapshotIT extends IntegrationTestBase {
             new SchemaAndValueField("aa", Schema.OPTIONAL_STRING_SCHEMA, "test" + i));
         final Struct key1 = (Struct) record1.key();
         final Struct value1 = (Struct) record1.value();
-        assertNotNull(key1.get("internalId"));
+        assertEquals(i, key1.get("pk"));
         assertEquals(Schema.Type.STRUCT, key1.schema().type());
-        assertEquals(Schema.Type.INT64, key1.schema().fields().get(0).schema().type());
+        assertEquals(Schema.Type.INT32, key1.schema().fields().get(0).schema().type());
         assertRecord((Struct) value1.get("after"), expectedRow1);
         assertThat(record1.sourceOffset())
             .extracting("snapshot").containsExactly(true);
-        //              assertThat(record1.sourceOffset())
-        //                        .extracting("snapshot_completed").containsExactly(i == 2);
+        // assertThat(record1.sourceOffset())
+        // .extracting("snapshot_completed").containsExactly(i == 2);
         assertNull(value1.get("before"));
       }
     } finally {
@@ -108,12 +109,12 @@ public class SnapshotIT extends IntegrationTestBase {
       assertRecord((Struct) value1.get("after"), expectedRow1);
       assertThat(record1.sourceOffset())
           .extracting("snapshot").containsExactly(true);
-      //          assertThat(record1.sourceOffset())
-      //                  .extracting("snapshot_completed").containsExactly(false);
+      // assertThat(record1.sourceOffset())
+      // .extracting("snapshot_completed").containsExactly(false);
       assertNull(value1.get("before"));
       assertNotNull(key1.get("internalId"));
       assertEquals(Schema.Type.STRUCT, key1.schema().type());
-      assertEquals(Schema.Type.INT64, key1.schema().fields().get(0).schema().type());
+      assertEquals(Schema.Type.STRING, key1.schema().fields().get(0).schema().type());
 
     } finally {
       stopConnector();
@@ -168,8 +169,8 @@ public class SnapshotIT extends IntegrationTestBase {
                     String.CASE_INSENSITIVE_ORDER))
             .collect(Collectors.toList());
 
-        List<String> values = Arrays.asList(new String[]{"test0", "test1", "test2"});
-        List<String> operations = Arrays.asList(new String[]{"r", "r", "r"});
+        List<String> values = Arrays.asList("test0", "test1", "test2");
+        List<String> operations = Arrays.asList("r", "r", "r");
 
         for (int i = 0; i < records.size(); i++) {
           SourceRecord record = records.get(i);
@@ -188,7 +189,7 @@ public class SnapshotIT extends IntegrationTestBase {
               .stream()
               .map(field -> field.name())
               .collect(Collectors.toSet());
-          assertEquals(new HashSet<>(Arrays.asList("aa")), columnNames);
+          assertEquals(new HashSet<>(List.of("aa")), columnNames);
           assertEquals(values.get(i), value.get("aa"));
         }
       } finally {
@@ -227,9 +228,9 @@ public class SnapshotIT extends IntegrationTestBase {
             new SchemaAndValueField("aa", Schema.OPTIONAL_STRING_SCHEMA, "test" + i));
         final Struct key1 = (Struct) record1.key();
         final Struct value1 = (Struct) record1.value();
-        assertNotNull(key1.get("internalId"));
+        assertEquals(i, key1.get("pk"));
         assertEquals(Schema.Type.STRUCT, key1.schema().type());
-        assertEquals(Schema.Type.INT64, key1.schema().fields().get(0).schema().type());
+        assertEquals(Schema.Type.INT32, key1.schema().fields().get(0).schema().type());
         assertRecord((Struct) value1.get("after"), expectedRow1);
         assertThat(record1.sourceOffset())
             .extracting("snapshot").containsExactly(true);
@@ -256,6 +257,53 @@ public class SnapshotIT extends IntegrationTestBase {
         Configuration config = defaultJdbcConfigWithTable("pkInRowstoreSnapshot");
         config = config.edit().withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
             "db.pkInRowstoreSnapshot.a,db.pkInRowstoreSnapshot.c").build();
+        start(SingleStoreConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+        try {
+          List<SourceRecord> records = new ArrayList<>(
+              consumeRecordsByTopic(2).allRecordsInOrder());
+          assertEquals(2, records.size());
+          records.sort(new Comparator<SourceRecord>() {
+            @Override
+            public int compare(SourceRecord r1, SourceRecord r2) {
+              return ((Struct) r1.key()).getInt32("a")
+                  .compareTo(((Struct) r2.key()).getInt32("a"));
+            }
+          });
+
+          List<Integer> keyA = Arrays.asList(1, 2);
+          List<String> keyB = Arrays.asList("b", "d");
+
+          for (int i = 0; i < records.size(); i++) {
+            SourceRecord record = records.get(i);
+            Struct key = (Struct) record.key();
+            assertEquals(keyA.get(i), key.getInt32("a"));
+            assertEquals(keyB.get(i), key.getString("b"));
+          }
+        } finally {
+          stopConnector();
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testPKInColumnstore() throws Exception {
+    try (SingleStoreConnection createTableConn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("product"))) {
+      createTableConn.execute(
+          "CREATE TABLE IF NOT EXISTS pkInColumnstoreSnapshot(a INT, b TEXT, c TEXT, PRIMARY KEY(a, b));"
+              + "DELETE FROM pkInColumnstoreSnapshot WHERE 1 = 1;");
+      try (SingleStoreConnection conn = new SingleStoreConnection(
+          defaultJdbcConnectionConfigWithTable("pkInColumnstoreSnapshot"))) {
+        conn.execute("INSERT INTO pkInColumnstoreSnapshot VALUES (2, 'd', 'e')");
+        conn.execute("INSERT INTO pkInColumnstoreSnapshot VALUES (1, 'b', 'c')");
+        conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
+
+        Configuration config = defaultJdbcConfigWithTable("pkInColumnstoreSnapshot");
+        config = config.edit().withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
+            "db.pkInColumnstoreSnapshot.a,db.pkInColumnstoreSnapshot.c").build();
         start(SingleStoreConnector.class, config);
         assertConnectorIsRunning();
         waitForStreamingToStart();

@@ -16,19 +16,18 @@ public final class InternalIdUtils {
 
   public static Schema getKeySchema(Table table, TableSchema schema) {
     if (useInternalIdAsKey(table)) {
-      return SchemaBuilder.struct().field(INTERNAL_ID, Schema.INT64_SCHEMA).build();
+      return SchemaBuilder.struct().field(INTERNAL_ID, Schema.STRING_SCHEMA).build();
     } else {
       return schema.keySchema();
     }
   }
 
   private static boolean useInternalIdAsKey(Table table) {
-    return table.primaryKeyColumnNames().isEmpty() ||
-        !table.attributeWithName("IS_ROWSTORE").asBoolean();
+    return table.primaryKeyColumnNames().isEmpty();
   }
 
   public static Struct generateKey(Table table, TableSchema tableSchema, Object[] values,
-      Long internalId) {
+      String internalId) {
     if (useInternalIdAsKey(table)) {
       return keyFromInternalId(internalId);
     } else {
@@ -36,9 +35,9 @@ public final class InternalIdUtils {
     }
   }
 
-  private static Struct keyFromInternalId(Long internalId) {
+  private static Struct keyFromInternalId(String internalId) {
     Struct result = new Struct(
-        SchemaBuilder.struct().field(INTERNAL_ID, Schema.INT64_SCHEMA).build());
+        SchemaBuilder.struct().field(INTERNAL_ID, Schema.STRING_SCHEMA).build());
     result.put(INTERNAL_ID, internalId);
     return result;
   }
@@ -48,7 +47,7 @@ public final class InternalIdUtils {
     for (Field f : s.fields()) {
       res.field(f.name(), f.schema());
     }
-    res.field(INTERNAL_ID, Schema.INT64_SCHEMA);
+    res.field(INTERNAL_ID, Schema.STRING_SCHEMA);
 
     return res.optional().build();
   }
@@ -58,19 +57,15 @@ public final class InternalIdUtils {
     result.add(Column.editor()
         .name(INTERNAL_ID)
         .position(result.size() + 1)
-        .type("INT64")
+        .type("TEXT")
         .autoIncremented(false)
         .generated(false)
         .optional(false)
-        .jdbcType(-5)
+        .jdbcType(-1)
         .nativeType(-1)
-        .length(19)
-        .scale(0)
+        .length(16383)
         .create());
 
     return result;
-  }
-
-  private InternalIdUtils() {
   }
 }

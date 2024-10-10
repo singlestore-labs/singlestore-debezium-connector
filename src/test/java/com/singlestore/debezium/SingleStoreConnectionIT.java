@@ -256,8 +256,13 @@ public class SingleStoreConnectionIT extends IntegrationTestBase {
               + "  salary DECIMAL(5,2),"
               + "  bitStr BIT(18)"
               + ")");
-      //3 partitions BeginSnapshot/CommitSnapshot
+      //8 partitions BeginSnapshot/CommitSnapshot
       List<String> expectedTypesOrder = Arrays.asList("BeginSnapshot", "CommitSnapshot",
+          "BeginSnapshot", "CommitSnapshot",
+          "BeginSnapshot", "CommitSnapshot",
+          "BeginSnapshot", "CommitSnapshot",
+          "BeginSnapshot", "CommitSnapshot",
+          "BeginSnapshot", "CommitSnapshot",
           "BeginSnapshot", "CommitSnapshot",
           "BeginSnapshot", "CommitSnapshot",
           "BeginTransaction", "Insert", "CommitTransaction",
