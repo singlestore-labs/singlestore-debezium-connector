@@ -407,11 +407,11 @@
     <developerConnection>
       scm:git:git@github.com:singlestore-labs/singlestore-debezium-connector.git
     </developerConnection>
-    <tag>singlestore-debezium-connector-0.1.7</tag>
+    <tag>singlestore-debezium-connector-0.1.8</tag>
     <url>git://git@github.com:singlestore-labs/singlestore-debezium-connector.git</url>
   </scm>
 
   <url>https://github.com/singlestore-labs/singlestore-debezium-connector</url>
 
-  <version>0.1.7</version>
+  <version>0.1.8</version>
 </project>
