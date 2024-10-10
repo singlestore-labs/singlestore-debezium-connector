@@ -699,7 +699,7 @@ public class StreamingIT extends IntegrationTestBase {
         stopConnector();
 
         Thread.sleep(100);
-        for (int i = 10; i < 40010; i++) {
+        for (int i = 10; i < 80010; i++) {
           conn.execute(String.format("INSERT INTO %s VALUES (%s)", table, i));
         }
         conn.execute(String.format("SNAPSHOT DATABASE %s", TEST_DATABASE));
@@ -707,8 +707,8 @@ public class StreamingIT extends IntegrationTestBase {
         start(SingleStoreConnector.class, config);
         assertConnectorIsRunning();
 
-        records = consumeRecordsByTopic(40000).allRecordsInOrder();
-        assertEquals(40000, records.size());
+        records = consumeRecordsByTopic(80000).allRecordsInOrder();
+        assertEquals(80000, records.size());
         // expected offset is reset and snapshot type records are consumed
         assertNotNull("must be a snapshot type record",
             records.get(0).sourceOffset().get("snapshot"));

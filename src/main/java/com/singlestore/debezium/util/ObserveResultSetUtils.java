@@ -50,27 +50,11 @@ public final class ObserveResultSetUtils {
   }
 
   public static String offset(ResultSet rs) throws SQLException {
-    return bytesToHex(rs.getBytes(METADATA_COLUMNS[0]));
+    return Utils.bytesToHex(rs.getBytes(METADATA_COLUMNS[0]));
   }
 
   public static Integer partitionId(ResultSet rs) throws SQLException {
     return rs.getInt(METADATA_COLUMNS[1]);
-  }
-
-  private static String bytesToHex(byte[] bytes) {
-    if (bytes == null) {
-      return null;
-    }
-
-    char[] res = new char[bytes.length * 2];
-
-    int j = 0;
-    for (int i = 0; i < bytes.length; i++) {
-      res[j++] = Character.forDigit((bytes[i] >> 4) & 0xF, 16);
-      res[j++] = Character.forDigit((bytes[i] & 0xF), 16);
-    }
-
-    return new String(res);
   }
 
   public static boolean isBeginSnapshot(ResultSet rs) throws SQLException {
@@ -90,7 +74,7 @@ public final class ObserveResultSetUtils {
   }
 
   public static String txId(ResultSet rs) throws SQLException {
-    return bytesToHex(rs.getBytes(METADATA_COLUMNS[4]));
+    return Utils.bytesToHex(rs.getBytes(METADATA_COLUMNS[4]));
   }
 
   public static String txPartitions(ResultSet rs) throws SQLException {
@@ -98,7 +82,7 @@ public final class ObserveResultSetUtils {
   }
 
   public static String internalId(ResultSet rs) throws SQLException {
-    return bytesToHex(rs.getBytes(METADATA_COLUMNS[6]));
+    return Utils.bytesToHex(rs.getBytes(METADATA_COLUMNS[6]));
   }
 
   private ObserveResultSetUtils() {

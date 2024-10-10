@@ -1,5 +1,7 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.util.ObserveResultSetUtils;
+import com.singlestore.debezium.util.Utils;
 import com.singlestore.jdbc.DatabaseMetaData;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
@@ -13,6 +15,8 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.util.Strings;
+import java.sql.Connection;
+import java.sql.ResultSet;
 import javax.swing.text.html.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -145,6 +149,32 @@ public class SingleStoreConnection extends JdbcConnection {
     return query.toString();
   }
 
+  private List<String> getOldestSnapshotBeginnings(int numPartitions) {
+    List<String> res = new ArrayList<>(Collections.nCopies(numPartitions, null));
+
+    try (
+        Connection conn = connection();
+        Statement stmt = conn.createStatement();
+        ResultSet rs = stmt.executeQuery(
+            String.format(
+                "SELECT * FROM INFORMATION_SCHEMA.OBSERVE_DATABASE_OFFSETS WHERE DATABASE_NAME = %s AND OFFSET_TYPE = 'snapshot_begin'",
+                Utils.escapeString(database())))
+    ) {
+      while (rs.next()) {
+        int partition = rs.getInt("ORDINAL");
+        String offset = Utils.bytesToHex(rs.getBytes("OFFSET"));
+
+        if (res.get(partition) == null || res.get(partition).compareTo(offset) > 0) {
+          res.set(partition, offset);
+        }
+      }
+    } catch (SQLException e) {
+      LOGGER.error(e.getMessage());
+      throw new DebeziumException(e);
+    }
+    return res;
+  }
+
   /**
    * Validate observable offset before streaming.
    *
@@ -153,33 +183,22 @@ public class SingleStoreConnection extends JdbcConnection {
    */
   public boolean validateOffset(Set<TableId> tableFilter, SingleStorePartition partition,
       SingleStoreOffsetContext offset) {
-    List<String> offsets = offset.offsets().stream()
-        .map(o -> {
-          if (o == null) {
-            return "NULL";
-          } else {
-            return "'" + o + "'";
-          }
-        }).collect(Collectors.toList());
-    Optional<String> offsetParam = Optional.of("(" + String.join(",", offsets) + ")");
-    final String query = observeQuery(null, tableFilter, Optional.empty(), Optional.empty(),
-        offsetParam, Optional.empty());
-    //sometimes same observe query is failed after second time execution with the same offset
-    try (Statement statement = connection().createStatement(); AutoClosableResultSetWrapper rsWrapper = AutoClosableResultSetWrapper.from(
-        statement.executeQuery(query))) {
-      rsWrapper.getResultSet().next();
-    } catch (SQLException e) {
-      if (e.getMessage().contains(
-          "The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
-          && e.getErrorCode() == 2851 && e.getSQLState().equals("HY000")) {
-        LOGGER.warn("Failed to validate offset {}", offsetParam.get());
-        return false;
-      } else {
-        LOGGER.error(e.getMessage());
-        throw new DebeziumException(e);
+    List<String> oldestSnapshotBeginnings = getOldestSnapshotBeginnings(offset.offsets().size());
+    List<String> offsets = offset.offsets();
+
+    for (int i = 0; i < offsets.size(); i++) {
+      String partitionOffset = offsets.get(i);
+      String oldestSnapshotBeginning = oldestSnapshotBeginnings.get(i);
+      if (partitionOffset != null && oldestSnapshotBeginning != null) {
+        if (oldestSnapshotBeginning.compareTo(partitionOffset) > 0) {
+          // Offset is stale
+          LOGGER.warn("Failed to validate offset {}", offsets);
+          return false;
+        }
       }
     }
-    LOGGER.trace("Offset {} is successfully validated", offsetParam.get());
+
+    LOGGER.trace("Offset {} is successfully validated", offset);
     return true;
   }
 
