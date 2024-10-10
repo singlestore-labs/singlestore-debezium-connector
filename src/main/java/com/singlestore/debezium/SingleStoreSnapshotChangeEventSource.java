@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -109,12 +110,28 @@ public class SingleStoreSnapshotChangeEventSource extends
       } else {
         LOGGER.info("Snapshot step 5 - Skipping snapshotting of data");
         releaseDataSnapshotLocks(ctx);
-        for (int i = 0; i < connectorConfig.offsets().size(); i++) {
-          String offset = connectorConfig.offsets().get(i);
-          if (!offset.equalsIgnoreCase("null")) {
-            ctx.offset.update(i, "", offset);
+
+        if (connectorConfig.offsets() != null && !connectorConfig.offsets().isEmpty()) {
+          for (int i = 0; i < connectorConfig.offsets().size(); i++) {
+            String offset = connectorConfig.offsets().get(i);
+            if (!offset.equalsIgnoreCase("null")) {
+              ctx.offset.update(i, "", offset);
+            }
+          }
+        } else if (ctx.offset.offsets().stream().allMatch(Objects::isNull)) {
+          // We are intended to skip snapshotting of data,
+          // and we don't have any previous offset.
+          // Retrieve log tail and start streaming from it.
+          List<String> offsets = this.jdbcConnection.getLogTails(
+              snapshotContext.offset.offsets().size());
+          for (int i = 0; i < offsets.size(); i++) {
+            String offset = offsets.get(i);
+            if (!offset.equalsIgnoreCase("null")) {
+              ctx.offset.update(i, "", offset);
+            }
           }
         }
+
         ctx.offset.preSnapshotCompletion();
         ctx.offset.postSnapshotCompletion();
       }

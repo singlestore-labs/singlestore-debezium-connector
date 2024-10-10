@@ -32,7 +32,7 @@ abstract class IntegrationTestBase extends AbstractConnectorTest {
   static final String TEST_TOPIC_PREFIX = "singlestore_topic";
   private static final String TEST_SERVER_VERSION = System.getProperty("singlestore.version", "");
   private static final String TEST_USER = System.getProperty("singlestore.user", "root");
-  private static final String TEST_PASSWORD = System.getProperty("singlestore.password", "root");
+  private static final String TEST_PASSWORD = "1";
   private static final Logger LOGGER = LoggerFactory.getLogger(IntegrationTestBase.class);
   private static final String TEST_IMAGE = System.getProperty("singlestore.image",
       "ghcr.io/singlestore-labs/singlestoredb-dev:latest");

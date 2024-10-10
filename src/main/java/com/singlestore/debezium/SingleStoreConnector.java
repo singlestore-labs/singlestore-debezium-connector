@@ -116,23 +116,4 @@ public class SingleStoreConnector extends RelationalBaseSourceConnector {
       throw new DebeziumException(e);
     }
   }
-
-  @Override
-  public Config validate(Map<String, String> connectorConfigs) {
-    Config res = super.validate(connectorConfigs);
-
-    Configuration config = Configuration.from(connectorConfigs);
-    SingleStoreConnectorConfig connectorConfig = new SingleStoreConnectorConfig(config);
-    if (connectorConfig.getSnapshotMode() == SnapshotMode.SCHEMA_ONLY
-        && connectorConfig.offsets() == null) {
-      res.configValues().forEach(value -> {
-        if (value.name().equals(SingleStoreConnectorConfig.OFFSETS.name())) {
-          value.addErrorMessage(
-              "'offsets' parameter is required when 'snapshot.mode' is 'schema_only'");
-        }
-      });
-    }
-
-    return res;
-  }
 }

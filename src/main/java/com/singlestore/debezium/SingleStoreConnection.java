@@ -64,14 +64,6 @@ public class SingleStoreConnection extends JdbcConnection {
     }
   }
 
-  @Override
-  public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern,
-      TableFilter tableFilter, ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
-      throws SQLException {
-    super.readSchema(tables, databaseCatalog, schemaNamePattern, tableFilter, columnFilter,
-        removeTablesNotFoundInJdbc);
-  }
-
   /**
    * Executes OBSERVE query for CDC output stream events.
    *
@@ -153,8 +145,7 @@ public class SingleStoreConnection extends JdbcConnection {
     List<String> res = new ArrayList<>(Collections.nCopies(numPartitions, null));
 
     try (
-        Connection conn = connection();
-        Statement stmt = conn.createStatement();
+        Statement stmt = connection().createStatement();
         ResultSet rs = stmt.executeQuery(
             String.format(
                 "SELECT * FROM INFORMATION_SCHEMA.OBSERVE_DATABASE_OFFSETS WHERE DATABASE_NAME = %s AND OFFSET_TYPE = 'snapshot_begin'",
@@ -167,6 +158,29 @@ public class SingleStoreConnection extends JdbcConnection {
         if (res.get(partition) == null || res.get(partition).compareTo(offset) > 0) {
           res.set(partition, offset);
         }
+      }
+    } catch (SQLException e) {
+      LOGGER.error(e.getMessage());
+      throw new DebeziumException(e);
+    }
+    return res;
+  }
+
+  public List<String> getLogTails(int numPartitions) {
+    List<String> res = new ArrayList<>(Collections.nCopies(numPartitions, null));
+
+    try (
+        Statement stmt = connection().createStatement();
+        ResultSet rs = stmt.executeQuery(
+            String.format(
+                "SELECT * FROM INFORMATION_SCHEMA.OBSERVE_DATABASE_OFFSETS WHERE DATABASE_NAME = %s AND OFFSET_TYPE = 'log_tail'",
+                Utils.escapeString(database())))
+    ) {
+      while (rs.next()) {
+        int partition = rs.getInt("ORDINAL");
+        String offset = Utils.bytesToHex(rs.getBytes("OFFSET"));
+
+        res.set(partition, offset);
       }
     } catch (SQLException e) {
       LOGGER.error(e.getMessage());

@@ -723,17 +723,17 @@ public class StreamingIT extends IntegrationTestBase {
   }
 
   @Test
-  public void schemaOnly() throws Exception {
+  public void noDataOffset() throws Exception {
     try (SingleStoreConnection createTableConn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("product"))) {
       createTableConn.execute(
-          "CREATE ROWSTORE TABLE IF NOT EXISTS schemaOnly(a INT, b TEXT);"
-              + "DELETE FROM schemaOnly WHERE 1 = 1;"
+          "CREATE ROWSTORE TABLE IF NOT EXISTS noDataOffset(a INT, b TEXT);"
+              + "DELETE FROM noDataOffset WHERE 1 = 1;"
               + "SNAPSHOT DATABASE db;"
-              + "INSERT INTO schemaOnly VALUES(1, 'a');"
+              + "INSERT INTO noDataOffset VALUES(1, 'a');"
               + "SNAPSHOT DATABASE db");
 
-      Configuration config = defaultJdbcConfigWithTable("schemaOnly");
+      Configuration config = defaultJdbcConfigWithTable("noDataOffset");
       start(SingleStoreConnector.class, config);
       assertConnectorIsRunning();
       List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
@@ -750,10 +750,10 @@ public class StreamingIT extends IntegrationTestBase {
 
       config = config.edit()
           .withDefault(SingleStoreConnectorConfig.OFFSETS, String.join(",", offsets))
-          .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE, "schema_only")
+          .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE, "no_data")
           .build();
 
-      createTableConn.execute("INSERT INTO schemaOnly VALUES(2, 'b');");
+      createTableConn.execute("INSERT INTO noDataOffset VALUES(2, 'b');");
 
       start(SingleStoreConnector.class, config);
       waitForStreamingToStart();
@@ -767,6 +767,97 @@ public class StreamingIT extends IntegrationTestBase {
       assertEquals(Integer.valueOf(2), value.getStruct("after").getInt32("a"));
       assertEquals("c", value.getString("op"));
       assertEquals("b", value.getStruct("after").getString("b"));
+      stopConnector();
+    }
+  }
+
+  @Test
+  public void noData() throws Exception {
+    try (SingleStoreConnection createTableConn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("product"))) {
+      createTableConn.execute(
+          "CREATE ROWSTORE TABLE IF NOT EXISTS noData(a INT, b TEXT);"
+              + "DELETE FROM noData WHERE 1 = 1;"
+              + "SNAPSHOT DATABASE db;"
+              + "INSERT INTO noData VALUES(1, 'a');"
+              + "SNAPSHOT DATABASE db");
+
+      Configuration config = defaultJdbcConfigWithTable("noData").edit()
+          .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE, "no_data")
+          .build();
+
+      start(SingleStoreConnector.class, config);
+      waitForStreamingToStart();
+      assertConnectorIsRunning();
+
+      createTableConn.execute("INSERT INTO noData VALUES(2, 'b');");
+
+      List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+      assertEquals(1, records.size());
+
+      SourceRecord record = records.get(0);
+      Struct value = (Struct) record.value();
+      assertEquals(Integer.valueOf(2), value.getStruct("after").getInt32("a"));
+      assertEquals("c", value.getString("op"));
+      assertEquals("b", value.getStruct("after").getString("b"));
+      stopConnector();
+    }
+  }
+
+  @Test
+  public void noDataResume() throws Exception {
+    try (SingleStoreConnection createTableConn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("product"))) {
+      createTableConn.execute(
+          "CREATE ROWSTORE TABLE IF NOT EXISTS noDataResume(a INT, b TEXT);"
+              + "DELETE FROM noDataResume WHERE 1 = 1;"
+              + "SNAPSHOT DATABASE db;"
+              + "INSERT INTO noDataResume VALUES(1, 'a');"
+              + "SNAPSHOT DATABASE db");
+
+      Configuration config = defaultJdbcConfigWithTable("noDataResume").edit()
+          .withDefault(SingleStoreConnectorConfig.SNAPSHOT_MODE, "no_data")
+          .build();
+
+      start(SingleStoreConnector.class, config);
+      waitForStreamingToStart();
+      assertConnectorIsRunning();
+
+      createTableConn.execute("INSERT INTO noDataResume VALUES(2, 'b');");
+
+      List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+      assertEquals(1, records.size());
+
+      SourceRecord record = records.get(0);
+      Struct value = (Struct) record.value();
+      assertEquals(Integer.valueOf(2), value.getStruct("after").getInt32("a"));
+      assertEquals("c", value.getString("op"));
+      assertEquals("b", value.getStruct("after").getString("b"));
+      stopConnector();
+
+      createTableConn.execute("INSERT INTO noDataResume VALUES(3, 'c');");
+
+      start(SingleStoreConnector.class, config);
+      waitForStreamingToStart();
+      assertConnectorIsRunning();
+
+      createTableConn.execute("INSERT INTO noDataResume VALUES(4, 'd');");
+
+      records = consumeRecordsByTopic(2).allRecordsInOrder();
+      assertEquals(2, records.size());
+
+      record = records.get(0);
+      value = (Struct) record.value();
+      assertEquals(Integer.valueOf(3), value.getStruct("after").getInt32("a"));
+      assertEquals("c", value.getString("op"));
+      assertEquals("c", value.getStruct("after").getString("b"));
+      stopConnector();
+
+      record = records.get(1);
+      value = (Struct) record.value();
+      assertEquals(Integer.valueOf(4), value.getStruct("after").getInt32("a"));
+      assertEquals("c", value.getString("op"));
+      assertEquals("d", value.getStruct("after").getString("b"));
       stopConnector();
     }
   }

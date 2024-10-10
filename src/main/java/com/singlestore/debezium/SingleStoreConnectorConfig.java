@@ -129,24 +129,14 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       .withDefault(false);
   public static final Field OFFSETS = Field.create("offsets")
       .withDisplayName(
-          "Offsets from which to start observing when 'snapshot.mode' is 'schema_only'")
+          "Offsets from which to start observing when 'snapshot.mode' is 'no_data'")
       .withType(Type.LIST)
       .withWidth(Width.LONG)
       .withImportance(Importance.LOW)
       .withDescription(
-          "When specified and 'snapshot.mode' is 'schema_only' - connector will start streaming changes from these offsets. "
+          "When specified and 'snapshot.mode' is 'no_data' - connector will start streaming changes from these offsets. "
               + "Should be provided as a comma separated list of hex offsets per each partitions. "
-              + "Example: 0000000000000077000000000000000E000000000000E06E,0x0000000000000077000000000000000E000000000000E087,0000000000000077000000000000000E000000000000E088")
-      .withValidation((config, field, problems) -> {
-        SingleStoreConnectorConfig connectorConfig = new SingleStoreConnectorConfig(config);
-        if (connectorConfig.getSnapshotMode() == SnapshotMode.SCHEMA_ONLY
-            && connectorConfig.offsets().isEmpty()) {
-          problems.accept(field, connectorConfig.offsets(),
-              "'offsets' parameter is required when 'snapshot.mode' is 'schema_only'");
-          return 1;
-        }
-        return 0;
-      });
+              + "Example: 0000000000000077000000000000000E000000000000E06E,0x0000000000000077000000000000000E000000000000E087,0000000000000077000000000000000E000000000000E088");
   public static final Field TOPIC_NAMING_STRATEGY = CommonConnectorConfig.TOPIC_NAMING_STRATEGY
       .withDefault(DefaultTopicNamingStrategy.class.getName());
   protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
@@ -322,7 +312,7 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
      * only the changes from the point in time the snapshot is made (and doesn't care about any
      * state or changes prior to this point).
      */
-    SCHEMA_ONLY("schema_only", true, false, true);
+    NO_DATA("no_data", true, false, true);
 
     private final String value;
     private final boolean includeSchema;
