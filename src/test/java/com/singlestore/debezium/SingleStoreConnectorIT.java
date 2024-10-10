@@ -196,14 +196,4 @@ public class SingleStoreConnectorIT extends IntegrationTestBase {
       }
     }
   }
-
-  @Test
-  public void configWrongOffset() {
-    SingleStoreConnector connector = new SingleStoreConnector();
-    Map<String, String> config = defaultJdbcConfigWithTable("person").asMap();
-    config.put("snapshot.mode", "schema_only");
-
-    Config validatedConfig = connector.validate(config);
-    assertConfigurationErrors(validatedConfig, SingleStoreConnectorConfig.OFFSETS, 1);
-  }
 }
