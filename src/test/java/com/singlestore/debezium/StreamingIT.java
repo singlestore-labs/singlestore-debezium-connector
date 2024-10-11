@@ -573,7 +573,9 @@ public class StreamingIT extends IntegrationTestBase {
         defaultJdbcConnectionConfigWithTable("product"))) {
       createTableConn.execute(
           "CREATE TABLE IF NOT EXISTS pkInColumnstore(a INT, b TEXT, c TEXT, PRIMARY KEY(a, b));"
-              + "DELETE FROM pkInColumnstore WHERE 1 = 1;");
+              + "DELETE FROM pkInColumnstore WHERE 1 = 1;"
+              + "SNAPSHOT DATABASE " + TEST_DATABASE + ";"
+      );
       try (SingleStoreConnection conn = new SingleStoreConnection(
           defaultJdbcConnectionConfigWithTable("pkInColumnstore"))) {
         Configuration config = defaultJdbcConfigWithTable("pkInColumnstore");
