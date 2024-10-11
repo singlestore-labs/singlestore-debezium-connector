@@ -173,7 +173,7 @@ public class StreamingIT extends IntegrationTestBase {
         SourceRecord record = records.get(0);
 
         Struct source = (Struct) ((Struct) record.value()).get("source");
-        assertEquals(source.get("version"), "0.1.7");
+        assertEquals(source.get("version"), "0.1.8");
         assertEquals(source.get("connector"), "singlestore");
         assertEquals(source.get("name"), "singlestore_topic");
         assertNotNull(source.get("ts_ms"));
@@ -528,8 +528,11 @@ public class StreamingIT extends IntegrationTestBase {
       try (SingleStoreConnection conn = new SingleStoreConnection(
           defaultJdbcConnectionConfigWithTable("pkInRowstore"))) {
         Configuration config = defaultJdbcConfigWithTable("pkInRowstore");
-        config = config.edit().withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
-            "db.pkInRowstore.a,db.pkInRowstore.c").build();
+        config = config.edit()
+            .withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
+                "db.pkInRowstore.a,db.pkInRowstore.c")
+            .withDefault("tombstones.on.delete", "false")
+            .build();
         conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
         start(SingleStoreConnector.class, config);
         assertConnectorIsRunning();
@@ -577,8 +580,12 @@ public class StreamingIT extends IntegrationTestBase {
       try (SingleStoreConnection conn = new SingleStoreConnection(
           defaultJdbcConnectionConfigWithTable("pkInColumnstore"))) {
         Configuration config = defaultJdbcConfigWithTable("pkInColumnstore");
-        config = config.edit().withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
-            "db.pkInColumnstore.a,db.pkInColumnstore.c").build();
+        config = config.edit()
+            .withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
+                "db.pkInColumnstore.a,db.pkInColumnstore.c")
+            .withDefault("tombstones.on.delete", "false")
+            .build();
+
         conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
         start(SingleStoreConnector.class, config);
         assertConnectorIsRunning();
