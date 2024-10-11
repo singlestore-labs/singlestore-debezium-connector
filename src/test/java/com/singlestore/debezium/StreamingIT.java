@@ -577,8 +577,12 @@ public class StreamingIT extends IntegrationTestBase {
       try (SingleStoreConnection conn = new SingleStoreConnection(
           defaultJdbcConnectionConfigWithTable("pkInColumnstore"))) {
         Configuration config = defaultJdbcConfigWithTable("pkInColumnstore");
-        config = config.edit().withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
-            "db.pkInColumnstore.a,db.pkInColumnstore.c").build();
+        config = config.edit()
+            .withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
+                "db.pkInColumnstore.a,db.pkInColumnstore.c")
+            .withDefault("tombstones.on.delete", "false")
+            .build();
+
         conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
         start(SingleStoreConnector.class, config);
         assertConnectorIsRunning();
