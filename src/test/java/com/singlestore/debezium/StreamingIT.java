@@ -528,8 +528,11 @@ public class StreamingIT extends IntegrationTestBase {
       try (SingleStoreConnection conn = new SingleStoreConnection(
           defaultJdbcConnectionConfigWithTable("pkInRowstore"))) {
         Configuration config = defaultJdbcConfigWithTable("pkInRowstore");
-        config = config.edit().withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
-            "db.pkInRowstore.a,db.pkInRowstore.c").build();
+        config = config.edit()
+            .withDefault(SingleStoreConnectorConfig.COLUMN_INCLUDE_LIST,
+                "db.pkInRowstore.a,db.pkInRowstore.c")
+            .withDefault("tombstones.on.delete", "false")
+            .build();
         conn.execute("SNAPSHOT DATABASE " + TEST_DATABASE + ";");
         start(SingleStoreConnector.class, config);
         assertConnectorIsRunning();
@@ -573,9 +576,7 @@ public class StreamingIT extends IntegrationTestBase {
         defaultJdbcConnectionConfigWithTable("product"))) {
       createTableConn.execute(
           "CREATE TABLE IF NOT EXISTS pkInColumnstore(a INT, b TEXT, c TEXT, PRIMARY KEY(a, b));"
-              + "DELETE FROM pkInColumnstore WHERE 1 = 1;"
-              + "SNAPSHOT DATABASE " + TEST_DATABASE + ";"
-      );
+              + "DELETE FROM pkInColumnstore WHERE 1 = 1;");
       try (SingleStoreConnection conn = new SingleStoreConnection(
           defaultJdbcConnectionConfigWithTable("pkInColumnstore"))) {
         Configuration config = defaultJdbcConfigWithTable("pkInColumnstore");
