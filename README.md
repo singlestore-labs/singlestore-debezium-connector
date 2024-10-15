@@ -39,7 +39,7 @@ in specific columns.
 ### Installation
 
 * Download
-  the [SingleStore connector for Debezium plugin archive](https://github.com/singlestore-labs/singlestore-debezium-connector/releases/download/v0.1.8/singlestore-debezium-connector-0.1.7-plugin.tar.gz).
+  the [SingleStore connector for Debezium plugin archive](https://github.com/singlestore-labs/singlestore-debezium-connector/releases/download/v0.1.8/singlestore-debezium-connector-0.1.8-plugin.tar.gz).
 * Extract the archive to a directory.
 * Add the directory from the previous step to Kafka Connect’s plugin path.
   Set the `plugin.path` property in the `connect-distributed.properties` file.
