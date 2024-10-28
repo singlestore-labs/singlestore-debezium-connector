@@ -102,8 +102,7 @@ public class StreamingIT extends IntegrationTestBase {
         // TODO: PLAT-6909 handle BOOL columns as boolean
         assertEquals((short) 1, after.get("boolColumn"));
         assertEquals((short) 1, after.get("booleanColumn"));
-        // TODO: PLAT-6910 BIT type is returned in reversed order
-        assertArrayEquals("hgfedcba".getBytes(), (byte[]) after.get("bitColumn"));
+        assertArrayEquals("abcdefgh".getBytes(), (byte[]) after.get("bitColumn"));
         assertEquals((short) -128, after.get("tinyintColumn"));
         assertEquals(-8388608, after.get("mediumintColumn"));
         assertEquals((short) -32768, after.get("smallintColumn"));

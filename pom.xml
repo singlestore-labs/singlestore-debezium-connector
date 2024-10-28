@@ -385,7 +385,7 @@
     <version.logback-classic>1.4.14</version.logback-classic>
     <version.mockito>3.0.0</version.mockito>
     <version.org.slf4j>2.0.4</version.org.slf4j>
-    <version.singlestore.jdbc.driver>1.2.0</version.singlestore.jdbc.driver>
+    <version.singlestore.jdbc.driver>1.2.5</version.singlestore.jdbc.driver>
     <version.testcontainers>1.19.3</version.testcontainers>
   </properties>
 
