@@ -54,14 +54,12 @@ public class StreamingIT extends IntegrationTestBase {
             "-1000.01, " + // doubleColumn
             "-1000.01, " + // realColumn
             "'1000-01-01', " + // dateColumn
-            // Negative time returns incorrect result
-            // It is converted to 24h - time during reading of the result
-            "'0:00:00', " + // timeColumn
-            "'0:00:00.000000', " + // time6Column
-            "'1000-01-01 00:00:00', " + // datetimeColumn
-            "'1000-01-01 00:00:00.000000', " + // datetime6Column
+            "'-838:59:59', " + // timeColumn
+            "'-837:59:59.123456', " + // time6Column
+            "'1000-01-01 00:00:00', " +  // datetimeColumn
+            "'1000-01-01 00:00:00.123456', " + // datetime6Column
             "'1970-01-01 00:00:01', " + // timestampColumn
-            "'1970-01-01 00:00:01.000000', " + // timestamp6Column
+            "'1970-01-01 00:00:01.123456', " + // timestamp6Column
             "1901, " + // yearColumn
             "12345678901234567890123456789012345.123456789012345678901234567891, " +
             // decimalColumn
@@ -113,12 +111,12 @@ public class StreamingIT extends IntegrationTestBase {
         assertEquals(-1000.01, after.get("doubleColumn"));
         assertEquals(-1000.01, after.get("realColumn"));
         assertEquals(-354285, after.get("dateColumn"));
-        assertEquals(0, after.get("timeColumn"));
-        assertEquals((long) 0, after.get("time6Column"));
+        assertEquals(-3020399000L, after.get("timeColumn"));
+        assertEquals(-3016799123456L, after.get("time6Column"));
         assertEquals(-30610224000000L, after.get("datetimeColumn"));
         assertEquals(-30610224000000000L, after.get("datetime6Column"));
         assertEquals((long) 1000, after.get("timestampColumn"));
-        assertEquals((long) 1000000, after.get("timestamp6Column"));
+        assertEquals((long) 1123456, after.get("timestamp6Column"));
         assertEquals(1901, after.get("yearColumn"));
         assertEquals(
             new BigDecimal("12345678901234567890123456789012345.123456789012345678901234567891"),

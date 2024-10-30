@@ -65,7 +65,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
           (int) LocalDate.of(2000, 10, 10).atStartOfDay(ZoneId.of("UTC")).toEpochSecond() / 60 / 60
               / 24);//epoch days
       testColumn(defaultValueConverter, table, "timeColumn",
-          (int) Date.from(LocalDate.EPOCH.atTime(22, 59, 59).atZone(ZoneId.of("UTC")).toInstant())
+          Date.from(LocalDate.EPOCH.atTime(22, 59, 59).atZone(ZoneId.of("UTC")).toInstant())
               .getTime());
       testColumn(defaultValueConverter, table, "time6Column",
           Date.from(LocalDate.EPOCH.atTime(22, 59, 59, 111111).atZone(ZoneId.of("UTC")).toInstant())

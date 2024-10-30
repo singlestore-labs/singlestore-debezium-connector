@@ -1,16 +1,17 @@
 package com.singlestore.debezium.util;
 
+import static java.sql.Types.TIME;
+
 import io.debezium.relational.Column;
-import io.debezium.relational.Table;
 
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.kafka.connect.data.Field;
-
-import com.singlestore.debezium.SingleStoreTableSchemaBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class ObserveResultSetUtils {
 
@@ -38,9 +39,14 @@ public final class ObserveResultSetUtils {
     } else {
       row = new Object[positions.size()];
     }
+    ResultSetMetaData md = rs.getMetaData();
 
     for (int i = 0; i < positions.size(); i++) {
-      row[i] = rs.getObject(positions.get(i));
+      if (md.getColumnType(positions.get(i)) == TIME) {
+        row[i] = rs.getTimestamp(positions.get(i));
+      } else {
+        row[i] = rs.getObject(positions.get(i));
+      }
     }
     if (populateInternalId) {
       row[positions.size()] = internalId(rs);

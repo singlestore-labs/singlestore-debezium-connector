@@ -137,7 +137,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
       if (mode == TemporalPrecisionMode.ADAPTIVE
           || mode == TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS) {
         if (mode == TemporalPrecisionMode.ADAPTIVE) {
-          testColumn(converters, table, "timeColumn", time, (int) time.toMillis());
+          testColumn(converters, table, "timeColumn", time, time.toMillis());
         } else {
           testColumn(converters, table, "timeColumn", time, time.toNanos() / 1_000);
         }
