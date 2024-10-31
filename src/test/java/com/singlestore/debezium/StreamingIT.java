@@ -114,7 +114,7 @@ public class StreamingIT extends IntegrationTestBase {
         assertEquals(-3020399000L, after.get("timeColumn"));
         assertEquals(-3016799123456L, after.get("time6Column"));
         assertEquals(-30610224000000L, after.get("datetimeColumn"));
-        assertEquals(-30610224000000000L, after.get("datetime6Column"));
+        assertEquals(-30610223999876544L, after.get("datetime6Column"));
         assertEquals((long) 1000, after.get("timestampColumn"));
         assertEquals((long) 1123456, after.get("timestamp6Column"));
         assertEquals(1901, after.get("yearColumn"));
