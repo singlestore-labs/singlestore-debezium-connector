@@ -1,6 +1,9 @@
 package com.singlestore.debezium;
 
 import com.singlestore.jdbc.SingleStoreBlob;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import org.locationtech.jts.io.ParseException;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -71,7 +74,7 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
         }
         if (adaptiveTimePrecisionMode) {
           if (getTimePrecision(column) <= 10) {//TIME
-            return Time.builder();
+            return SchemaBuilder.int64();
           }
           if (getTimePrecision(column) <= 17) {//TIME(6)
             return MicroTime.builder();
@@ -203,21 +206,54 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
    * @return the converted value, or null if the conversion could not be made and the column allows
    * nulls
    */
-
   @Override
   protected Object convertTime(Column column, Field fieldDefn, Object data) {
     if (adaptiveTimeMicrosecondsPrecisionMode) {
-      return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+      return timeConverter(column, fieldDefn, convertTimeToMicros(data));
     }
     if (adaptiveTimePrecisionMode) {
       if (getTimePrecision(column) <= 10) { //TIME
-        return convertTimeToMillisPastMidnight(column, fieldDefn, data);
+        return timeConverter(column, fieldDefn, convertTimeToMilliseconds(data));
       }
       if (getTimePrecision(column) <= 17) { //TIME(6)
-        return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+        return timeConverter(column, fieldDefn, convertTimeToMicros(data));
       }
     }
-    return convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data);
+
+    return timeConverter(column, fieldDefn, convertTimeToMillisecondsAsDate(data));
+  }
+
+  private java.util.Date convertTimeToMillisecondsAsDate(Object data) {
+    return new java.util.Date(convertTimeToMilliseconds(data));
+  }
+
+  private long convertTimeToMilliseconds(Object data) {
+    return (convertTimeToMicros(data) / 1000);
+  }
+
+  private long convertTimeToMicros(Object data) {
+    if (data instanceof Duration) {
+      return ((Duration) data).toNanos() / 1000;
+    } else if (data instanceof java.sql.Timestamp) {
+      java.sql.Timestamp time = (java.sql.Timestamp) data;
+      LocalDateTime local = time.toLocalDateTime();
+      long seconds = local.toEpochSecond(ZoneOffset.UTC);
+      int nanos = local.getNano();
+
+      return seconds * 1000000 + nanos / 1000;
+    } else {
+      throw new IllegalArgumentException();
+    }
+  }
+
+  private Object timeConverter(Column column, Field fieldDefn, Object time) {
+    // epoch is the fallback value
+    return convertValue(column, fieldDefn, time, 0L, (r) -> {
+      try {
+        r.deliver(time);
+      } catch (IllegalArgumentException ignored) {
+      }
+    });
   }
 
   /**
