@@ -6,6 +6,9 @@
 **Note**: This connector is in public preview. It is intended for experimental use only and is not
 fully tested, documented, or supported by SingleStore.
 
+**Warning**: This connector temporarily doesn't work
+with [Unlimited Storage Databases](https://docs.singlestore.com/db/v8.7/manage-data/local-and-unlimited-database-storage-concepts/)
+
 SingleStore connector for Debezium ("the connector") captures and records row-level changes that
 occur in the database.
 You can configure the connector to read from a single table and to ignore, mask, or truncate values
