@@ -593,19 +593,19 @@ mode.
 
 With the release of Kafka 3.3.0 and the added support for exactly-once delivery in Kafka Connect,
 you can now enable exactly-once delivery for the SingleStore Debezium connector with
-minimal configuration. To configure exactly-once delivery for the SingleStore Debezium connector,
-follow these steps:
+minimal configuration. To configure exactly-once delivery for the connector,
+perform the following tasks:
 
 1. Set `exactly.once.source.support=enabled` in your Kafka Connect worker configuration. This
    ensures EOS is enabled across all workers. If performing a rolling update, first set
-   `exactly.once.source.support=preparing` on each worker and then gradually switch them
-   to `enabled`
+   `exactly.once.source.support=preparing` on each worker, and then gradually switch them
+   to `enabled`.
 2. Add `exactly.once.support=required` to the connector configuration.
 
-**Note**: If the connector is stopped for an extended period, the offset may become stale. In
-such a situation, the connector may need to be manually restarted, which triggers a re-execution of
+**Note**: If the connector is stopped for an extended period of time, the offset may become stale. In
+this scenario, the connector may need to be manually restarted, which triggers a re-execution of
 the initial snapshot. This re-snapshotting process can lead to duplicate events, resulting in a loss
 of the exactly-once delivery guarantee during the snapshot phase. Users should be aware of this
-limitation and monitor connector downtime carefully to avoid such scenarios.
+limitation and closely monitor connector downtime to avoid such scenarios.
 Refer to the [Connector Unable to Start](#connector-unable-to-start) section for detailed
 information on handling and preventing this issue.
