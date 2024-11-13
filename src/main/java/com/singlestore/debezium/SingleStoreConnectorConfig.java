@@ -7,6 +7,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalTableFilters;
@@ -148,10 +149,9 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       .withWidth(Width.SHORT)
       .withImportance(Importance.MEDIUM)
       .withDescription(
-          "Specify how DECIMAL and NUMERIC columns should be represented in change events, including: "
-              + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
-              + "'string' uses string to represent values; "
-              + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
+          "Specify how GEOGRAPHY and GEOGRAPHYPOINT columns should be represented in change events, including: "
+              + "'geometry' (the default) uses io.debezium.data.geometry.Geometry to represent values, which contains a structure with two fields: srid (INT32): spatial reference system ID that defines the type of geometry object stored in the structure and wkb (BYTES): binary representation of the geometry object encoded in the Well-Known-Binary (wkb) format."
+              + "'string' uses string to represent values.");
 
   protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
   protected static final int DEFAULT_PORT = 3306;
@@ -202,6 +202,7 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
           DRIVER_PARAMETERS,
           SNAPSHOT_MODE,
           BINARY_HANDLING_MODE,
+          GEOGRAPHY_HANDLING_MODE,
           OFFSETS)
       .events(
           SOURCE_INFO_STRUCT_MAKER,
@@ -298,6 +299,16 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
 
   public List<String> offsets() {
     return offsets;
+  }
+
+  /**
+   * Returns the Geography mode Enum configuration. This defaults to {@code geometry} if nothing is
+   * provided.
+   */
+  public GeographyMode getGeographyMode() {
+    return GeographyHandlingMode
+        .parse(this.getConfig().getString(GEOGRAPHY_HANDLING_MODE))
+        .asDecimalMode();
   }
 
   /**

@@ -28,6 +28,8 @@ import org.locationtech.jts.io.ParseException;
 
 public class SingleStoreValueConverters extends JdbcValueConverters {
 
+  private final GeographyMode geographyMode;
+
   /**
    * Create a new instance of JdbcValueConverters.
    * <p>
@@ -42,8 +44,11 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
    */
   public SingleStoreValueConverters(DecimalMode decimalMode,
       TemporalPrecisionMode temporalPrecisionMode,
-      CommonConnectorConfig.BinaryHandlingMode binaryMode) {
+      CommonConnectorConfig.BinaryHandlingMode binaryMode,
+      GeographyMode geographyMode
+  ) {
     super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, binaryMode);
+    this.geographyMode = geographyMode;
   }
 
   @Override
@@ -54,7 +59,11 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
         return Json.builder();
       case "GEOGRAPHYPOINT":
       case "GEOGRAPHY":
-        return io.debezium.data.geometry.Geometry.builder();
+        if (geographyMode == GeographyMode.GEOMETRY) {
+          return io.debezium.data.geometry.Geometry.builder();
+        } else {
+          return SchemaBuilder.string();
+        }
       case "ENUM":
       case "SET":
         return SchemaBuilder.string();
@@ -113,7 +122,11 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
         return (data) -> convertString(column, fieldDefn, data);
       case "GEOGRAPHYPOINT":
       case "GEOGRAPHY":
-        return data -> convertGeometry(column, fieldDefn, data);
+        if (geographyMode == GeographyMode.GEOMETRY) {
+          return data -> convertGeometry(column, fieldDefn, data);
+        } else {
+          return data -> convertString(column, fieldDefn, data);
+        }
       case "ENUM":
       case "SET":
         return data -> convertString(column, fieldDefn, data);
