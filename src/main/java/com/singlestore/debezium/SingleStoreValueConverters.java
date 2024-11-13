@@ -1,29 +1,30 @@
 package com.singlestore.debezium;
 
 import com.singlestore.jdbc.SingleStoreBlob;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import org.locationtech.jts.io.ParseException;
-
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Json;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
-import io.debezium.time.*;
+import io.debezium.time.Date;
+import io.debezium.time.MicroTime;
+import io.debezium.time.MicroTimestamp;
+import io.debezium.time.Timestamp;
+import io.debezium.time.Year;
 import io.debezium.util.IoUtil;
+import java.io.IOException;
+import java.nio.ByteOrder;
+import java.sql.SQLException;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoField;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
-
-import java.io.IOException;
-import java.nio.ByteOrder;
-import java.sql.SQLException;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoField;
+import org.locationtech.jts.io.ParseException;
 
 public class SingleStoreValueConverters extends JdbcValueConverters {
 
@@ -310,5 +311,10 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
                 geometry.getWkb(), geometry.getSrid()));
           }
         });
+  }
+
+  public enum GeographyMode {
+    GEOMETRY,
+    STRING
   }
 }

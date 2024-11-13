@@ -1,5 +1,6 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.SingleStoreValueConverters.GeographyMode;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
@@ -139,6 +140,19 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
               + "Example: 0000000000000077000000000000000E000000000000E06E,0x0000000000000077000000000000000E000000000000E087,0000000000000077000000000000000E000000000000E088");
   public static final Field TOPIC_NAMING_STRATEGY = CommonConnectorConfig.TOPIC_NAMING_STRATEGY
       .withDefault(DefaultTopicNamingStrategy.class.getName());
+
+  public static final Field GEOGRAPHY_HANDLING_MODE = Field.create("geography.handling.mode")
+      .withDisplayName("Geography Handling")
+      .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 8))
+      .withEnum(GeographyHandlingMode.class, GeographyHandlingMode.GEOMETRY)
+      .withWidth(Width.SHORT)
+      .withImportance(Importance.MEDIUM)
+      .withDescription(
+          "Specify how DECIMAL and NUMERIC columns should be represented in change events, including: "
+              + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
+              + "'string' uses string to represent values; "
+              + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
+
   protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
   protected static final int DEFAULT_PORT = 3306;
   public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
@@ -468,6 +482,77 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
     }
   }
 
+  /**
+   * The set of predefined GeographyHandlingMode options or aliases.
+   */
+  public enum GeographyHandlingMode implements EnumeratedValue {
+    /**
+     * Represent {@code GEOGRAPHY} and {@code GEOGRAPHYPOINT} values as geometry
+     * {@link io.debezium.data.geometry.Geometry} values.
+     */
+    GEOMETRY("geometry"),
+
+    /**
+     * Represent {@code GEOGRAPHY} and {@code GEOGRAPHYPOINT} values as a string values.
+     */
+    STRING("string");
+
+    private final String value;
+
+    GeographyHandlingMode(String value) {
+      this.value = value;
+    }
+
+    /**
+     * Determine if the supplied value is one of the predefined options.
+     *
+     * @param value the configuration property value; may not be null
+     * @return the matching option, or null if no match is found
+     */
+    public static GeographyHandlingMode parse(String value) {
+      if (value == null) {
+        return null;
+      }
+      value = value.trim();
+      for (GeographyHandlingMode option : GeographyHandlingMode.values()) {
+        if (option.getValue().equalsIgnoreCase(value)) {
+          return option;
+        }
+      }
+      return null;
+    }
+
+    /**
+     * Determine if the supplied value is one of the predefined options.
+     *
+     * @param value        the configuration property value; may not be null
+     * @param defaultValue the default value; may be null
+     * @return the matching option, or null if no match is found and the non-null default is invalid
+     */
+    public static GeographyHandlingMode parse(String value, String defaultValue) {
+      GeographyHandlingMode mode = parse(value);
+      if (mode == null && defaultValue != null) {
+        mode = parse(defaultValue);
+      }
+      return mode;
+    }
+
+    @Override
+    public String getValue() {
+      return value;
+    }
+
+    public GeographyMode asDecimalMode() {
+      switch (this) {
+        case STRING:
+          return GeographyMode.STRING;
+        case GEOMETRY:
+        default:
+          return GeographyMode.GEOMETRY;
+      }
+    }
+  }
+
   private static class SystemTablesPredicate implements TableFilter {
 
     protected static final List<String> SYSTEM_SCHEMAS = Arrays
@@ -478,5 +563,4 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       return t.catalog() != null && !SYSTEM_SCHEMAS.contains(t.catalog().toLowerCase());
     }
   }
-
 }
