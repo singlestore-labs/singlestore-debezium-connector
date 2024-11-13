@@ -1,11 +1,13 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.SingleStoreValueConverters.GeographyMode;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalTableFilters;
@@ -139,6 +141,18 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
               + "Example: 0000000000000077000000000000000E000000000000E06E,0x0000000000000077000000000000000E000000000000E087,0000000000000077000000000000000E000000000000E088");
   public static final Field TOPIC_NAMING_STRATEGY = CommonConnectorConfig.TOPIC_NAMING_STRATEGY
       .withDefault(DefaultTopicNamingStrategy.class.getName());
+
+  public static final Field GEOGRAPHY_HANDLING_MODE = Field.create("geography.handling.mode")
+      .withDisplayName("Geography Handling")
+      .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 8))
+      .withEnum(GeographyHandlingMode.class, GeographyHandlingMode.GEOMETRY)
+      .withWidth(Width.SHORT)
+      .withImportance(Importance.MEDIUM)
+      .withDescription(
+          "Specify how GEOGRAPHY and GEOGRAPHYPOINT columns should be represented in change events, including: "
+              + "'geometry' (the default) uses io.debezium.data.geometry.Geometry to represent values, which contains a structure with two fields: srid (INT32): spatial reference system ID that defines the type of geometry object stored in the structure and wkb (BYTES): binary representation of the geometry object encoded in the Well-Known-Binary (wkb) format."
+              + "'string' uses string to represent values.");
+
   protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
   protected static final int DEFAULT_PORT = 3306;
   public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
@@ -188,6 +202,7 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
           DRIVER_PARAMETERS,
           SNAPSHOT_MODE,
           BINARY_HANDLING_MODE,
+          GEOGRAPHY_HANDLING_MODE,
           OFFSETS)
       .events(
           SOURCE_INFO_STRUCT_MAKER,
@@ -284,6 +299,16 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
 
   public List<String> offsets() {
     return offsets;
+  }
+
+  /**
+   * Returns the Geography mode Enum configuration. This defaults to {@code geometry} if nothing is
+   * provided.
+   */
+  public GeographyMode getGeographyMode() {
+    return GeographyHandlingMode
+        .parse(this.getConfig().getString(GEOGRAPHY_HANDLING_MODE))
+        .asDecimalMode();
   }
 
   /**
@@ -468,6 +493,77 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
     }
   }
 
+  /**
+   * The set of predefined GeographyHandlingMode options or aliases.
+   */
+  public enum GeographyHandlingMode implements EnumeratedValue {
+    /**
+     * Represent {@code GEOGRAPHY} and {@code GEOGRAPHYPOINT} values as geometry
+     * {@link io.debezium.data.geometry.Geometry} values.
+     */
+    GEOMETRY("geometry"),
+
+    /**
+     * Represent {@code GEOGRAPHY} and {@code GEOGRAPHYPOINT} values as a string values.
+     */
+    STRING("string");
+
+    private final String value;
+
+    GeographyHandlingMode(String value) {
+      this.value = value;
+    }
+
+    /**
+     * Determine if the supplied value is one of the predefined options.
+     *
+     * @param value the configuration property value; may not be null
+     * @return the matching option, or null if no match is found
+     */
+    public static GeographyHandlingMode parse(String value) {
+      if (value == null) {
+        return null;
+      }
+      value = value.trim();
+      for (GeographyHandlingMode option : GeographyHandlingMode.values()) {
+        if (option.getValue().equalsIgnoreCase(value)) {
+          return option;
+        }
+      }
+      return null;
+    }
+
+    /**
+     * Determine if the supplied value is one of the predefined options.
+     *
+     * @param value        the configuration property value; may not be null
+     * @param defaultValue the default value; may be null
+     * @return the matching option, or null if no match is found and the non-null default is invalid
+     */
+    public static GeographyHandlingMode parse(String value, String defaultValue) {
+      GeographyHandlingMode mode = parse(value);
+      if (mode == null && defaultValue != null) {
+        mode = parse(defaultValue);
+      }
+      return mode;
+    }
+
+    @Override
+    public String getValue() {
+      return value;
+    }
+
+    public GeographyMode asDecimalMode() {
+      switch (this) {
+        case STRING:
+          return GeographyMode.STRING;
+        case GEOMETRY:
+        default:
+          return GeographyMode.GEOMETRY;
+      }
+    }
+  }
+
   private static class SystemTablesPredicate implements TableFilter {
 
     protected static final List<String> SYSTEM_SCHEMAS = Arrays
@@ -478,5 +574,4 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       return t.catalog() != null && !SYSTEM_SCHEMAS.contains(t.catalog().toLowerCase());
     }
   }
-
 }

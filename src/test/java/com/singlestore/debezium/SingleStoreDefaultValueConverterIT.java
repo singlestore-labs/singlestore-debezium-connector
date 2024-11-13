@@ -1,5 +1,6 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.SingleStoreValueConverters.GeographyMode;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -26,8 +27,8 @@ import static org.junit.Assert.*;
 public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
 
   private static final SingleStoreValueConverters CONVERTERS = new SingleStoreValueConverters(
-      JdbcValueConverters.DecimalMode.DOUBLE,
-      TemporalPrecisionMode.ADAPTIVE, CommonConnectorConfig.BinaryHandlingMode.BYTES);
+      JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.ADAPTIVE,
+      CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY);
 
   @Test
   public void testNumberValues() {
@@ -113,6 +114,41 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
       Struct geographypointColumnDefaultValue = (Struct) geographypointDefaultValue.get();
       assertArrayEquals(geographyPointValue.getWkb(),
           (byte[]) geographypointColumnDefaultValue.get("wkb"));
+    } catch (SQLException e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testGeometryStringValues() {
+    try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
+      conn.execute(String.format("USE %s", TEST_DATABASE));
+      conn.execute(
+          "CREATE ROWSTORE TABLE IF NOT EXISTS testGeometryStringValues(geographyColumn GEOGRAPHY DEFAULT 'POLYGON((1 1,2 1,2 2, 1 2, 1 1))', geographypointColumn GEOGRAPHYPOINT DEFAULT 'POINT(1.50000003 1.50000000)')");
+      Tables tables = new Tables();
+      conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
+      Table table = tables.forTable(TEST_DATABASE, null, "testGeometryStringValues");
+      assertThat(table).isNotNull();
+
+      SingleStoreValueConverters converters = new SingleStoreValueConverters(
+          JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT,
+          CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.STRING);
+      SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
+          converters);
+
+      Column geographyColumn = table.columnWithName("geographyColumn");
+      Optional<Object> geographyDefaultValue = defaultValueConverter.parseDefaultValue(
+          geographyColumn, geographyColumn.defaultValueExpression().orElse(null));
+      assertTrue(geographyDefaultValue.isPresent());
+      String geographyColumnDefaultValue = (String) geographyDefaultValue.get();
+      assertEquals("POLYGON((1 1,2 1,2 2, 1 2, 1 1))", geographyColumnDefaultValue);
+
+      Column geographypointColumn = table.columnWithName("geographypointColumn");
+      Optional<Object> geographypointDefaultValue = defaultValueConverter.parseDefaultValue(
+          geographypointColumn, geographypointColumn.defaultValueExpression().orElse(null));
+      assertTrue(geographypointDefaultValue.isPresent());
+      String geographypointColumnDefaultValue = (String) geographypointDefaultValue.get();
+      assertEquals("POINT(1.50000003 1.50000000)", geographypointColumnDefaultValue);
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }

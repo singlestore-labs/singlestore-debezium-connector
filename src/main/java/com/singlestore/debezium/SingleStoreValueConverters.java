@@ -1,31 +1,34 @@
 package com.singlestore.debezium;
 
 import com.singlestore.jdbc.SingleStoreBlob;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import org.locationtech.jts.io.ParseException;
-
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Json;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
-import io.debezium.time.*;
+import io.debezium.time.Date;
+import io.debezium.time.MicroTime;
+import io.debezium.time.MicroTimestamp;
+import io.debezium.time.Timestamp;
+import io.debezium.time.Year;
 import io.debezium.util.IoUtil;
+import java.io.IOException;
+import java.nio.ByteOrder;
+import java.sql.SQLException;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoField;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
-
-import java.io.IOException;
-import java.nio.ByteOrder;
-import java.sql.SQLException;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoField;
+import org.locationtech.jts.io.ParseException;
 
 public class SingleStoreValueConverters extends JdbcValueConverters {
+
+  private final GeographyMode geographyMode;
 
   /**
    * Create a new instance of JdbcValueConverters.
@@ -41,8 +44,11 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
    */
   public SingleStoreValueConverters(DecimalMode decimalMode,
       TemporalPrecisionMode temporalPrecisionMode,
-      CommonConnectorConfig.BinaryHandlingMode binaryMode) {
+      CommonConnectorConfig.BinaryHandlingMode binaryMode,
+      GeographyMode geographyMode
+  ) {
     super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, binaryMode);
+    this.geographyMode = geographyMode;
   }
 
   @Override
@@ -53,7 +59,11 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
         return Json.builder();
       case "GEOGRAPHYPOINT":
       case "GEOGRAPHY":
-        return io.debezium.data.geometry.Geometry.builder();
+        if (geographyMode == GeographyMode.GEOMETRY) {
+          return io.debezium.data.geometry.Geometry.builder();
+        } else {
+          return SchemaBuilder.string();
+        }
       case "ENUM":
       case "SET":
         return SchemaBuilder.string();
@@ -112,7 +122,11 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
         return (data) -> convertString(column, fieldDefn, data);
       case "GEOGRAPHYPOINT":
       case "GEOGRAPHY":
-        return data -> convertGeometry(column, fieldDefn, data);
+        if (geographyMode == GeographyMode.GEOMETRY) {
+          return data -> convertGeometry(column, fieldDefn, data);
+        } else {
+          return data -> convertString(column, fieldDefn, data);
+        }
       case "ENUM":
       case "SET":
         return data -> convertString(column, fieldDefn, data);
@@ -310,5 +324,10 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
                 geometry.getWkb(), geometry.getSrid()));
           }
         });
+  }
+
+  public enum GeographyMode {
+    GEOMETRY,
+    STRING
   }
 }

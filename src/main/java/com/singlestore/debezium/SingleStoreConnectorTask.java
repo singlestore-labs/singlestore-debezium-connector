@@ -63,7 +63,7 @@ public class SingleStoreConnectorTask extends
         SingleStoreConnectorConfig.TOPIC_NAMING_STRATEGY);
     final SingleStoreValueConverters valueConverter = new SingleStoreValueConverters(
         connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode(),
-        connectorConfig.binaryHandlingMode());
+        connectorConfig.binaryHandlingMode(), connectorConfig.getGeographyMode());
     final SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
         valueConverter);
 

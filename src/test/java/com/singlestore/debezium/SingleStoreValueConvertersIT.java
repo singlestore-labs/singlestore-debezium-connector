@@ -1,5 +1,6 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.SingleStoreValueConverters.GeographyMode;
 import com.singlestore.jdbc.SingleStoreBlob;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -30,7 +31,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
 
   private static final SingleStoreValueConverters CONVERTERS = new SingleStoreValueConverters(
       JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT,
-      CommonConnectorConfig.BinaryHandlingMode.BYTES);
+      CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY);
 
   @Test
   public void testNumberValues() {
@@ -69,7 +70,8 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
 
   private void testDecimalModeValues(JdbcValueConverters.DecimalMode mode) {
     SingleStoreValueConverters converters = new SingleStoreValueConverters(mode,
-        TemporalPrecisionMode.CONNECT, CommonConnectorConfig.BinaryHandlingMode.BYTES);
+        TemporalPrecisionMode.CONNECT, CommonConnectorConfig.BinaryHandlingMode.BYTES,
+        GeographyMode.GEOMETRY);
     try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
       Tables tables = new Tables();
       conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
@@ -91,7 +93,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
   }
 
   @Test
-  public void testGeometry() throws ParseException {
+  public void testGeographyGeometry() throws ParseException {
     String geographyValue = "POLYGON ((1 1, 2 1, 2 2, 1 2, 1 1))";
     String geographyPointValue = "POINT(1.50000003 1.50000000)";
     SingleStoreGeometry singleStoregeographyValue = SingleStoreGeometry.fromEkt(geographyValue);
@@ -115,6 +117,30 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
   }
 
   @Test
+  public void testGeographyString() throws ParseException {
+    String geographyValue = "POLYGON ((1 1, 2 1, 2 2, 1 2, 1 1))";
+    String geographyPointValue = "POINT(1.50000003 1.50000000)";
+    try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
+      Tables tables = new Tables();
+      conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
+      Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
+      assertThat(table).isNotNull();
+
+      SingleStoreValueConverters converters = new SingleStoreValueConverters(
+          JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT,
+          CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.STRING);
+      String convertedPolygon = (String) convertColumnValue(converters, table, "geographyColumn",
+          geographyValue);
+      assertEquals("POLYGON ((1 1, 2 1, 2 2, 1 2, 1 1))", convertedPolygon);
+      String convertedPoint = (String) convertColumnValue(converters, table, "geographypointColumn",
+          geographyPointValue);
+      assertEquals("POINT(1.50000003 1.50000000)", convertedPoint);
+    } catch (SQLException e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testTimeAndDateValues() {
     testTimeAndDateValues(TemporalPrecisionMode.CONNECT);
     testTimeAndDateValues(TemporalPrecisionMode.ADAPTIVE);
@@ -124,7 +150,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
   private void testTimeAndDateValues(TemporalPrecisionMode mode) {
     SingleStoreValueConverters converters = new SingleStoreValueConverters(
         JdbcValueConverters.DecimalMode.DOUBLE, mode,
-        CommonConnectorConfig.BinaryHandlingMode.BYTES);
+        CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY);
     try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
       Tables tables = new Tables();
       conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
@@ -222,7 +248,8 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
 
   private void testBinaryMode(CommonConnectorConfig.BinaryHandlingMode mode) {
     SingleStoreValueConverters converters = new SingleStoreValueConverters(
-        JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT, mode);
+        JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT, mode,
+        GeographyMode.GEOMETRY);
     try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
       Tables tables = new Tables();
       conn.readSchema(tables, TEST_DATABASE, null, null, null, true);

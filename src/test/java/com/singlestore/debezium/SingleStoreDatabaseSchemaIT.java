@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+import com.singlestore.debezium.SingleStoreValueConverters.GeographyMode;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.Bits;
@@ -33,8 +34,8 @@ import org.junit.Test;
 public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
 
   private static final SingleStoreValueConverters CONVERTERS = new SingleStoreValueConverters(
-      JdbcValueConverters.DecimalMode.DOUBLE,
-      TemporalPrecisionMode.CONNECT, CommonConnectorConfig.BinaryHandlingMode.BYTES);
+      JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT,
+      CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY);
   private SingleStoreDatabaseSchema schema;
 
   public static SingleStoreDatabaseSchema getSchema(SingleStoreConnectorConfig config) {
