@@ -6,18 +6,16 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import com.singlestore.debezium.SingleStoreConnectorConfig.SnapshotMode;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
+import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,5 +113,10 @@ public class SingleStoreConnector extends RelationalBaseSourceConnector {
     } catch (SQLException e) {
       throw new DebeziumException(e);
     }
+  }
+
+  @Override
+  public ExactlyOnceSupport exactlyOnceSupport(Map<String, String> connectorConfig) {
+    return ExactlyOnceSupport.SUPPORTED;
   }
 }
