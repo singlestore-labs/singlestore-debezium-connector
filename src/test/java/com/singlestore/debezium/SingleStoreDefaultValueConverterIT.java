@@ -1,5 +1,10 @@
 package com.singlestore.debezium;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import com.singlestore.debezium.SingleStoreValueConverters.GeographyMode;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -7,12 +12,6 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.Tables;
-import org.apache.kafka.connect.data.Struct;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.locationtech.jts.io.ParseException;
-
 import java.nio.ByteBuffer;
 import java.sql.Date;
 import java.sql.SQLException;
@@ -20,15 +19,26 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.*;
+import org.apache.kafka.connect.data.Struct;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.locationtech.jts.io.ParseException;
 
 public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
 
   private static final SingleStoreValueConverters CONVERTERS = new SingleStoreValueConverters(
       JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.ADAPTIVE,
       CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY);
+
+  private static void testColumn(SingleStoreDefaultValueConverter defaultValueConverter,
+      Table table, String name, Object expectedValue) {
+    Column column = table.columnWithName(name);
+    Optional<Object> defaultValue = defaultValueConverter.parseDefaultValue(column,
+        column.defaultValueExpression().orElse(null));
+    assertTrue(defaultValue.isPresent());
+    assertEquals(expectedValue, defaultValue.get());
+  }
 
   @Test
   public void testNumberValues() {
@@ -192,17 +202,11 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
       testColumn(defaultValueConverter, table, "mediumblobColumn",
           ByteBuffer.wrap("abc".getBytes()));
       testColumn(defaultValueConverter, table, "tinyblobColumn", ByteBuffer.wrap("abc".getBytes()));
+      // TODO: DB-78614 - default values for BSON columns omit trailing zeros
+      byte[] bsonColumnData = {5};
+      testColumn(defaultValueConverter, table, "bsonColumn", ByteBuffer.wrap(bsonColumnData));
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }
-  }
-
-  private static void testColumn(SingleStoreDefaultValueConverter defaultValueConverter,
-      Table table, String name, Object expectedValue) {
-    Column column = table.columnWithName(name);
-    Optional<Object> defaultValue = defaultValueConverter.parseDefaultValue(column,
-        column.defaultValueExpression().orElse(null));
-    assertTrue(defaultValue.isPresent());
-    assertEquals(expectedValue, defaultValue.get());
   }
 }

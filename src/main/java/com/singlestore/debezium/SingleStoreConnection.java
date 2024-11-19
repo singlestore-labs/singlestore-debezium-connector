@@ -1,6 +1,8 @@
 package com.singlestore.debezium;
 
-import com.singlestore.debezium.util.ObserveResultSetUtils;
+import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
+import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
+
 import com.singlestore.debezium.util.Utils;
 import com.singlestore.jdbc.DatabaseMetaData;
 import io.debezium.DebeziumException;
@@ -8,39 +10,34 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.relational.Attribute;
 import io.debezium.relational.ColumnId;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
-import io.debezium.relational.Tables.ColumnNameFilter;
-import io.debezium.relational.Tables.TableFilter;
 import io.debezium.util.Strings;
-import java.sql.Connection;
 import java.sql.ResultSet;
-import javax.swing.text.html.Option;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
-
-import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
-import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link JdbcConnection} extension to be used with SingleStore
  */
 public class SingleStoreConnection extends JdbcConnection {
 
+  protected static final String URL_PATTERN = "jdbc:singlestore://${hostname}:${port}/?connectTimeout=${connectTimeout}";
+  protected static final String URL_PATTERN_DATABASE = "jdbc:singlestore://${hostname}:${port}/${dbname}?connectTimeout=${connectTimeout}";
   private static final Logger LOGGER = LoggerFactory.getLogger(
       SingleStoreConnection.class);
   private static final String QUOTED_CHARACTER = "`";
-  protected static final String URL_PATTERN = "jdbc:singlestore://${hostname}:${port}/?connectTimeout=${connectTimeout}";
-  protected static final String URL_PATTERN_DATABASE = "jdbc:singlestore://${hostname}:${port}/${dbname}?connectTimeout=${connectTimeout}";
   private final SingleStoreConnectionConfiguration connectionConfig;
 
   public SingleStoreConnection(SingleStoreConnectionConfiguration connectionConfig) {
@@ -49,19 +46,19 @@ public class SingleStoreConnection extends JdbcConnection {
     this.connectionConfig = connectionConfig;
   }
 
+  private static void validateServerVersion(Statement statement) throws SQLException {
+    DatabaseMetaData metaData = (DatabaseMetaData) statement.getConnection().getMetaData();
+    if (!metaData.getVersion().versionGreaterOrEqual(8, 7, 16)) {
+      throw new SQLException("The lowest supported version of SingleStore is 8.7.16");
+    }
+  }
+
   public String generateObserveQuery(TableId table, List<String> offsets) {
     return observeQuery(null, Set.of(table), Optional.empty(), Optional.empty(),
         Optional.of(String.format("(%s)", offsets
             .stream()
             .map(o -> o == null ? "NULL" : "'" + o + "'")
             .collect(Collectors.joining(",")))), Optional.empty());
-  }
-
-  private static void validateServerVersion(Statement statement) throws SQLException {
-    DatabaseMetaData metaData = (DatabaseMetaData) statement.getConnection().getMetaData();
-    if (!metaData.getVersion().versionGreaterOrEqual(8, 7, 16)) {
-      throw new SQLException("The lowest supported version of SingleStore is 8.7.16");
-    }
   }
 
   /**
@@ -235,7 +232,7 @@ public class SingleStoreConnection extends JdbcConnection {
     char quotingChar = '`';
     if (columnName != null) {
       if (columnName.isEmpty()) {
-        columnName = new StringBuilder().append(quotingChar).append(quotingChar).toString();
+        columnName = String.valueOf(quotingChar) + quotingChar;
       } else if (columnName.charAt(0) != quotingChar
           && columnName.charAt(columnName.length() - 1) != quotingChar) {
         columnName = columnName.replace("" + quotingChar, "" + quotingChar + quotingChar);
@@ -250,8 +247,15 @@ public class SingleStoreConnection extends JdbcConnection {
     return new String[]{"TABLE"};
   }
 
+  @Override
+  protected List<String> readPrimaryKeyOrUniqueIndexNames(java.sql.DatabaseMetaData metadata,
+      TableId id)
+      throws SQLException {
+    return readPrimaryKeyNames(metadata, id);
+  }
+
   public enum OBSERVE_OUTPUT_FORMAT {
-    SQL, JSON;
+    SQL, JSON
   }
 
   public static class SingleStoreConnectionConfiguration {
@@ -277,6 +281,7 @@ public class SingleStoreConnection extends JdbcConnection {
           .with("sslMode", sslMode().getValue())
           .with("defaultFetchSize", 1)
           .with("tinyInt1IsBit", "false")
+          .with("enableExtendedDataTypes", "true")
           .with("connectionAttributes", String.format(
               "_connector_name:%s,_connector_version:%s,_product_version:%s",
               "SingleStore Debezium Connector", Module.version(), Module.debeziumVersion()))
@@ -386,12 +391,5 @@ public class SingleStoreConnection extends JdbcConnection {
       String mode = config.getString(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
       return CommonConnectorConfig.EventProcessingFailureHandlingMode.parse(mode);
     }
-  }
-
-  @Override
-  protected List<String> readPrimaryKeyOrUniqueIndexNames(java.sql.DatabaseMetaData metadata,
-      TableId id)
-      throws SQLException {
-    return readPrimaryKeyNames(metadata, id);
   }
 }
