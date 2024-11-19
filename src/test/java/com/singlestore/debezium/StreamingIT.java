@@ -5,14 +5,10 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import ch.qos.logback.classic.Logger;
 import io.debezium.config.Configuration;
-import io.debezium.embedded.EmbeddedEngine;
-import io.debezium.embedded.EmbeddedEngine.CompletionResult;
-import io.debezium.engine.DebeziumEngine;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
@@ -83,7 +79,8 @@ public class StreamingIT extends IntegrationTestBase {
             "'v1', " + // set_f
             "'POLYGON((1 1,2 1,2 2, 1 2, 1 1))', " +
             // geographyColumn TODO: PLAT-6907 test GEOGRAPHY datatype
-            "'POINT(1.50000003 1.50000000)')" // geographypointColumn
+            "'POINT(1.50000003 1.50000000)'," + // geographypointColumn
+            "'{}')" // bsonColumn
         );
 
         List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
@@ -97,6 +94,7 @@ public class StreamingIT extends IntegrationTestBase {
         assertEquals(true, record.sourceOffset().get("snapshot_completed"));
         assertEquals("false", source.get("snapshot"));
 
+        byte[] bsonColumnData = {5, 0, 0, 0, 0};
         // TODO: PLAT-6909 handle BOOL columns as boolean
         assertEquals((short) 1, after.get("boolColumn"));
         assertEquals((short) 1, after.get("booleanColumn"));
@@ -149,6 +147,7 @@ public class StreamingIT extends IntegrationTestBase {
             geographyPointValue);
         assertArrayEquals((byte[]) ((Struct) after.get("geographypointColumn")).get("wkb"),
             singleStoregeographyPointValue.getWkb());
+        assertEquals(ByteBuffer.wrap(bsonColumnData), after.get("bsonColumn"));
       } finally {
         stopConnector();
       }

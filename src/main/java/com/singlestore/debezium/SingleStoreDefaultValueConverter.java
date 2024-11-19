@@ -5,13 +5,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.ValueConverter;
 import io.debezium.util.Strings;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -22,6 +15,12 @@ import java.time.temporal.ChronoField;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SingleStoreDefaultValueConverter implements DefaultValueConverter {
 
@@ -114,6 +113,7 @@ public class SingleStoreDefaultValueConverter implements DefaultValueConverter {
       case "FLOAT UNSIGNED":
         return Float.parseFloat(value);
       case "BIT":
+      case "BSON":
         return value.getBytes(StandardCharsets.UTF_8);
       case "DOUBLE":
       case "DOUBLE UNSIGNED":

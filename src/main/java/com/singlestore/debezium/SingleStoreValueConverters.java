@@ -106,6 +106,7 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
       case "LONGBLOB":
       case "MEDIUMBLOB":
       case "BLOB":
+      case "BSON":
         return SchemaBuilder.bytes();
     }
     SchemaBuilder builder = super.schemaBuilder(column);
@@ -150,6 +151,7 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
       case "LONGBLOB":
       case "MEDIUMBLOB":
       case "BLOB":
+      case "BSON":
         return data -> convertBlob(column, fieldDefn, data);
     }
     return super.converter(column, fieldDefn);

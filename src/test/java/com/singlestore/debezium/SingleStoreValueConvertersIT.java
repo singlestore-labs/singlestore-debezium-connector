@@ -1,5 +1,9 @@
 package com.singlestore.debezium;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+
 import com.singlestore.debezium.SingleStoreValueConverters.GeographyMode;
 import com.singlestore.jdbc.SingleStoreBlob;
 import io.debezium.config.CommonConnectorConfig;
@@ -9,29 +13,41 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.Tables;
 import io.debezium.util.HexConverter;
+import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.Base64;
+import java.util.Date;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.Assert;
 import org.junit.Test;
 import org.locationtech.jts.io.ParseException;
 
-import java.math.BigDecimal;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
-import java.time.*;
-import java.util.Base64;
-import java.util.Date;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-
 public class SingleStoreValueConvertersIT extends IntegrationTestBase {
 
   private static final SingleStoreValueConverters CONVERTERS = new SingleStoreValueConverters(
       JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT,
       CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY);
+
+  private static void testColumn(SingleStoreValueConverters converters, Table table, String name,
+      Object valueToConvert, Object expectedConvertedValue) {
+    assertEquals(expectedConvertedValue,
+        convertColumnValue(converters, table, name, valueToConvert));
+  }
+
+  private static Object convertColumnValue(SingleStoreValueConverters converters, Table table,
+      String name, Object valueToConvert) {
+    Column column = table.columnWithName(name);
+    Field field = new Field(column.name(), -1, converters.schemaBuilder(column).build());
+    return converters.converter(column, field).convert(valueToConvert);
+  }
 
   @Test
   public void testNumberValues() {
@@ -239,6 +255,21 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
   }
 
   @Test
+  public void testBsonValue() {
+    try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
+      Tables tables = new Tables();
+      conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
+      Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
+      assertThat(table).isNotNull();
+      byte[] bsonValue = {5, 0, 0, 0, 0};
+      SingleStoreBlob blob = new SingleStoreBlob(bsonValue);
+      testColumn(CONVERTERS, table, "bsonColumn", blob, ByteBuffer.wrap(bsonValue));
+    } catch (SQLException e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testBinaryMode() {
     testBinaryMode(CommonConnectorConfig.BinaryHandlingMode.BYTES);
     testBinaryMode(CommonConnectorConfig.BinaryHandlingMode.BASE64);
@@ -280,18 +311,5 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }
-  }
-
-  private static void testColumn(SingleStoreValueConverters converters, Table table, String name,
-      Object valueToConvert, Object expectedConvertedValue) {
-    assertEquals(expectedConvertedValue,
-        convertColumnValue(converters, table, name, valueToConvert));
-  }
-
-  private static Object convertColumnValue(SingleStoreValueConverters converters, Table table,
-      String name, Object valueToConvert) {
-    Column column = table.columnWithName(name);
-    Field field = new Field(column.name(), -1, converters.schemaBuilder(column).build());
-    return converters.converter(column, field).convert(valueToConvert);
   }
 }
