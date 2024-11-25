@@ -29,6 +29,7 @@ import org.locationtech.jts.io.ParseException;
 public class SingleStoreValueConverters extends JdbcValueConverters {
 
   private final GeographyMode geographyMode;
+  private final VectorMode vectorMode;
 
   /**
    * Create a new instance of JdbcValueConverters.
@@ -45,10 +46,12 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
   public SingleStoreValueConverters(DecimalMode decimalMode,
       TemporalPrecisionMode temporalPrecisionMode,
       CommonConnectorConfig.BinaryHandlingMode binaryMode,
-      GeographyMode geographyMode
+      GeographyMode geographyMode,
+      VectorMode vectorMode
   ) {
     super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, binaryMode);
     this.geographyMode = geographyMode;
+    this.vectorMode = vectorMode;
   }
 
   @Override

@@ -5,6 +5,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import com.singlestore.debezium.SingleStoreValueConverters.GeographyMode;
+import com.singlestore.debezium.SingleStoreValueConverters.VectorMode;
 import com.singlestore.jdbc.SingleStoreBlob;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -34,7 +35,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
 
   private static final SingleStoreValueConverters CONVERTERS = new SingleStoreValueConverters(
       JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT,
-      CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY);
+      CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY, VectorMode.STRING);
 
   private static void testColumn(SingleStoreValueConverters converters, Table table, String name,
       Object valueToConvert, Object expectedConvertedValue) {
@@ -87,7 +88,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
   private void testDecimalModeValues(JdbcValueConverters.DecimalMode mode) {
     SingleStoreValueConverters converters = new SingleStoreValueConverters(mode,
         TemporalPrecisionMode.CONNECT, CommonConnectorConfig.BinaryHandlingMode.BYTES,
-        GeographyMode.GEOMETRY);
+        GeographyMode.GEOMETRY, VectorMode.STRING);
     try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
       Tables tables = new Tables();
       conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
@@ -144,7 +145,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
 
       SingleStoreValueConverters converters = new SingleStoreValueConverters(
           JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT,
-          CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.STRING);
+          CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.STRING, VectorMode.STRING);
       String convertedPolygon = (String) convertColumnValue(converters, table, "geographyColumn",
           geographyValue);
       assertEquals("POLYGON ((1 1, 2 1, 2 2, 1 2, 1 1))", convertedPolygon);
@@ -166,7 +167,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
   private void testTimeAndDateValues(TemporalPrecisionMode mode) {
     SingleStoreValueConverters converters = new SingleStoreValueConverters(
         JdbcValueConverters.DecimalMode.DOUBLE, mode,
-        CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY);
+        CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY, VectorMode.STRING);
     try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
       Tables tables = new Tables();
       conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
@@ -280,7 +281,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
   private void testBinaryMode(CommonConnectorConfig.BinaryHandlingMode mode) {
     SingleStoreValueConverters converters = new SingleStoreValueConverters(
         JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT, mode,
-        GeographyMode.GEOMETRY);
+        GeographyMode.GEOMETRY, VectorMode.STRING);
     try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
       Tables tables = new Tables();
       conn.readSchema(tables, TEST_DATABASE, null, null, null, true);

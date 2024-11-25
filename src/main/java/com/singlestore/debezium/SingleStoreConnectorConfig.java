@@ -325,6 +325,16 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
   }
 
   /**
+   * Returns the Vector mode Enum configuration. This defaults to {@code string} if nothing is
+   * provided.
+   */
+  public VectorMode getVectorMode() {
+    return VectorHandlingMode
+        .parse(this.getConfig().getString(GEOGRAPHY_HANDLING_MODE))
+        .asVectorMode();
+  }
+
+  /**
    * The set of predefined SnapshotMode options or aliases.
    */
   public enum SnapshotMode implements EnumeratedValue {

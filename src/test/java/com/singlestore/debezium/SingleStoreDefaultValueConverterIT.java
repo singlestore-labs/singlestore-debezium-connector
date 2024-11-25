@@ -6,6 +6,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.singlestore.debezium.SingleStoreValueConverters.GeographyMode;
+import com.singlestore.debezium.SingleStoreValueConverters.VectorMode;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -29,7 +30,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
 
   private static final SingleStoreValueConverters CONVERTERS = new SingleStoreValueConverters(
       JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.ADAPTIVE,
-      CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY);
+      CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY, VectorMode.STRING);
 
   private static void testColumn(SingleStoreDefaultValueConverter defaultValueConverter,
       Table table, String name, Object expectedValue) {
@@ -142,7 +143,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
 
       SingleStoreValueConverters converters = new SingleStoreValueConverters(
           JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT,
-          CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.STRING);
+          CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.STRING, VectorMode.STRING);
       SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
           converters);
 
