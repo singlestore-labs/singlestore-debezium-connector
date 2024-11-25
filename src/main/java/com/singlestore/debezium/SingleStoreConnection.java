@@ -3,6 +3,8 @@ package com.singlestore.debezium;
 import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
 import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
 
+import com.singlestore.debezium.SingleStoreConnectorConfig.VectorHandlingMode;
+import com.singlestore.debezium.SingleStoreValueConverters.VectorMode;
 import com.singlestore.debezium.util.Utils;
 import com.singlestore.jdbc.DatabaseMetaData;
 import io.debezium.DebeziumException;
@@ -282,6 +284,7 @@ public class SingleStoreConnection extends JdbcConnection {
           .with("defaultFetchSize", 1)
           .with("tinyInt1IsBit", "false")
           .with("enableExtendedDataTypes", "true")
+          .with("vectorTypeOutputFormat", vectorMode() == VectorMode.STRING ? "JSON" : "BINARY")
           .with("connectionAttributes", String.format(
               "_connector_name:%s,_connector_version:%s,_product_version:%s",
               "SingleStore Debezium Connector", Module.version(), Module.debeziumVersion()))
@@ -347,6 +350,12 @@ public class SingleStoreConnection extends JdbcConnection {
     public SingleStoreConnectorConfig.SecureConnectionMode sslMode() {
       String mode = config.getString(SingleStoreConnectorConfig.SSL_MODE);
       return SingleStoreConnectorConfig.SecureConnectionMode.parse(mode);
+    }
+
+    public VectorMode vectorMode() {
+      return VectorHandlingMode
+          .parse(config.getString(SingleStoreConnectorConfig.VECTOR_HANDLING_MODE))
+          .asVectorMode();
     }
 
     public boolean sslModeEnabled() {

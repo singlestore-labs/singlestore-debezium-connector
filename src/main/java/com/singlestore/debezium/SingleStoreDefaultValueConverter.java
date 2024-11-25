@@ -118,7 +118,14 @@ public class SingleStoreDefaultValueConverter implements DefaultValueConverter {
       case "DOUBLE":
       case "DOUBLE UNSIGNED":
         return Double.parseDouble(value);
+      case "VECTOR":
+        return convertVector(column, value);
     }
+    return value;
+  }
+
+  private Object convertVector(Column column, String value) {
+    // TODO
     return value;
   }
 

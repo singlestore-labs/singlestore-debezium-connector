@@ -111,6 +111,9 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
       case "BLOB":
       case "BSON":
         return SchemaBuilder.bytes();
+      case "VECTOR":
+        // TODO
+        return SchemaBuilder.string();
     }
     SchemaBuilder builder = super.schemaBuilder(column);
     logger.debug("JdbcValueConverters returned '{}' for column '{}'",
@@ -156,6 +159,9 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
       case "BLOB":
       case "BSON":
         return data -> convertBlob(column, fieldDefn, data);
+      case "VECTOR":
+        // TODO
+        return data -> convertString(column, fieldDefn, data);
     }
     return super.converter(column, fieldDefn);
   }

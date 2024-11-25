@@ -79,8 +79,15 @@ public class StreamingIT extends IntegrationTestBase {
             "'v1', " + // set_f
             "'POLYGON((1 1,2 1,2 2, 1 2, 1 1))', " +
             // geographyColumn TODO: PLAT-6907 test GEOGRAPHY datatype
-            "'POINT(1.50000003 1.50000000)'," + // geographypointColumn
-            "'{}')" // bsonColumn
+            "'POINT(1.50000003 1.50000000)', " + // geographypointColumn
+            "'{}', " + // bsonColumn
+            "'[1, 10, 100]', " +  // vectorI8Column
+            "'[1, 10, 100]', " +  // vectorI16Column
+            "'[1, 10, 100]', " +  // vectorI32Column
+            "'[1, 10, 100]', " +  // vectorI64Column
+            "'[1.1, 10.1, 100.1]', " +  // vectorF32Column
+            "'[1.1, 10.1, 100.1]'" +  // vectorF64Column
+            ")"
         );
 
         List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
@@ -148,6 +155,12 @@ public class StreamingIT extends IntegrationTestBase {
         assertArrayEquals((byte[]) ((Struct) after.get("geographypointColumn")).get("wkb"),
             singleStoregeographyPointValue.getWkb());
         assertEquals(ByteBuffer.wrap(bsonColumnData), after.get("bsonColumn"));
+        assertEquals("[1, 10, 100]", after.get("vectorI8Column"));
+        assertEquals("[1, 10, 100]", after.get("vectorI16Column"));
+        assertEquals("[1, 10, 100]", after.get("vectorI32Column"));
+        assertEquals("[1, 10, 100]", after.get("vectorI64Column"));
+        assertEquals("[1.1, 10.1, 100.1]", after.get("vectorF32Column"));
+        assertEquals("[1.1, 10.1, 100.1]", after.get("vectorF64Column"));
       } finally {
         stopConnector();
       }

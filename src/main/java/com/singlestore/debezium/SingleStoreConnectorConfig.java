@@ -330,7 +330,7 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
    */
   public VectorMode getVectorMode() {
     return VectorHandlingMode
-        .parse(this.getConfig().getString(GEOGRAPHY_HANDLING_MODE))
+        .parse(this.getConfig().getString(VECTOR_HANDLING_MODE))
         .asVectorMode();
   }
 
