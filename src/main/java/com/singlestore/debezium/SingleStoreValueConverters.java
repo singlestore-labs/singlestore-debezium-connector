@@ -332,4 +332,10 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
     GEOMETRY,
     STRING
   }
+
+  public enum VectorMode {
+    STRING,
+    BINARY,
+    ARRAY
+  }
 }

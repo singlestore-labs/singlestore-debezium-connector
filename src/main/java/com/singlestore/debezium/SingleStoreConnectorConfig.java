@@ -1,6 +1,7 @@
 package com.singlestore.debezium;
 
 import com.singlestore.debezium.SingleStoreValueConverters.GeographyMode;
+import com.singlestore.debezium.SingleStoreValueConverters.VectorMode;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
@@ -152,6 +153,18 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
           "Specify how GEOGRAPHY and GEOGRAPHYPOINT columns should be represented in change events, including: "
               + "'geometry' (the default) uses io.debezium.data.geometry.Geometry to represent values, which contains a structure with two fields: srid (INT32): spatial reference system ID that defines the type of geometry object stored in the structure and wkb (BYTES): binary representation of the geometry object encoded in the Well-Known-Binary (wkb) format."
               + "'string' uses string to represent values.");
+
+  public static final Field VECTOR_HANDLING_MODE = Field.create("vector.handling.mode")
+      .withDisplayName("Vector Handling")
+      .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 9))
+      .withEnum(VectorHandlingMode.class, VectorHandlingMode.STRING)
+      .withWidth(Width.SHORT)
+      .withImportance(Importance.MEDIUM)
+      .withDescription(
+          "Specify how VECTOR columns should be represented in change events, including: "
+              + "'string' (the default) uses JSON string to represent values."
+              + "'binary' uses BINARY to represent values."
+              + "'array' uses ARRAY to represent values.");
 
   protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
   protected static final int DEFAULT_PORT = 3306;
@@ -308,7 +321,7 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
   public GeographyMode getGeographyMode() {
     return GeographyHandlingMode
         .parse(this.getConfig().getString(GEOGRAPHY_HANDLING_MODE))
-        .asDecimalMode();
+        .asGeographyMode();
   }
 
   /**
@@ -553,13 +566,90 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       return value;
     }
 
-    public GeographyMode asDecimalMode() {
+    public GeographyMode asGeographyMode() {
       switch (this) {
         case STRING:
           return GeographyMode.STRING;
         case GEOMETRY:
         default:
           return GeographyMode.GEOMETRY;
+      }
+    }
+  }
+
+  /**
+   * The set of predefined VectorHandlingMode options or aliases.
+   */
+  public enum VectorHandlingMode implements EnumeratedValue {
+    /**
+     * Represent {@code VECTOR} values as JSON string values.
+     */
+    STRING("string"),
+
+    /**
+     * Represent {@code VECTOR} values as binary.
+     */
+    BINARY("binary"),
+
+    /**
+     * Represent {@code VECTOR} values as array.
+     */
+    ARRAY("array");
+
+    private final String value;
+
+    VectorHandlingMode(String value) {
+      this.value = value;
+    }
+
+    /**
+     * Determine if the supplied value is one of the predefined options.
+     *
+     * @param value the configuration property value; may not be null
+     * @return the matching option, or null if no match is found
+     */
+    public static VectorHandlingMode parse(String value) {
+      if (value == null) {
+        return null;
+      }
+      value = value.trim();
+      for (VectorHandlingMode option : VectorHandlingMode.values()) {
+        if (option.getValue().equalsIgnoreCase(value)) {
+          return option;
+        }
+      }
+      return null;
+    }
+
+    /**
+     * Determine if the supplied value is one of the predefined options.
+     *
+     * @param value        the configuration property value; may not be null
+     * @param defaultValue the default value; may be null
+     * @return the matching option, or null if no match is found and the non-null default is invalid
+     */
+    public static VectorHandlingMode parse(String value, String defaultValue) {
+      VectorHandlingMode mode = parse(value);
+      if (mode == null && defaultValue != null) {
+        mode = parse(defaultValue);
+      }
+      return mode;
+    }
+
+    @Override
+    public String getValue() {
+      return value;
+    }
+
+    public VectorMode asVectorMode() {
+      switch (this) {
+        case BINARY:
+          return VectorMode.BINARY;
+        case ARRAY:
+          return VectorMode.ARRAY;
+        case STRING:
+        default:
+          return VectorMode.STRING;
       }
     }
   }
