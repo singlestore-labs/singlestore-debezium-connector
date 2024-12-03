@@ -12,8 +12,14 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.Column;
 import io.debezium.relational.ColumnId;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
+import io.debezium.relational.Tables.ColumnNameFilter;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.util.Strings;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -22,6 +28,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -254,6 +261,91 @@ public class SingleStoreConnection extends JdbcConnection {
       TableId id)
       throws SQLException {
     return readPrimaryKeyNames(metadata, id);
+  }
+
+  public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern,
+      TableFilter tableFilter, ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
+      throws SQLException {
+    super.readSchema(tables, databaseCatalog, schemaNamePattern, tableFilter, columnFilter,
+        removeTablesNotFoundInJdbc);
+
+    // Update tyeExpression for VECTOR columns
+    Map<TableId, List<String>> tablesWithVectorColumns = new HashMap<>();
+
+    for (TableId tableId : tables.tableIds()) {
+      Table t = tables.forTable(tableId);
+      List<String> vectorColumns = t.columns().stream()
+          .filter(c -> c.typeName().equals("VECTOR"))
+          .map(Column::name)
+          .collect(Collectors.toList());
+
+      if (!vectorColumns.isEmpty()) {
+        tablesWithVectorColumns.put(tableId, vectorColumns);
+      }
+    }
+
+    Map<TableId, Map<String, String>> columnToTypeExpression = getColumnToTypeExpression(
+        tablesWithVectorColumns);
+
+    for (TableId tableId : columnToTypeExpression.keySet()) {
+      tables.updateTable(tableId, table -> {
+        TableEditor editor = table.edit();
+        for (Column column : table.columns()) {
+          if (column.typeName().equals("VECTOR")) {
+            Column updated = column.edit()
+                .type(column.typeName(), columnToTypeExpression.get(tableId).get(column.name()))
+                .create();
+            editor.updateColumn(updated);
+          }
+        }
+
+        return editor.create();
+      });
+    }
+  }
+
+  private Map<TableId, Map<String, String>> getColumnToTypeExpression(
+      Map<TableId, List<String>> tablesWithVectorColumns) {
+    Map<TableId, Map<String, String>> res = new HashMap<>();
+
+    String query = String.format(
+        "SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, COLUMN_TYPE FROM information_schema.columns WHERE %s",
+        tablesWithVectorColumns.keySet().stream()
+            .map(tableId -> String.format("(TABLE_SCHEMA = %s AND TABLE_NAME = %s AND %s)",
+                Utils.escapeString(tableId.catalog()),
+                Utils.escapeString(tableId.table()),
+                String.format("(%s)",
+                    tablesWithVectorColumns.get(tableId).stream()
+                        .map(column -> String.format("COLUMN_NAME = %s",
+                            Utils.escapeString(column)))
+                        .collect(Collectors.joining(" OR "))
+                )))
+            .collect(Collectors.joining(" OR "))
+    );
+
+    try (
+        Statement stmt = connection().createStatement();
+        ResultSet rs = stmt.executeQuery(query)
+    ) {
+      while (rs.next()) {
+        String database = rs.getString(1);
+        String table = rs.getString(2);
+        String column = rs.getString(3);
+        String typeExpresion = rs.getString(4);
+
+        TableId id = new TableId(database, null, table);
+        if (!res.containsKey(id)) {
+          res.put(id, new HashMap<>());
+        }
+
+        res.get(id).put(column, typeExpresion);
+      }
+    } catch (SQLException e) {
+      LOGGER.error(e.getMessage());
+      throw new DebeziumException(e);
+    }
+
+    return res;
   }
 
   public enum OBSERVE_OUTPUT_FORMAT {

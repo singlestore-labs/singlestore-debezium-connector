@@ -1,5 +1,6 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.SingleStoreValueConverters.VectorMode;
 import io.debezium.DebeziumException;
 import io.debezium.relational.Column;
 import io.debezium.relational.DefaultValueConverter;
@@ -60,9 +61,12 @@ public class SingleStoreDefaultValueConverter implements DefaultValueConverter {
       .toFormatter();
 
   private final SingleStoreValueConverters converters;
+  private final VectorMode vectorMode;
 
-  public SingleStoreDefaultValueConverter(SingleStoreValueConverters converters) {
+  public SingleStoreDefaultValueConverter(SingleStoreValueConverters converters,
+      VectorMode vectorMode) {
     this.converters = converters;
+    this.vectorMode = vectorMode;
   }
 
   @Override
@@ -125,8 +129,13 @@ public class SingleStoreDefaultValueConverter implements DefaultValueConverter {
   }
 
   private Object convertVector(Column column, String value) {
-    // TODO
-    return value;
+    if (this.vectorMode == VectorMode.STRING) {
+      return value;
+    } else if (this.vectorMode == VectorMode.BINARY) {
+      return value;
+    } else {
+      return value;
+    }
   }
 
   /**

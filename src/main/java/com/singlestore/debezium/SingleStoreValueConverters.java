@@ -112,8 +112,13 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
       case "BSON":
         return SchemaBuilder.bytes();
       case "VECTOR":
-        // TODO
-        return SchemaBuilder.string();
+        if (vectorMode == VectorMode.STRING) {
+          return SchemaBuilder.string();
+        } else if (vectorMode == VectorMode.BINARY) {
+          return binaryMode.getSchema();
+        } else {
+          return SchemaBuilder.array(SchemaBuilder.INT8_SCHEMA);
+        }
     }
     SchemaBuilder builder = super.schemaBuilder(column);
     logger.debug("JdbcValueConverters returned '{}' for column '{}'",
@@ -160,14 +165,48 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
       case "BSON":
         return data -> convertBlob(column, fieldDefn, data);
       case "VECTOR":
-        // TODO
-        return data -> convertString(column, fieldDefn, data);
+        if (vectorMode == VectorMode.STRING) {
+          return data -> convertString(column, fieldDefn, data);
+        } else if (vectorMode == VectorMode.BINARY) {
+          return data -> convertBlob(column, fieldDefn, data);
+        } else {
+          return data -> convertVectorToArray(column, fieldDefn, data);
+        }
     }
     return super.converter(column, fieldDefn);
   }
 
   protected ByteOrder byteOrderOfBitType() {
     return ByteOrder.LITTLE_ENDIAN;
+  }
+
+
+  /**
+   * Converts SingleStoreBlob to byte array.
+   *
+   * @param column    the column definition describing the {@code data} value; never null
+   * @param fieldDefn the field definition; never null
+   * @param data      the data object to be converted into a {@link Date Kafka Connect date} type;
+   *                  never null
+   * @return the converted value, or null if the conversion could not be made and the column allows
+   * nulls
+   * @throws IllegalArgumentException if the value could not be converted but the column does not
+   *                                  allow nulls
+   */
+  // TODO
+  protected Object convertVectorToArray(Column column, Field fieldDefn, Object data) {
+    return convertValue(column, fieldDefn, data, 0, (r) -> {
+      if (data instanceof SingleStoreBlob) {
+        try {
+          byte[] bytes = IoUtil.readBytes(((SingleStoreBlob) data).getBinaryStream());
+          r.deliver(toByteBuffer(column, bytes));
+        } catch (IOException | SQLException e) {
+          throw new RuntimeException(e);
+        }
+      } else {
+        r.deliver(super.convertBinary(column, fieldDefn, data, super.binaryMode));
+      }
+    });
   }
 
   /**

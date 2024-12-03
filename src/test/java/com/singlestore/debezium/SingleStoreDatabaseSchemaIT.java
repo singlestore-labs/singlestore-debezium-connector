@@ -43,7 +43,7 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
     return new SingleStoreDatabaseSchema(
         config,
         CONVERTERS,
-        new SingleStoreDefaultValueConverter(CONVERTERS),
+        new SingleStoreDefaultValueConverter(CONVERTERS, VectorMode.STRING),
         config.getTopicNamingStrategy(SingleStoreConnectorConfig.TOPIC_NAMING_STRATEGY),
         false);
   }

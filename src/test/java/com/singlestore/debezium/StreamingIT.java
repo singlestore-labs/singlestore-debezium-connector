@@ -168,6 +168,71 @@ public class StreamingIT extends IntegrationTestBase {
   }
 
   @Test
+  public void vectorBinary() throws SQLException, ParseException, InterruptedException {
+    try (SingleStoreConnection conn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
+      try {
+        conn.execute("DROP TABLE IF EXISTS vectorBinary");
+        conn.execute("CREATE TABLE vectorBinary("
+            + "I8Column VECTOR(3, I8) DEFAULT '[1, 2, 3]', "
+            + "I16Column VECTOR(3, I16) DEFAULT '[1, 2, 3]', "
+            + "I32Column VECTOR(3, I32) DEFAULT '[1, 2, 3]', "
+            + "I64Column VECTOR(3, I64) DEFAULT '[1, 2, 3]', "
+            + "F32Column VECTOR(3, F32) DEFAULT '[1, 2, 3]', "
+            + "F64Column VECTOR(3, F64) DEFAULT '[1, 2, 3]'"
+            + ")");
+
+        Configuration config = defaultJdbcConfigWithTable("vectorBinary")
+            .edit()
+            .withDefault("vector.handling.mode", "binary")
+            .build();
+
+        start(SingleStoreConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+
+        conn.execute("INSERT INTO `vectorBinary` VALUES (" +
+            "'[1, 10, 100]', " +
+            "'[1, 10, 100]', " +
+            "'[1, 10, 100]', " +
+            "'[1, 10, 100]', " +
+            "'[1.1, 10.1, 100.1]', " +
+            "'[1.1, 10.1, 100.1]'" +
+            ")"
+        );
+
+        List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+        assertEquals(1, records.size());
+
+        SourceRecord record = records.get(0);
+        Struct value = (Struct) record.value();
+        Struct after = (Struct) value.get("after");
+        Struct source = (Struct) value.get("source");
+
+        assertEquals(true, record.sourceOffset().get("snapshot_completed"));
+        assertEquals("false", source.get("snapshot"));
+
+        byte[] I8 = {1, 10, 100};
+        byte[] I16 = {1, 0, 10, 0, 100, 0};
+        byte[] I32 = {1, 0, 0, 0, 10, 0, 0, 0, 100, 0, 0, 0};
+        byte[] I64 = {1, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0};
+        byte[] F32 = {-51, -52, -116, 63, -102, -103, 33, 65, 51, 51, -56, 66};
+        byte[] F64 = {-102, -103, -103, -103, -103, -103, -15, 63, 51, 51, 51, 51, 51, 51, 36, 64,
+            102, 102, 102, 102, 102, 6, 89, 64};
+
+        assertEquals(ByteBuffer.wrap(I8), after.get("I8Column"));
+        assertEquals(ByteBuffer.wrap(I16), after.get("I16Column"));
+        assertEquals(ByteBuffer.wrap(I32), after.get("I32Column"));
+        assertEquals(ByteBuffer.wrap(I64), after.get("I64Column"));
+        assertEquals(ByteBuffer.wrap(F32), after.get("F32Column"));
+        assertEquals(ByteBuffer.wrap(F64), after.get("F64Column"));
+      } finally {
+        stopConnector();
+      }
+    }
+  }
+
+  @Test
   public void populatesSourceInfo() throws SQLException, InterruptedException {
     try (SingleStoreConnection conn = new SingleStoreConnection(
         defaultJdbcConnectionConfigWithTable("purchased"))) {

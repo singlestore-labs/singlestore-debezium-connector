@@ -20,15 +20,14 @@ import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The main task executing streaming from SingleStore. Responsible for lifecycle management of the
@@ -66,7 +65,7 @@ public class SingleStoreConnectorTask extends
         connectorConfig.binaryHandlingMode(), connectorConfig.getGeographyMode(),
         connectorConfig.getVectorMode());
     final SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
-        valueConverter);
+        valueConverter, connectorConfig.getVectorMode());
 
     MainConnectionProvidingConnectionFactory<SingleStoreConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
         () -> new SingleStoreConnection(

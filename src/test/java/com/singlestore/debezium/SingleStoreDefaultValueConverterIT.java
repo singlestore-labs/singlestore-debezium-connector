@@ -49,7 +49,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
       Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
       assertThat(table).isNotNull();
       SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
-          CONVERTERS);
+          CONVERTERS, VectorMode.STRING);
       testColumn(defaultValueConverter, table, "tinyintColumn", (short) 124);
       testColumn(defaultValueConverter, table, "smallintColumn", (short) 32767);
       testColumn(defaultValueConverter, table, "mediumintColumn", 8388607);
@@ -72,7 +72,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
       Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
       assertThat(table).isNotNull();
       SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
-          CONVERTERS);
+          CONVERTERS, VectorMode.STRING);
       testColumn(defaultValueConverter, table, "dateColumn",
           (int) LocalDate.of(2000, 10, 10).atStartOfDay(ZoneId.of("UTC")).toEpochSecond() / 60 / 60
               / 24);//epoch days
@@ -107,7 +107,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
       Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
       assertThat(table).isNotNull();
       SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
-          CONVERTERS);
+          CONVERTERS, VectorMode.STRING);
       Column geographyColumn = table.columnWithName("geographyColumn");
       Optional<Object> geographyDefaultValue = defaultValueConverter.parseDefaultValue(
           geographyColumn, geographyColumn.defaultValueExpression().orElse(null));
@@ -145,7 +145,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
           JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT,
           CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.STRING, VectorMode.STRING);
       SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
-          converters);
+          converters, VectorMode.STRING);
 
       Column geographyColumn = table.columnWithName("geographyColumn");
       Optional<Object> geographyDefaultValue = defaultValueConverter.parseDefaultValue(
@@ -173,7 +173,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
       Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
       assertThat(table).isNotNull();
       SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
-          CONVERTERS);
+          CONVERTERS, VectorMode.STRING);
       testColumn(defaultValueConverter, table, "jsonColumn", "{}");
       testColumn(defaultValueConverter, table, "enum_f", "val1");
       testColumn(defaultValueConverter, table, "set_f", "v1");
@@ -197,7 +197,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
       Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
       assertThat(table).isNotNull();
       SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
-          CONVERTERS);
+          CONVERTERS, VectorMode.STRING);
       testColumn(defaultValueConverter, table, "blobColumn", ByteBuffer.wrap("abc".getBytes()));
       testColumn(defaultValueConverter, table, "longblobColumn", ByteBuffer.wrap("abc".getBytes()));
       testColumn(defaultValueConverter, table, "mediumblobColumn",
