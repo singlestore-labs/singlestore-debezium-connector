@@ -1,6 +1,8 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.util.VectorType;
 import com.singlestore.jdbc.SingleStoreBlob;
+import com.singlestore.jdbc.type.Vector;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Json;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -20,6 +22,10 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoField;
+import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -117,7 +123,7 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
         } else if (vectorMode == VectorMode.BINARY) {
           return binaryMode.getSchema();
         } else {
-          return SchemaBuilder.array(SchemaBuilder.INT8_SCHEMA);
+          return VectorType.parse(column.typeExpression()).getSchema();
         }
     }
     SchemaBuilder builder = super.schemaBuilder(column);
@@ -182,7 +188,7 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
 
 
   /**
-   * Converts SingleStoreBlob to byte array.
+   * Converts SingleStoreBlob to array.
    *
    * @param column    the column definition describing the {@code data} value; never null
    * @param fieldDefn the field definition; never null
@@ -193,18 +199,48 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
    * @throws IllegalArgumentException if the value could not be converted but the column does not
    *                                  allow nulls
    */
-  // TODO
   protected Object convertVectorToArray(Column column, Field fieldDefn, Object data) {
     return convertValue(column, fieldDefn, data, 0, (r) -> {
-      if (data instanceof SingleStoreBlob) {
-        try {
-          byte[] bytes = IoUtil.readBytes(((SingleStoreBlob) data).getBinaryStream());
-          r.deliver(toByteBuffer(column, bytes));
-        } catch (IOException | SQLException e) {
-          throw new RuntimeException(e);
+      if (data instanceof String) {
+        r.deliver(null);
+      } else if (data instanceof Vector) {
+        Vector v = (Vector) data;
+        switch (VectorType.parse(column.typeExpression())) {
+          case INT8:
+            byte[] byteArray = v.toByteArray();
+            r.deliver(IntStream.range(0, byteArray.length)
+                .mapToObj(i -> byteArray[i]) // Convert to Byte
+                .collect(Collectors.toList()));
+            return;
+          case INT16:
+            short[] shortArray = v.toShortArray();
+            r.deliver(IntStream.range(0, shortArray.length)
+                .mapToObj(i -> shortArray[i]) // Convert to Short
+                .collect(Collectors.toList()));
+            return;
+          case INT32:
+            int[] intArray = v.toIntArray();
+            r.deliver(IntStream.of(intArray)
+                .boxed()
+                .collect(Collectors.toList()));
+            return;
+          case INT64:
+            long[] longArray = v.toLongArray();
+            r.deliver(LongStream.of(longArray)
+                .boxed()
+                .collect(Collectors.toList()));
+            return;
+          case FLOAT32:
+            float[] floatArray = v.toFloatArray();
+            r.deliver(IntStream.range(0, floatArray.length)
+                .mapToObj(i -> floatArray[i]) // Convert to Float
+                .collect(Collectors.toList()));
+            return;
+          case FLOAT64:
+            double[] doubleArray = v.toDoubleArray();
+            r.deliver(DoubleStream.of(doubleArray).boxed()
+                .collect(Collectors.toList()));
         }
-      } else {
-        r.deliver(super.convertBinary(column, fieldDefn, data, super.binaryMode));
       }
     });
   }
@@ -226,7 +262,7 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
       if (data instanceof SingleStoreBlob) {
         try {
           byte[] bytes = IoUtil.readBytes(((SingleStoreBlob) data).getBinaryStream());
-          r.deliver(toByteBuffer(column, bytes));
+          r.deliver(super.convertBinary(column, fieldDefn, bytes, super.binaryMode));
         } catch (IOException | SQLException e) {
           throw new RuntimeException(e);
         }
