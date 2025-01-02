@@ -6,9 +6,6 @@
 **Note**: This connector is in public preview. It is intended for experimental use only and is not
 fully tested, documented, or supported by SingleStore.
 
-**Warning**: This connector temporarily doesn't work
-with [Unlimited Storage Databases](https://docs.singlestore.com/db/v8.7/manage-data/local-and-unlimited-database-storage-concepts/)
-
 SingleStore connector for Debezium ("the connector") captures and records row-level changes that
 occur in the database.
 You can configure the connector to read from a single table and to ignore, mask, or truncate values
@@ -609,7 +606,8 @@ perform the following tasks:
    to `enabled`.
 2. Add `exactly.once.support=required` to the connector configuration.
 
-**Note**: If the connector is stopped for an extended period of time, the offset may become stale. In
+**Note**: If the connector is stopped for an extended period of time, the offset may become stale.
+In
 this scenario, the connector may need to be manually restarted, which triggers a re-execution of
 the initial snapshot. This re-snapshotting process can lead to duplicate events, resulting in a loss
 of the exactly-once delivery guarantee during the snapshot phase. Users should be aware of this
