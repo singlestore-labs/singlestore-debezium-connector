@@ -365,14 +365,14 @@
     <singlestore.port>3306</singlestore.port>
     <singlestore.user>root</singlestore.user>
     <singlestore.version>8.7.16</singlestore.version>
-    <version.assembly.plugin>3.6.0</version.assembly.plugin>
+    <version.assembly.plugin>3.7.1</version.assembly.plugin>
     <version.assertj-core>3.11.1</version.assertj-core>
     <version.awaitility>4.2.0</version.awaitility>
     <version.connect-json>3.6.1</version.connect-json>
     <version.debezium>2.5.1.Final</version.debezium>
     <version.failsafe.plugin>3.2.3</version.failsafe.plugin>
 
-    <version.jts.io>1.19.0</version.jts.io>
+    <version.jts.io>1.20.0</version.jts.io>
     <version.junit>4.13.2</version.junit>
 
     <!--
@@ -380,12 +380,12 @@
       Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
       work on all platforms. We'll set some of these as system properties during integration testing.
     -->
-    <version.kafka>3.6.1</version.kafka>
-    <version.kafka-connect-avro-converter>7.5.1</version.kafka-connect-avro-converter>
-    <version.logback-classic>1.4.14</version.logback-classic>
+    <version.kafka>3.9.0</version.kafka>
+    <version.kafka-connect-avro-converter>7.8.0</version.kafka-connect-avro-converter>
+    <version.logback-classic>1.5.15</version.logback-classic>
     <version.mockito>3.0.0</version.mockito>
-    <version.org.slf4j>2.0.4</version.org.slf4j>
-    <version.singlestore.jdbc.driver>1.2.5</version.singlestore.jdbc.driver>
+    <version.org.slf4j>2.0.16</version.org.slf4j>
+    <version.singlestore.jdbc.driver>1.2.6</version.singlestore.jdbc.driver>
     <version.testcontainers>1.19.3</version.testcontainers>
   </properties>
 
