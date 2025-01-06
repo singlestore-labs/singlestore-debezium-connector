@@ -7,7 +7,6 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.SourceInfoStructMaker;
-import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalTableFilters;
@@ -59,7 +58,27 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
           "Additional JDBC parameters to use with connection string to SingleStore server. Format: 'param1=value1; param2 = value2; ...'. The supported parameters are\n"
               +
               "available in the `SingleStore Connection String Parameters\n" +
-              "<https://docs.singlestore.com/cloud/developer-resources/connect-with-application-development-tools/connect-with-java-jdbc/the-singlestore-jdbc-driver/#connection-string-parameters>`_.");
+              "<https://docs.singlestore.com/cloud/developer-resources/connect-with-application-development-tools/connect-with-java-jdbc/the-singlestore-jdbc-driver/#connection-string-parameters>`_.")
+      .withValidation((config, field, problems) -> {
+        String value = config.getString(field);
+        if (value == null || value.isEmpty()) {
+          return 0;
+        }
+
+        String[] parameters = value.split(";");
+        int invalidParameters = 0;
+        for (String parameter : parameters) {
+          String[] parts = parameter.split("=");
+          if (parts.length != 2) {
+            problems.accept(field, value,
+                String.format("Invalid parameter: '%s'", parameter));
+            invalidParameters++;
+          }
+        }
+
+        return invalidParameters;
+      });
+
   public static final Field SSL_MODE = Field.create("database.ssl.mode")
       .withDisplayName("SSL mode")
       .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLE)
@@ -138,7 +157,25 @@ public class SingleStoreConnectorConfig extends RelationalDatabaseConnectorConfi
       .withDescription(
           "When specified and 'snapshot.mode' is 'no_data' - connector will start streaming changes from these offsets. "
               + "Should be provided as a comma separated list of hex offsets per each partitions. "
-              + "Example: 0000000000000077000000000000000E000000000000E06E,0x0000000000000077000000000000000E000000000000E087,0000000000000077000000000000000E000000000000E088");
+              + "Example: 0000000000000077000000000000000E000000000000E06E,0x0000000000000077000000000000000E000000000000E087,0000000000000077000000000000000E000000000000E088")
+      .withValidation((config, field, problems) -> {
+        String value = config.getString(field);
+        if (value == null || value.isEmpty()) {
+          return 0;
+        }
+
+        String[] offsets = value.split(",");
+        int invalidOffsets = 0;
+        for (String offset : offsets) {
+          if (!(offset.matches("[0-9a-fA-F]+") || offset.equalsIgnoreCase("null"))) {
+            problems.accept(field, value, String.format("Invalid offset: '%s'", offset));
+            invalidOffsets++;
+          }
+        }
+
+        return invalidOffsets;
+      });
+
   public static final Field TOPIC_NAMING_STRATEGY = CommonConnectorConfig.TOPIC_NAMING_STRATEGY
       .withDefault(DefaultTopicNamingStrategy.class.getName());
 
