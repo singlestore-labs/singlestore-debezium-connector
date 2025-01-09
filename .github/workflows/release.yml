@@ -29,7 +29,11 @@ jobs:
         run: mvn -B clean deploy --file pom.xml -DskipTests -Dsonatype.username=${{ secrets.SONATYPE_USERNAME }} -Dsonatype.password=${{ secrets.SONATYPE_PASSWORD }}
       - name: Build archive
         run: mvn -B package --file pom.xml -P assembly
-      - name: Release Plugin Archive
+      - name: Release Plugin tar.gz Archive
         uses: softprops/action-gh-release@v1
         with:
           files: target/singlestore-debezium-connector-*-plugin.tar.gz
+      - name: Release Plugin zip Archive
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/components/packages/singlestore-singlestore-debezium-connector-*.zip
