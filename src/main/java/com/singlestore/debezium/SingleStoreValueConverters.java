@@ -1,6 +1,10 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.util.Utils;
+import com.singlestore.debezium.util.VectorType;
+import com.singlestore.debezium.util.VectorType.ElementType;
 import com.singlestore.jdbc.SingleStoreBlob;
+import com.singlestore.jdbc.type.Vector;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Json;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -14,12 +18,19 @@ import io.debezium.time.Timestamp;
 import io.debezium.time.Year;
 import io.debezium.util.IoUtil;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoField;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -29,6 +40,7 @@ import org.locationtech.jts.io.ParseException;
 public class SingleStoreValueConverters extends JdbcValueConverters {
 
   private final GeographyMode geographyMode;
+  private final VectorMode vectorMode;
 
   /**
    * Create a new instance of JdbcValueConverters.
@@ -45,15 +57,17 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
   public SingleStoreValueConverters(DecimalMode decimalMode,
       TemporalPrecisionMode temporalPrecisionMode,
       CommonConnectorConfig.BinaryHandlingMode binaryMode,
-      GeographyMode geographyMode
+      GeographyMode geographyMode,
+      VectorMode vectorMode
   ) {
     super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, binaryMode);
     this.geographyMode = geographyMode;
+    this.vectorMode = vectorMode;
   }
 
   @Override
   public SchemaBuilder schemaBuilder(Column column) {
-    String typeName = column.typeName().toUpperCase();
+    String typeName = Utils.getOriginalTypeName(column.typeName());
     switch (typeName) {
       case "JSON":
         return Json.builder();
@@ -108,6 +122,18 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
       case "BLOB":
       case "BSON":
         return SchemaBuilder.bytes();
+      case "VECTOR":
+        switch (vectorMode) {
+          case STRING:
+            return SchemaBuilder.string();
+          case BINARY:
+            return binaryMode.getSchema();
+          case ARRAY:
+            return new VectorType(column.typeName()).getSchema();
+          default:
+            throw new IllegalArgumentException(
+                String.format("Unknown vector.handling.mode: %s", vectorMode));
+        }
     }
     SchemaBuilder builder = super.schemaBuilder(column);
     logger.debug("JdbcValueConverters returned '{}' for column '{}'",
@@ -117,7 +143,7 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
 
   @Override
   public ValueConverter converter(Column column, Field fieldDefn) {
-    String typeName = column.typeName().toUpperCase();
+    String typeName = Utils.getOriginalTypeName(column.typeName());
     switch (typeName) {
       case "JSON":
         return (data) -> convertString(column, fieldDefn, data);
@@ -153,7 +179,10 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
       case "BLOB":
       case "BSON":
         return data -> convertBlob(column, fieldDefn, data);
+      case "VECTOR":
+        return data -> convertVector(column, fieldDefn, data);
     }
+
     return super.converter(column, fieldDefn);
   }
 
@@ -178,7 +207,7 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
       if (data instanceof SingleStoreBlob) {
         try {
           byte[] bytes = IoUtil.readBytes(((SingleStoreBlob) data).getBinaryStream());
-          r.deliver(toByteBuffer(column, bytes));
+          r.deliver(super.convertBinary(column, fieldDefn, bytes, super.binaryMode));
         } catch (IOException | SQLException e) {
           throw new RuntimeException(e);
         }
@@ -328,8 +357,229 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
         });
   }
 
+  /**
+   * Reverses each element of an array from little endian to big endian
+   **/
+  private void reverseToBigEndian(byte[] arr, int bytesPerElement) {
+    assert arr.length % bytesPerElement == 0;
+
+    for (int i = 0; i < arr.length; i += bytesPerElement) {
+      int start = i;
+      int end = i + bytesPerElement - 1;
+      while (start < end) {
+        // Swap elements at start and end indices
+        byte temp = arr[start];
+        arr[start] = arr[end];
+        arr[end] = temp;
+
+        // Move the pointers
+        start++;
+        end--;
+      }
+    }
+  }
+
+  /**
+   * TODO: fix
+   * Converts SingleStoreBlob to array.
+   *
+   * @param column    the column definition describing the {@code data} value; never null
+   * @param fieldDefn the field definition; never null
+   * @param data      the data object to be converted into a {@link Date Kafka Connect date} type;
+   *                  never null
+   * @return the converted value, or null if the conversion could not be made and the column allows
+   * nulls
+   * @throws IllegalArgumentException if the value could not be converted but the column does not
+   *                                  allow nulls
+   */
+  protected Object convertVector(Column column, Field fieldDefn, Object data) {
+    return convertValue(column, fieldDefn, data, 0, (r) -> {
+      if (data instanceof String) {
+        // Data is String only in the case when we deal with default values.
+        // Here we should have a JSON representation of the default column value.
+
+        String dataString = (String) data;
+        switch (this.vectorMode) {
+          case STRING:
+            r.deliver(dataString);
+            break;
+          case BINARY:
+            // delete [] brackets (the first and the last symbol)
+            // "[1, 2, 3]" -> "1, 2, 3"
+            dataString = dataString.substring(1, dataString.length() - 1);
+
+            // split string into separate elements and trim each of them
+            // "1, 2, 3" -> ["1", "2", "3"]
+            List<String> values = Arrays.stream(dataString.split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
+
+            VectorType vectorType = new VectorType(column.typeName());
+            ByteBuffer resBuffer = ByteBuffer.allocate(vectorType.getLengthInBytes());
+            ElementType type = vectorType.getElementType();
+            switch (type) {
+              case INT8:
+                values.stream()
+                    .map(Byte::parseByte)
+                    .forEach(resBuffer::put);
+                break;
+              case INT16:
+                values.stream()
+                    .map(Short::parseShort)
+                    .forEach(resBuffer::putShort);
+                break;
+              case INT32:
+                values.stream()
+                    .map(Integer::parseInt)
+                    .forEach(resBuffer::putInt);
+                break;
+              case INT64:
+                values.stream()
+                    .map(Long::parseLong)
+                    .forEach(resBuffer::putLong);
+                break;
+              case FLOAT32:
+                values.stream()
+                    .map(Float::parseFloat)
+                    .forEach(resBuffer::putFloat);
+                break;
+              case FLOAT64:
+                values.stream()
+                    .map(Double::parseDouble)
+                    .forEach(resBuffer::putDouble);
+                break;
+              default:
+                throw new IllegalArgumentException(
+                    String.format("Unknown vector element type: %s", type));
+            }
+
+            byte[] res = resBuffer.array();
+            reverseToBigEndian(res, vectorType.getElementType().getLengthInBytes());
+
+            r.deliver(super.convertBinary(column, fieldDefn, res, super.binaryMode));
+            break;
+          case ARRAY:
+            // delete [] brackets (the first and the last symbol)
+            // "[1, 2, 3]" -> "1, 2, 3"
+            dataString = dataString.substring(1, dataString.length() - 1);
+
+            // split string into separate elements and trim each of them
+            // "1, 2, 3" -> ["1", "2", "3"]
+            List<String> elements = Arrays.stream(dataString.split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
+
+            ElementType elementType = new VectorType(column.typeExpression()).getElementType();
+            switch (elementType) {
+              case INT8:
+                r.deliver(elements.stream()
+                    .map(Byte::parseByte)
+                    .collect(Collectors.toList()));
+                return;
+              case INT16:
+                r.deliver(elements.stream()
+                    .map(Short::parseShort)
+                    .collect(Collectors.toList()));
+                return;
+              case INT32:
+                r.deliver(elements.stream()
+                    .map(Integer::parseInt)
+                    .collect(Collectors.toList()));
+                return;
+              case INT64:
+                r.deliver(elements.stream()
+                    .map(Long::parseLong)
+                    .collect(Collectors.toList()));
+                return;
+              case FLOAT32:
+                r.deliver(elements.stream()
+                    .map(Float::parseFloat)
+                    .collect(Collectors.toList()));
+                return;
+              case FLOAT64:
+                r.deliver(elements.stream()
+                    .map(Double::parseDouble)
+                    .collect(Collectors.toList()));
+                return;
+              default:
+                throw new IllegalArgumentException(
+                    String.format("Unknown vector element type: %s", elementType));
+            }
+          default:
+            throw new IllegalArgumentException(
+                String.format("Unknown vector mode: %s", vectorMode));
+        }
+      } else if (data instanceof byte[]) {
+        // Data is byte[] only when vector.mode is BINARY.
+        // This is because we retrieve it using rs.getBytes instead of rs.getObject.
+        // Such handling allows to avoid redundant conversions to Vector.
+
+        r.deliver(super.convertBinary(column, fieldDefn, data, super.binaryMode));
+      } else if (data instanceof Vector) {
+        Vector v = (Vector) data;
+        switch (vectorMode) {
+          case ARRAY:
+            switch (new VectorType(column.typeExpression()).getElementType()) {
+              case INT8:
+                byte[] byteArray = v.toByteArray();
+                r.deliver(IntStream.range(0, byteArray.length)
+                    .mapToObj(i -> byteArray[i]) // Convert to Byte
+                    .collect(Collectors.toList()));
+                return;
+              case INT16:
+                short[] shortArray = v.toShortArray();
+                r.deliver(IntStream.range(0, shortArray.length)
+                    .mapToObj(i -> shortArray[i]) // Convert to Short
+                    .collect(Collectors.toList()));
+                return;
+              case INT32:
+                int[] intArray = v.toIntArray();
+                r.deliver(IntStream.of(intArray)
+                    .boxed()
+                    .collect(Collectors.toList()));
+                return;
+              case INT64:
+                long[] longArray = v.toLongArray();
+                r.deliver(LongStream.of(longArray)
+                    .boxed()
+                    .collect(Collectors.toList()));
+                return;
+              case FLOAT32:
+                float[] floatArray = v.toFloatArray();
+                r.deliver(IntStream.range(0, floatArray.length)
+                    .mapToObj(i -> floatArray[i]) // Convert to Float
+                    .collect(Collectors.toList()));
+                return;
+              case FLOAT64:
+                double[] doubleArray = v.toDoubleArray();
+                r.deliver(DoubleStream.of(doubleArray).boxed()
+                    .collect(Collectors.toList()));
+                return;
+            }
+          case BINARY:
+            // If vector.mode is BINARY then data should be byte[].
+            // This is because we retrieve it using rs.getBytes instead of rs.getObject.
+            // This code path should not be reachable.
+            throw new IllegalStateException("This code path should not be reachable.");
+          case STRING:
+            r.deliver(v.stringValue());
+            return;
+          default:
+            throw new IllegalArgumentException(
+                String.format("Unknown vector mode: %s", vectorMode));
+        }
+      }
+    });
+  }
+
   public enum GeographyMode {
     GEOMETRY,
     STRING
+  }
+
+  public enum VectorMode {
+    STRING,
+    BINARY,
+    ARRAY
   }
 }

@@ -66,6 +66,12 @@ CREATE ROWSTORE TABLE IF NOT EXISTS db.allTypesTable (
     `geographyColumn` GEOGRAPHY DEFAULT 'POLYGON((1 1,2 1,2 2, 1 2, 1 1))',
     `geographypointColumn` GEOGRAPHYPOINT DEFAULT 'POINT(1.50000003 1.50000000)',
     `bsonColumn` BSON DEFAULT 0x0500000000,
+    `vectorI8Column` VECTOR(3, I8) DEFAULT '[2, 10, 100]',
+    `vectorI16Column` VECTOR(3, I16) DEFAULT '[2, 10, 100]',
+    `vectorI32Column` VECTOR(3, I32) DEFAULT '[2, 10, 100]',
+    `vectorI64Column` VECTOR(3, I64) DEFAULT '[2, 10, 100]',
+    `vectorF32Column` VECTOR(3, F32) DEFAULT '[2.1, 10.1, 100.1]',
+    `vectorF64Column` VECTOR(3, F64) DEFAULT '[2.1, 10.1, 100.1]',
      unique key(intColumn),
      shard key(intColumn)
  );

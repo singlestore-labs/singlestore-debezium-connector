@@ -5,9 +5,12 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import com.singlestore.debezium.SingleStoreValueConverters.GeographyMode;
+import com.singlestore.debezium.SingleStoreValueConverters.VectorMode;
 import com.singlestore.jdbc.SingleStoreBlob;
+import com.singlestore.jdbc.type.Vector;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -24,6 +27,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Date;
+import java.util.List;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.Assert;
@@ -34,7 +38,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
 
   private static final SingleStoreValueConverters CONVERTERS = new SingleStoreValueConverters(
       JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT,
-      CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY);
+      CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY, VectorMode.STRING);
 
   private static void testColumn(SingleStoreValueConverters converters, Table table, String name,
       Object valueToConvert, Object expectedConvertedValue) {
@@ -47,6 +51,79 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
     Column column = table.columnWithName(name);
     Field field = new Field(column.name(), -1, converters.schemaBuilder(column).build());
     return converters.converter(column, field).convert(valueToConvert);
+  }
+
+  @Test
+  public void testVectorModeValues() {
+    testVectorModeValues(VectorMode.BINARY);
+    testVectorModeValues(VectorMode.STRING);
+    testVectorModeValues(VectorMode.ARRAY);
+  }
+
+  private void testVectorModeValues(VectorMode mode) {
+    SingleStoreValueConverters converters = new SingleStoreValueConverters(DecimalMode.DOUBLE,
+        TemporalPrecisionMode.CONNECT, CommonConnectorConfig.BinaryHandlingMode.BYTES,
+        GeographyMode.GEOMETRY, mode);
+    try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
+      Tables tables = new Tables();
+      conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
+      Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
+      assertThat(table).isNotNull();
+      if (mode == VectorMode.STRING) {
+        testColumn(converters, table, "vectorI8Column", Vector.ofInt8Values(new byte[]{1, 2, 3}),
+            "[1,2,3]");
+        testColumn(converters, table, "vectorI16Column", Vector.ofInt16Values(new short[]{1, 2, 3}),
+            "[1,2,3]");
+        testColumn(converters, table, "vectorI32Column", Vector.ofInt32Values(new int[]{1, 2, 3}),
+            "[1,2,3]");
+        testColumn(converters, table, "vectorI64Column", Vector.ofInt64Values(new long[]{1, 2, 3}),
+            "[1,2,3]");
+        testColumn(converters, table, "vectorF32Column",
+            Vector.ofFloat32Values(new float[]{1, 2, 3}),
+            "[1.0,2.0,3.0]");
+        testColumn(converters, table, "vectorF64Column",
+            Vector.ofFloat64Values(new double[]{1, 2, 3}),
+            "[1.0,2.0,3.0]");
+      } else if (mode == VectorMode.BINARY) {
+        testColumn(converters, table, "vectorI8Column", new byte[]{1, 2, 3},
+            ByteBuffer.wrap(new byte[]{1, 2, 3}));
+        testColumn(converters, table, "vectorI16Column", new byte[]{1, 0, 2, 0, 3, 0},
+            ByteBuffer.wrap(new byte[]{1, 0, 2, 0, 3, 0}));
+        testColumn(converters, table, "vectorI32Column",
+            new byte[]{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0},
+            ByteBuffer.wrap(new byte[]{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}));
+        testColumn(converters, table, "vectorI64Column",
+            new byte[]{1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0},
+            ByteBuffer.wrap(
+                new byte[]{1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0,
+                    0}));
+        testColumn(converters, table, "vectorF32Column",
+            new byte[]{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0},
+            ByteBuffer.wrap(new byte[]{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0}));
+        testColumn(converters, table, "vectorF64Column",
+            new byte[]{1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0},
+            ByteBuffer.wrap(
+                new byte[]{1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0,
+                    0}));
+      } else if (mode == VectorMode.ARRAY) {
+        testColumn(converters, table, "vectorI8Column", Vector.ofInt8Values(new byte[]{1, 2, 3}),
+            List.of((byte) 1, (byte) 2, (byte) 3));
+        testColumn(converters, table, "vectorI16Column", Vector.ofInt16Values(new short[]{1, 2, 3}),
+            List.of((short) 1, (short) 2, (short) 3));
+        testColumn(converters, table, "vectorI32Column", Vector.ofInt32Values(new int[]{1, 2, 3}),
+            List.of(1, 2, 3));
+        testColumn(converters, table, "vectorI64Column", Vector.ofInt64Values(new long[]{1, 2, 3}),
+            List.of((long) 1, (long) 2, (long) 3));
+        testColumn(converters, table, "vectorF32Column",
+            Vector.ofFloat32Values(new float[]{1, 2, 3}),
+            List.of((float) 1, (float) 2, (float) 3));
+        testColumn(converters, table, "vectorF64Column",
+            Vector.ofFloat64Values(new double[]{1, 2, 3}),
+            List.of((double) 1, (double) 2, (double) 3));
+      }
+    } catch (SQLException e) {
+      Assert.fail(e.getMessage());
+    }
   }
 
   @Test
@@ -87,7 +164,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
   private void testDecimalModeValues(JdbcValueConverters.DecimalMode mode) {
     SingleStoreValueConverters converters = new SingleStoreValueConverters(mode,
         TemporalPrecisionMode.CONNECT, CommonConnectorConfig.BinaryHandlingMode.BYTES,
-        GeographyMode.GEOMETRY);
+        GeographyMode.GEOMETRY, VectorMode.STRING);
     try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
       Tables tables = new Tables();
       conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
@@ -144,7 +221,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
 
       SingleStoreValueConverters converters = new SingleStoreValueConverters(
           JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT,
-          CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.STRING);
+          CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.STRING, VectorMode.STRING);
       String convertedPolygon = (String) convertColumnValue(converters, table, "geographyColumn",
           geographyValue);
       assertEquals("POLYGON ((1 1, 2 1, 2 2, 1 2, 1 1))", convertedPolygon);
@@ -166,7 +243,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
   private void testTimeAndDateValues(TemporalPrecisionMode mode) {
     SingleStoreValueConverters converters = new SingleStoreValueConverters(
         JdbcValueConverters.DecimalMode.DOUBLE, mode,
-        CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY);
+        CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY, VectorMode.STRING);
     try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
       Tables tables = new Tables();
       conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
@@ -280,7 +357,7 @@ public class SingleStoreValueConvertersIT extends IntegrationTestBase {
   private void testBinaryMode(CommonConnectorConfig.BinaryHandlingMode mode) {
     SingleStoreValueConverters converters = new SingleStoreValueConverters(
         JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT, mode,
-        GeographyMode.GEOMETRY);
+        GeographyMode.GEOMETRY, VectorMode.STRING);
     try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
       Tables tables = new Tables();
       conn.readSchema(tables, TEST_DATABASE, null, null, null, true);

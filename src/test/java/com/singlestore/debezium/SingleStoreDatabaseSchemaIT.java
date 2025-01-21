@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import com.singlestore.debezium.SingleStoreValueConverters.GeographyMode;
+import com.singlestore.debezium.SingleStoreValueConverters.VectorMode;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.Bits;
@@ -35,14 +36,14 @@ public class SingleStoreDatabaseSchemaIT extends IntegrationTestBase {
 
   private static final SingleStoreValueConverters CONVERTERS = new SingleStoreValueConverters(
       JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT,
-      CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY);
+      CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY, VectorMode.STRING);
   private SingleStoreDatabaseSchema schema;
 
   public static SingleStoreDatabaseSchema getSchema(SingleStoreConnectorConfig config) {
     return new SingleStoreDatabaseSchema(
         config,
         CONVERTERS,
-        new SingleStoreDefaultValueConverter(CONVERTERS),
+        new SingleStoreDefaultValueConverter(CONVERTERS, VectorMode.STRING),
         config.getTopicNamingStrategy(SingleStoreConnectorConfig.TOPIC_NAMING_STRATEGY),
         false);
   }

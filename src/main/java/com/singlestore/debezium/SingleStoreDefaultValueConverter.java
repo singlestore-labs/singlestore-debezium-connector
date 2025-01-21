@@ -1,5 +1,7 @@
 package com.singlestore.debezium;
 
+import com.singlestore.debezium.SingleStoreValueConverters.VectorMode;
+import com.singlestore.debezium.util.Utils;
 import io.debezium.DebeziumException;
 import io.debezium.relational.Column;
 import io.debezium.relational.DefaultValueConverter;
@@ -60,9 +62,12 @@ public class SingleStoreDefaultValueConverter implements DefaultValueConverter {
       .toFormatter();
 
   private final SingleStoreValueConverters converters;
+  private final VectorMode vectorMode;
 
-  public SingleStoreDefaultValueConverter(SingleStoreValueConverters converters) {
+  public SingleStoreDefaultValueConverter(SingleStoreValueConverters converters,
+      VectorMode vectorMode) {
     this.converters = converters;
+    this.vectorMode = vectorMode;
   }
 
   @Override
@@ -100,7 +105,8 @@ public class SingleStoreDefaultValueConverter implements DefaultValueConverter {
     if (value == null) {
       return value;
     }
-    String typeName = column.typeName().toUpperCase();
+    String typeName = Utils.getOriginalTypeName(column.typeName());
+
     switch (typeName) {
       case "DATE":
         return convertToLocalDate(column, value);
@@ -121,7 +127,7 @@ public class SingleStoreDefaultValueConverter implements DefaultValueConverter {
     }
     return value;
   }
-
+  
   /**
    * Converts a string object for an object type of {@link LocalDate}, set epoch date 1970-01-01 in
    * case if default value is failed to parse and column is not optional.
