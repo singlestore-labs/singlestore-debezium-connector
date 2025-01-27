@@ -452,10 +452,11 @@ the [`binary.handling.mode`](#binary-handling-mode) connector configuration prop
 | LONGBLOB                | BYTES OR STRING | Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the [binary.handling.mode](#binary-handling-mode) connector configuration property. |
 | BINARY                  | BYTES OR STRING | Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the [binary.handling.mode](#binary-handling-mode) connector configuration property. |
 | VARBINARY               | BYTES OR STRING | Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the [binary.handling.mode](#binary-handling-mode) connector configuration property. |
+| BSON                    | BYTES OR STRING | Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the [binary.handling.mode](#binary-handling-mode) connector configuration property. |
 
 ### Geospatial types
 
-Geospatial types depend on the value of the [`geography.handling.mode`](#geography-handling)
+Geospatial types depend on the value of the [`geography.handling.mode`](#geography-handling-mode)
 connector configuration property.
 
 `geography.handling.mode=geometry(default)`
@@ -471,6 +472,29 @@ connector configuration property.
 |-------------------------|--------------|
 | GEOGRAPHYPOINT          | STRING       |
 | GEOGRAPHY               | STRING       |
+
+### Vector type
+
+VECTOR type depend on the value of the [`vector.handling.mode`](#vector-handling-mode) connector
+configuration property.
+
+`vector.handling.mode=string(default)`
+
+| SingleStoreDB data type | Literal type |
+|-------------------------|--------------|
+| VECTOR                  | STRING       |
+
+`vector.handling.mode=binary`
+
+| SingleStoreDB data type | Literal type    | Semantic type                                                                                                                                                                                                           |
+|-------------------------|-----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| VECTOR                  | BYTES OR STRING | Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the [binary.handling.mode](#binary-handling-mode) connector configuration property. |
+
+`vector.handling.mode=array`
+
+| SingleStoreDB data type | Literal type |
+|-------------------------|--------------|
+| VECTOR                  | ARRAY        |
 
 ### Other types
 
@@ -523,6 +547,7 @@ The following configuration properties are required unless a default value is av
 | <span id="binary-handling-mode">binary.handling.mode</span>       | bytes    | Specifies how binary (blob, binary, etc.) columns are represented in change events. Values include: 'bytes' - represents binary data as byte array (default); 'base64' - represents binary data as base64-encoded string; 'base64-url-safe' - represents binary data as base64-url-safe-encoded string; 'hex' - represents binary data as hex-encoded (base16) string.                                                                                                                                                                           |
 | <span id="time-precision-mode">time.precision.mode</span>         | advanced | Specifies the precision type for time, date, and timestamps.<br/>Values include:<br/>'adaptive' - bases the precision of time, date, and timestamp values on the database column's precision;<br/>'adaptive_time_microseconds' - similar to 'adaptive' mode, but TIME fields always use microseconds precision;<br/>'connect' - always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. |
 | <span id="geography-handling-mode">geography.handling.mode</span> | precise  | Specifies how GEOGRAPHY and GEOGRAPHYPOINT columns are represented in change events. Values include: 'geometry' - uses io.debezium.data.geometry.Geometry to represent values, which contains a structure with two fields: srid (INT32): spatial reference system ID that defines the type of geometry object stored in the structure and wkb (BYTES): binary representation of the geometry object encoded in the Well-Known-Binary (wkb) format; 'string' - uses string to represent values.                                                   |
+| <span id="vector-handling-mode">vector.handling.mode</span>       | string   | Specify how VECTOR columns should be represented in change events, including:<br/>'string' (the default) - uses JSON string to represent values.<br/>'binary' - uses binary.handling.mode to define how to represent values (each vector element is represented as binary data in big endian).<br/>'array' - uses ARRAY to represent values.                                                                                                                                                                                                     |
 | tombstones.on.delete                                              | true     | Whether delete operations should be represented by a delete event and a subsequent tombstone event ('true') or only by a delete event ('false'). Generating the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record is deleted.                                                                                                                                                                                                                               |
 | column.include.list                                               |          | Regular expressions matching columns to include in change events.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | column.exclude.list                                               |          | Regular expressions matching columns to exclude from change events.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |

@@ -286,6 +286,7 @@ public class SingleStoreConnection extends JdbcConnection {
           .with("enableExtendedDataTypes", "true")
           .with("vectorTypeOutputFormat", "BINARY")
           .with("vectorExtendedMetadata", "true")
+          .with("permitNoResults", "true")
           .with("connectionAttributes", String.format(
               "_connector_name:%s,_connector_version:%s,_product_version:%s",
               "SingleStore Debezium Connector", Module.version(), Module.debeziumVersion()))
