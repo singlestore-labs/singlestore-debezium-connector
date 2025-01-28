@@ -218,7 +218,7 @@ public class SingleStoreSnapshotChangeEventSource extends
             ObserveResultSetUtils.partitionId(rs),
             ObserveResultSetUtils.offset(rs),
             ObserveResultSetUtils.rowToArray(rs, columnPostitions,
-                connectorConfig.populateInternalId()));
+                connectorConfig.populateInternalId(), connectorConfig.getVectorMode()));
 
         int partitionId = ObserveResultSetUtils.partitionId(rs);
         if (ObserveResultSetUtils.isCommitSnapshot(rs)) {
@@ -228,7 +228,7 @@ public class SingleStoreSnapshotChangeEventSource extends
             && !snapshotCommitted.get(partitionId)) {
           rows++;
           final Object[] row = ObserveResultSetUtils.rowToArray(rs, columnPostitions,
-              connectorConfig.populateInternalId());
+              connectorConfig.populateInternalId(), connectorConfig.getVectorMode());
           final String internalId = ObserveResultSetUtils.internalId(rs);
           if (logTimer.expired()) {
             long stop = clock.currentTimeInMillis();

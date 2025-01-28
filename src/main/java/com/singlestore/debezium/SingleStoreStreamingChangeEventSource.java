@@ -92,7 +92,7 @@ public class SingleStoreStreamingChangeEventSource implements
                 ObserveResultSetUtils.partitionId(rs),
                 ObserveResultSetUtils.offset(rs),
                 ObserveResultSetUtils.rowToArray(rs, columnPositions,
-                    connectorConfig.populateInternalId()));
+                    connectorConfig.populateInternalId(), connectorConfig.getVectorMode()));
             Operation operation;
             switch (rs.getString("Type")) {
               case "Insert":
@@ -117,7 +117,7 @@ public class SingleStoreStreamingChangeEventSource implements
             offsetContext.update(partitionId, txId, offset);
 
             Object[] after = ObserveResultSetUtils.rowToArray(rs, columnPositions,
-                connectorConfig.populateInternalId());
+                connectorConfig.populateInternalId(), connectorConfig.getVectorMode());
 
             dispatcher.dispatchDataChangeEvent(partition, table,
                 new SingleStoreChangeRecordEmitter(

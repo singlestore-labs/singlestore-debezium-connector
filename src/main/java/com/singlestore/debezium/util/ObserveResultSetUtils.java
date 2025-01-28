@@ -2,16 +2,13 @@ package com.singlestore.debezium.util;
 
 import static java.sql.Types.TIME;
 
+import com.singlestore.debezium.SingleStoreValueConverters.VectorMode;
 import io.debezium.relational.Column;
-
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public final class ObserveResultSetUtils {
 
@@ -32,7 +29,7 @@ public final class ObserveResultSetUtils {
   }
 
   public static Object[] rowToArray(ResultSet rs, List<Integer> positions,
-      Boolean populateInternalId) throws SQLException {
+      Boolean populateInternalId, VectorMode vectorMode) throws SQLException {
     final Object[] row;
     if (populateInternalId) {
       row = new Object[positions.size() + 1];
@@ -42,10 +39,14 @@ public final class ObserveResultSetUtils {
     ResultSetMetaData md = rs.getMetaData();
 
     for (int i = 0; i < positions.size(); i++) {
-      if (md.getColumnType(positions.get(i)) == TIME) {
-        row[i] = rs.getTimestamp(positions.get(i));
+      int position = positions.get(i);
+      if (md.getColumnType(position) == TIME) {
+        row[i] = rs.getTimestamp(position);
+      } else if (Utils.getOriginalTypeName(md.getColumnTypeName(position)).equals("VECTOR")
+          && vectorMode == VectorMode.BINARY) {
+        row[i] = rs.getBytes(position);
       } else {
-        row[i] = rs.getObject(positions.get(i));
+        row[i] = rs.getObject(position);
       }
     }
     if (populateInternalId) {
@@ -89,8 +90,5 @@ public final class ObserveResultSetUtils {
 
   public static String internalId(ResultSet rs) throws SQLException {
     return Utils.bytesToHex(rs.getBytes(METADATA_COLUMNS[6]));
-  }
-
-  private ObserveResultSetUtils() {
   }
 }

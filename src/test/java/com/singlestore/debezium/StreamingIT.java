@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
@@ -79,14 +80,24 @@ public class StreamingIT extends IntegrationTestBase {
             "'v1', " + // set_f
             "'POLYGON((1 1,2 1,2 2, 1 2, 1 1))', " +
             // geographyColumn TODO: PLAT-6907 test GEOGRAPHY datatype
-            "'POINT(1.50000003 1.50000000)'," + // geographypointColumn
-            "'{}')" // bsonColumn
+            "'POINT(1.50000003 1.50000000)', " + // geographypointColumn
+            "'{}', " + // bsonColumn
+            "'[1, 10, 100]', " +  // vectorI8Column
+            "'[1, 10, 100]', " +  // vectorI16Column
+            "'[1, 10, 100]', " +  // vectorI32Column
+            "'[1, 10, 100]', " +  // vectorI64Column
+            "'[1.1, 10.1, 100.1]', " +  // vectorF32Column
+            "'[1.1, 10.1, 100.1]'" +  // vectorF64Column
+            ")"
         );
 
         List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
         assertEquals(1, records.size());
 
         SourceRecord record = records.get(0);
+        Schema valueSchema = record.valueSchema();
+        Schema afterSchema = valueSchema.schema().field("after").schema();
+
         Struct value = (Struct) record.value();
         Struct after = (Struct) value.get("after");
         Struct source = (Struct) value.get("source");
@@ -148,6 +159,190 @@ public class StreamingIT extends IntegrationTestBase {
         assertArrayEquals((byte[]) ((Struct) after.get("geographypointColumn")).get("wkb"),
             singleStoregeographyPointValue.getWkb());
         assertEquals(ByteBuffer.wrap(bsonColumnData), after.get("bsonColumn"));
+        assertEquals("[1,10,100]", after.get("vectorI8Column"));
+        assertEquals("[1,10,100]", after.get("vectorI16Column"));
+        assertEquals("[1,10,100]", after.get("vectorI32Column"));
+        assertEquals("[1,10,100]", after.get("vectorI64Column"));
+        assertEquals("[1.1,10.1,100.1]", after.get("vectorF32Column"));
+        assertEquals("[1.1,10.1,100.1]", after.get("vectorF64Column"));
+
+        assertEquals("[2, 10, 100]", afterSchema.field("vectorI8Column").schema().defaultValue());
+        assertEquals("[2, 10, 100]", afterSchema.field("vectorI16Column").schema().defaultValue());
+        assertEquals("[2, 10, 100]", afterSchema.field("vectorI32Column").schema().defaultValue());
+        assertEquals("[2, 10, 100]", afterSchema.field("vectorI64Column").schema().defaultValue());
+        assertEquals("[2.1, 10.1, 100.1]",
+            afterSchema.field("vectorF32Column").schema().defaultValue());
+        assertEquals("[2.1, 10.1, 100.1]",
+            afterSchema.field("vectorF64Column").schema().defaultValue());
+      } finally {
+        stopConnector();
+      }
+    }
+  }
+
+  @Test
+  public void vectorBinary() throws SQLException, InterruptedException {
+    try (SingleStoreConnection conn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
+      try {
+        conn.execute("DROP TABLE IF EXISTS vectorBinary");
+        conn.execute("CREATE TABLE vectorBinary("
+            + "I8Column VECTOR(3, I8) DEFAULT '[1, -2, 3]', "
+            + "I16Column VECTOR(3, I16) DEFAULT '[1, -2, 3]', "
+            + "I32Column VECTOR(3, I32) DEFAULT '[1, -2, 3]', "
+            + "I64Column VECTOR(3, I64) DEFAULT '[1, -2, 3]', "
+            + "F32Column VECTOR(3, F32) DEFAULT '[1.1, -2.1, 3]', "
+            + "F64Column VECTOR(3, F64) DEFAULT '[1.1, -2.1, 3]'"
+            + ")");
+
+        Configuration config = defaultJdbcConfigWithTable("vectorBinary")
+            .edit()
+            .withDefault("vector.handling.mode", "binary")
+            .build();
+
+        start(SingleStoreConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+
+        conn.execute("INSERT INTO `vectorBinary` VALUES (" +
+            "'[1, 10, 100]', " +
+            "'[1, 10, 100]', " +
+            "'[1, 10, 100]', " +
+            "'[1, 10, 100]', " +
+            "'[1.1, 10.1, 100.1]', " +
+            "'[1.1, 10.1, 100.1]'" +
+            ")"
+        );
+
+        List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+        assertEquals(1, records.size());
+
+        SourceRecord record = records.get(0);
+        Schema valueSchema = record.valueSchema();
+        Schema afterSchema = valueSchema.schema().field("after").schema();
+
+        Struct value = (Struct) record.value();
+        Struct after = (Struct) value.get("after");
+        Struct source = (Struct) value.get("source");
+
+        assertEquals(true, record.sourceOffset().get("snapshot_completed"));
+        assertEquals("false", source.get("snapshot"));
+
+        byte[] I8 = {1, 10, 100};
+        byte[] I16 = {1, 0, 10, 0, 100, 0};
+        byte[] I32 = {1, 0, 0, 0, 10, 0, 0, 0, 100, 0, 0, 0};
+        byte[] I64 = {1, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0};
+        byte[] F32 = {-51, -52, -116, 63, -102, -103, 33, 65, 51, 51, -56, 66};
+        byte[] F64 = {-102, -103, -103, -103, -103, -103, -15, 63, 51, 51, 51, 51, 51, 51, 36, 64,
+            102, 102, 102, 102, 102, 6, 89, 64};
+
+        byte[] I8Default = {1, -2, 3};
+        byte[] I16Default = {1, 0, -2, -1, 3, 0};
+        byte[] I32Default = {1, 0, 0, 0, -2, -1, -1, -1, 3, 0, 0, 0};
+        byte[] I64Default = {1, 0, 0, 0, 0, 0, 0, 0, -2, -1, -1, -1, -1, -1, -1, -1, 3, 0, 0, 0, 0,
+            0, 0, 0};
+        byte[] F32Default = {-51, -52, -116, 63, 102, 102, 6, -64, 0, 0, 64, 64};
+        byte[] F64Default = {-102, -103, -103, -103, -103, -103, -15, 63, -51, -52, -52, -52, -52,
+            -52, 0, -64, 0, 0, 0, 0, 0, 0, 8, 64};
+
+        assertEquals(ByteBuffer.wrap(I8), after.get("I8Column"));
+        assertEquals(ByteBuffer.wrap(I16), after.get("I16Column"));
+        assertEquals(ByteBuffer.wrap(I32), after.get("I32Column"));
+        assertEquals(ByteBuffer.wrap(I64), after.get("I64Column"));
+        assertEquals(ByteBuffer.wrap(F32), after.get("F32Column"));
+        assertEquals(ByteBuffer.wrap(F64), after.get("F64Column"));
+        assertEquals(ByteBuffer.wrap(I8Default),
+            afterSchema.field("I8Column").schema().defaultValue());
+        assertEquals(ByteBuffer.wrap(I16Default),
+            afterSchema.field("I16Column").schema().defaultValue());
+        assertEquals(ByteBuffer.wrap(I32Default),
+            afterSchema.field("I32Column").schema().defaultValue());
+        assertEquals(ByteBuffer.wrap(I64Default),
+            afterSchema.field("I64Column").schema().defaultValue());
+        assertEquals(ByteBuffer.wrap(F32Default),
+            afterSchema.field("F32Column").schema().defaultValue());
+        assertEquals(ByteBuffer.wrap(F64Default),
+            afterSchema.field("F64Column").schema().defaultValue());
+      } finally {
+        stopConnector();
+      }
+    }
+  }
+
+  @Test
+  public void vectorArray() throws SQLException, InterruptedException {
+    try (SingleStoreConnection conn = new SingleStoreConnection(
+        defaultJdbcConnectionConfigWithTable("allTypesTable"))) {
+      try {
+        conn.execute("DROP TABLE IF EXISTS vectorArray");
+        conn.execute("CREATE TABLE vectorArray("
+            + "I8Column VECTOR(3, I8) DEFAULT '[1, -2, 3]', "
+            + "I16Column VECTOR(3, I16) DEFAULT '[1, -2, 3]', "
+            + "I32Column VECTOR(3, I32) DEFAULT '[1, -2, 3]', "
+            + "I64Column VECTOR(3, I64) DEFAULT '[1, -2, 3]', "
+            + "F32Column VECTOR(3, F32) DEFAULT '[1.1, -2.1, 3]', "
+            + "F64Column VECTOR(3, F64) DEFAULT '[1.1, -2.1, 3]'"
+            + ")");
+
+        Configuration config = defaultJdbcConfigWithTable("vectorArray")
+            .edit()
+            .withDefault("vector.handling.mode", "array")
+            .build();
+
+        start(SingleStoreConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+
+        conn.execute("INSERT INTO `vectorArray` VALUES (" +
+            "'[1, 10, 100]', " +
+            "'[1, 10, 100]', " +
+            "'[1, 10, 100]', " +
+            "'[1, 10, 100]', " +
+            "'[1.1, 10.1, 100.1]', " +
+            "'[1.1, 10.1, 100.1]'" +
+            ")"
+        );
+
+        List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+        assertEquals(1, records.size());
+
+        SourceRecord record = records.get(0);
+        Schema valueSchema = record.valueSchema();
+        Schema afterSchema = valueSchema.schema().field("after").schema();
+
+        Struct value = (Struct) record.value();
+        Struct after = (Struct) value.get("after");
+        Struct source = (Struct) value.get("source");
+
+        assertEquals(true, record.sourceOffset().get("snapshot_completed"));
+        assertEquals("false", source.get("snapshot"));
+
+        List<Byte> I8 = Arrays.asList((byte) 1, (byte) 10, (byte) 100);
+        List<Short> I16 = Arrays.asList((short) 1, (short) 10, (short) 100);
+        List<Integer> I32 = Arrays.asList(1, 10, 100);
+        List<Long> I64 = Arrays.asList(1L, 10L, 100L);
+        List<Float> F32 = Arrays.asList(1.1f, 10.1f, 100.1f);
+        List<Double> F64 = Arrays.asList(1.1, 10.1, 100.1);
+
+        List<Byte> I8Default = Arrays.asList((byte) 1, (byte) -2, (byte) 3);
+        List<Short> I16Default = Arrays.asList((short) 1, (short) -2, (short) 3);
+        List<Integer> I32Default = Arrays.asList(1, -2, 3);
+        List<Long> I64Default = Arrays.asList(1L, -2L, 3L);
+        List<Float> F32Default = Arrays.asList(1.1f, -2.1f, 3f);
+        List<Double> F64Default = Arrays.asList(1.1, -2.1, 3.);
+
+        assertEquals(I8, after.get("I8Column"));
+        assertEquals(I16, after.get("I16Column"));
+        assertEquals(I32, after.get("I32Column"));
+        assertEquals(I64, after.get("I64Column"));
+        assertEquals(F32, after.get("F32Column"));
+        assertEquals(F64, after.get("F64Column"));
+        assertEquals(I8Default, afterSchema.field("I8Column").schema().defaultValue());
+        assertEquals(I16Default, afterSchema.field("I16Column").schema().defaultValue());
+        assertEquals(I32Default, afterSchema.field("I32Column").schema().defaultValue());
+        assertEquals(I64Default, afterSchema.field("I64Column").schema().defaultValue());
+        assertEquals(F32Default, afterSchema.field("F32Column").schema().defaultValue());
+        assertEquals(F64Default, afterSchema.field("F64Column").schema().defaultValue());
       } finally {
         stopConnector();
       }

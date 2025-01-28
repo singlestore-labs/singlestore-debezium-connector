@@ -6,6 +6,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.singlestore.debezium.SingleStoreValueConverters.GeographyMode;
+import com.singlestore.debezium.SingleStoreValueConverters.VectorMode;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -18,6 +19,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.Assert;
@@ -29,7 +31,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
 
   private static final SingleStoreValueConverters CONVERTERS = new SingleStoreValueConverters(
       JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.ADAPTIVE,
-      CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY);
+      CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY, VectorMode.STRING);
 
   private static void testColumn(SingleStoreDefaultValueConverter defaultValueConverter,
       Table table, String name, Object expectedValue) {
@@ -41,6 +43,95 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
   }
 
   @Test
+  public void testVectorValuesString() {
+    try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
+      Tables tables = new Tables();
+      conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
+      Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
+      assertThat(table).isNotNull();
+
+      SingleStoreValueConverters converters = new SingleStoreValueConverters(
+          JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.ADAPTIVE,
+          CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY,
+          VectorMode.STRING);
+      SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
+          converters, VectorMode.STRING);
+      testColumn(defaultValueConverter, table, "vectorI8Column", "[2, 10, 100]");
+      testColumn(defaultValueConverter, table, "vectorI16Column", "[2, 10, 100]");
+      testColumn(defaultValueConverter, table, "vectorI32Column", "[2, 10, 100]");
+      testColumn(defaultValueConverter, table, "vectorI64Column", "[2, 10, 100]");
+      testColumn(defaultValueConverter, table, "vectorF32Column", "[2.1, 10.1, 100.1]");
+      testColumn(defaultValueConverter, table, "vectorF64Column", "[2.1, 10.1, 100.1]");
+    } catch (SQLException e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testVectorValuesBytes() {
+    try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
+      Tables tables = new Tables();
+      conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
+      Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
+      assertThat(table).isNotNull();
+
+      SingleStoreValueConverters converters = new SingleStoreValueConverters(
+          JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.ADAPTIVE,
+          CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY,
+          VectorMode.BINARY);
+      SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
+          converters, VectorMode.BINARY);
+      testColumn(defaultValueConverter, table, "vectorI8Column",
+          ByteBuffer.wrap(new byte[]{2, 10, 100}));
+      testColumn(defaultValueConverter, table, "vectorI16Column",
+          ByteBuffer.wrap(new byte[]{2, 0, 10, 0, 100, 0}));
+      testColumn(defaultValueConverter, table, "vectorI32Column",
+          ByteBuffer.wrap(new byte[]{2, 0, 0, 0, 10, 0, 0, 0, 100, 0, 0, 0}));
+      testColumn(defaultValueConverter, table, "vectorI64Column", ByteBuffer.wrap(
+          new byte[]{2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0}));
+      testColumn(defaultValueConverter, table, "vectorF32Column",
+          ByteBuffer.wrap(new byte[]{102, 102, 6, 64, -102, -103, 33, 65, 51, 51, -56, 66}));
+      testColumn(defaultValueConverter, table, "vectorF64Column",
+          ByteBuffer.wrap(
+              new byte[]{-51, -52, -52, -52, -52, -52, 0, 64, 51, 51, 51, 51, 51,
+                  51, 36, 64, 102, 102, 102, 102, 102, 6, 89, 64}));
+    } catch (SQLException e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testVectorValuesArray() {
+    try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
+      Tables tables = new Tables();
+      conn.readSchema(tables, TEST_DATABASE, null, null, null, true);
+      Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
+      assertThat(table).isNotNull();
+
+      SingleStoreValueConverters converters = new SingleStoreValueConverters(
+          JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.ADAPTIVE,
+          CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.GEOMETRY,
+          VectorMode.ARRAY);
+      SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
+          converters, VectorMode.ARRAY);
+      testColumn(defaultValueConverter, table, "vectorI8Column",
+          List.of((byte) 2, (byte) 10, (byte) 100));
+      testColumn(defaultValueConverter, table, "vectorI16Column",
+          List.of((short) 2, (short) 10, (short) 100));
+      testColumn(defaultValueConverter, table, "vectorI32Column",
+          List.of(2, 10, 100));
+      testColumn(defaultValueConverter, table, "vectorI64Column",
+          List.of((long) 2, (long) 10, (long) 100));
+      testColumn(defaultValueConverter, table, "vectorF32Column",
+          List.of((float) 2.1, (float) 10.1, (float) 100.1));
+      testColumn(defaultValueConverter, table, "vectorF64Column",
+          List.of(2.1, 10.1, 100.1));
+    } catch (SQLException e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testNumberValues() {
     try (SingleStoreConnection conn = new SingleStoreConnection(defaultJdbcConnectionConfig())) {
       Tables tables = new Tables();
@@ -48,7 +139,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
       Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
       assertThat(table).isNotNull();
       SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
-          CONVERTERS);
+          CONVERTERS, VectorMode.STRING);
       testColumn(defaultValueConverter, table, "tinyintColumn", (short) 124);
       testColumn(defaultValueConverter, table, "smallintColumn", (short) 32767);
       testColumn(defaultValueConverter, table, "mediumintColumn", 8388607);
@@ -71,7 +162,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
       Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
       assertThat(table).isNotNull();
       SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
-          CONVERTERS);
+          CONVERTERS, VectorMode.STRING);
       testColumn(defaultValueConverter, table, "dateColumn",
           (int) LocalDate.of(2000, 10, 10).atStartOfDay(ZoneId.of("UTC")).toEpochSecond() / 60 / 60
               / 24);//epoch days
@@ -106,7 +197,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
       Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
       assertThat(table).isNotNull();
       SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
-          CONVERTERS);
+          CONVERTERS, VectorMode.STRING);
       Column geographyColumn = table.columnWithName("geographyColumn");
       Optional<Object> geographyDefaultValue = defaultValueConverter.parseDefaultValue(
           geographyColumn, geographyColumn.defaultValueExpression().orElse(null));
@@ -142,9 +233,9 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
 
       SingleStoreValueConverters converters = new SingleStoreValueConverters(
           JdbcValueConverters.DecimalMode.DOUBLE, TemporalPrecisionMode.CONNECT,
-          CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.STRING);
+          CommonConnectorConfig.BinaryHandlingMode.BYTES, GeographyMode.STRING, VectorMode.STRING);
       SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
-          converters);
+          converters, VectorMode.STRING);
 
       Column geographyColumn = table.columnWithName("geographyColumn");
       Optional<Object> geographyDefaultValue = defaultValueConverter.parseDefaultValue(
@@ -172,7 +263,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
       Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
       assertThat(table).isNotNull();
       SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
-          CONVERTERS);
+          CONVERTERS, VectorMode.STRING);
       testColumn(defaultValueConverter, table, "jsonColumn", "{}");
       testColumn(defaultValueConverter, table, "enum_f", "val1");
       testColumn(defaultValueConverter, table, "set_f", "v1");
@@ -196,7 +287,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
       Table table = tables.forTable(TEST_DATABASE, null, "allTypesTable");
       assertThat(table).isNotNull();
       SingleStoreDefaultValueConverter defaultValueConverter = new SingleStoreDefaultValueConverter(
-          CONVERTERS);
+          CONVERTERS, VectorMode.STRING);
       testColumn(defaultValueConverter, table, "blobColumn", ByteBuffer.wrap("abc".getBytes()));
       testColumn(defaultValueConverter, table, "longblobColumn", ByteBuffer.wrap("abc".getBytes()));
       testColumn(defaultValueConverter, table, "mediumblobColumn",
