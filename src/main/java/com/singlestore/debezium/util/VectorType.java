@@ -23,7 +23,7 @@ public class VectorType {
 
     this.length = Integer.parseInt(matcher.group(1));
 
-    String elementTypeStr = matcher.group(1);
+    String elementTypeStr = matcher.group(2);
     // Find corresponding enum value
     for (ElementType option : ElementType.values()) {
       if (option.value.equalsIgnoreCase(elementTypeStr)) {
