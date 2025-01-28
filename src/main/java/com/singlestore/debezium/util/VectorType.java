@@ -1,11 +1,13 @@
 package com.singlestore.debezium.util;
 
+import com.singlestore.jdbc.client.DataType;
 import java.util.Arrays;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 public class VectorType {
 
+  private final Integer length;
   private final Integer lengthInBytes;
   private final SchemaBuilder schema;
   private ElementType elementType;
@@ -46,7 +48,8 @@ public class VectorType {
     }
 
     this.schema = SchemaBuilder.array(this.elementType.schema);
-    this.lengthInBytes = this.elementType.lengthInBytes * Integer.parseInt(parts[0]);
+    this.length = Integer.parseInt(parts[0]);
+    this.lengthInBytes = this.elementType.lengthInBytes * this.length;
   }
 
   public SchemaBuilder getSchema() {
@@ -61,22 +64,33 @@ public class VectorType {
     return lengthInBytes;
   }
 
+  public Integer getLength() {
+    return length;
+  }
+
+  public DataType getJDBCDataType() {
+    return this.elementType.jdbcType;
+  }
+
   public enum ElementType {
-    INT8("I8", SchemaBuilder.INT8_SCHEMA, 1),
-    INT16("I16", SchemaBuilder.INT16_SCHEMA, 2),
-    INT32("I32", SchemaBuilder.INT32_SCHEMA, 4),
-    INT64("I64", SchemaBuilder.INT64_SCHEMA, 8),
-    FLOAT32("F32", SchemaBuilder.FLOAT32_SCHEMA, 4),
-    FLOAT64("F64", SchemaBuilder.FLOAT64_SCHEMA, 8);
+    INT8("I8", SchemaBuilder.INT8_SCHEMA, 1, DataType.INT8_VECTOR),
+    INT16("I16", SchemaBuilder.INT16_SCHEMA, 2, DataType.INT16_VECTOR),
+    INT32("I32", SchemaBuilder.INT32_SCHEMA, 4, DataType.INT32_VECTOR),
+    INT64("I64", SchemaBuilder.INT64_SCHEMA, 8, DataType.INT64_VECTOR),
+    FLOAT32("F32", SchemaBuilder.FLOAT32_SCHEMA, 4, DataType.FLOAT32_VECTOR),
+    FLOAT64("F64", SchemaBuilder.FLOAT64_SCHEMA, 8, DataType.FLOAT64_VECTOR);
 
     private final String value;
     private final Schema schema;
     private final Integer lengthInBytes;
 
-    ElementType(String value, Schema schema, Integer lengthInBytes) {
+    private final DataType jdbcType;
+
+    ElementType(String value, Schema schema, Integer lengthInBytes, DataType jdbcType) {
       this.value = value;
       this.schema = schema;
       this.lengthInBytes = lengthInBytes;
+      this.jdbcType = jdbcType;
     }
 
     public Integer getLengthInBytes() {

@@ -25,7 +25,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoField;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
@@ -379,9 +378,45 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
     }
   }
 
+  private List<Object> vectorToList(Vector v, ElementType t) {
+    switch (t) {
+      case INT8:
+        byte[] byteArray = v.toByteArray();
+        return IntStream.range(0, byteArray.length)
+            .mapToObj(i -> byteArray[i]) // Convert to Byte
+            .collect(Collectors.toList());
+      case INT16:
+        short[] shortArray = v.toShortArray();
+        return IntStream.range(0, shortArray.length)
+            .mapToObj(i -> shortArray[i]) // Convert to Short
+            .collect(Collectors.toList());
+      case INT32:
+        int[] intArray = v.toIntArray();
+        return IntStream.of(intArray)
+            .boxed()
+            .collect(Collectors.toList());
+      case INT64:
+        long[] longArray = v.toLongArray();
+        return LongStream.of(longArray)
+            .boxed()
+            .collect(Collectors.toList());
+      case FLOAT32:
+        float[] floatArray = v.toFloatArray();
+        return IntStream.range(0, floatArray.length)
+            .mapToObj(i -> floatArray[i]) // Convert to Float
+            .collect(Collectors.toList());
+      case FLOAT64:
+        double[] doubleArray = v.toDoubleArray();
+        return DoubleStream.of(doubleArray).boxed()
+            .collect(Collectors.toList());
+      default:
+        throw new IllegalArgumentException(
+            String.format("Unknown vector element type: %s", t));
+    }
+  }
+
   /**
-   * TODO: fix
-   * Converts SingleStoreBlob to array.
+   * Converts SingleStore VECTOR.
    *
    * @param column    the column definition describing the {@code data} value; never null
    * @param fieldDefn the field definition; never null
@@ -403,49 +438,41 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
           case STRING:
             r.deliver(dataString);
             break;
-          case BINARY:
-            // delete [] brackets (the first and the last symbol)
-            // "[1, 2, 3]" -> "1, 2, 3"
-            dataString = dataString.substring(1, dataString.length() - 1);
-
-            // split string into separate elements and trim each of them
-            // "1, 2, 3" -> ["1", "2", "3"]
-            List<String> values = Arrays.stream(dataString.split(","))
-                .map(String::trim)
-                .collect(Collectors.toList());
-
+          case BINARY: {
             VectorType vectorType = new VectorType(column.typeName());
-            ByteBuffer resBuffer = ByteBuffer.allocate(vectorType.getLengthInBytes());
+            Vector vector = Vector.fromData(dataString.getBytes(), vectorType.getLength(),
+                vectorType.getJDBCDataType(), false);
             ElementType type = vectorType.getElementType();
+            List<Object> elements = vectorToList(vector, type);
+
+            ByteBuffer resBuffer = ByteBuffer.allocate(vectorType.getLengthInBytes());
             switch (type) {
               case INT8:
-                values.stream()
-                    .map(Byte::parseByte)
-                    .forEach(resBuffer::put);
+                resBuffer.put(vector.toByteArray());
                 break;
               case INT16:
-                values.stream()
-                    .map(Short::parseShort)
+                elements.stream()
+                    .map(e -> (Short) e)
                     .forEach(resBuffer::putShort);
                 break;
               case INT32:
-                values.stream()
-                    .map(Integer::parseInt)
+                elements.stream()
+                    .map(e -> (Integer) e)
                     .forEach(resBuffer::putInt);
                 break;
               case INT64:
-                values.stream()
-                    .map(Long::parseLong)
+                elements.stream()
+                    .map(e -> (Long) e)
                     .forEach(resBuffer::putLong);
                 break;
               case FLOAT32:
-                values.stream()
-                    .map(Float::parseFloat)
+                elements.stream()
+                    .map(e -> (Float) e)
                     .forEach(resBuffer::putFloat);
                 break;
               case FLOAT64:
-                values.stream()
-                    .map(Double::parseDouble)
+                elements.stream()
+                    .map(e -> (Double) e)
                     .forEach(resBuffer::putDouble);
                 break;
               default:
@@ -458,53 +485,15 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
 
             r.deliver(super.convertBinary(column, fieldDefn, res, super.binaryMode));
             break;
-          case ARRAY:
-            // delete [] brackets (the first and the last symbol)
-            // "[1, 2, 3]" -> "1, 2, 3"
-            dataString = dataString.substring(1, dataString.length() - 1);
-
-            // split string into separate elements and trim each of them
-            // "1, 2, 3" -> ["1", "2", "3"]
-            List<String> elements = Arrays.stream(dataString.split(","))
-                .map(String::trim)
-                .collect(Collectors.toList());
-
-            ElementType elementType = new VectorType(column.typeExpression()).getElementType();
-            switch (elementType) {
-              case INT8:
-                r.deliver(elements.stream()
-                    .map(Byte::parseByte)
-                    .collect(Collectors.toList()));
-                return;
-              case INT16:
-                r.deliver(elements.stream()
-                    .map(Short::parseShort)
-                    .collect(Collectors.toList()));
-                return;
-              case INT32:
-                r.deliver(elements.stream()
-                    .map(Integer::parseInt)
-                    .collect(Collectors.toList()));
-                return;
-              case INT64:
-                r.deliver(elements.stream()
-                    .map(Long::parseLong)
-                    .collect(Collectors.toList()));
-                return;
-              case FLOAT32:
-                r.deliver(elements.stream()
-                    .map(Float::parseFloat)
-                    .collect(Collectors.toList()));
-                return;
-              case FLOAT64:
-                r.deliver(elements.stream()
-                    .map(Double::parseDouble)
-                    .collect(Collectors.toList()));
-                return;
-              default:
-                throw new IllegalArgumentException(
-                    String.format("Unknown vector element type: %s", elementType));
-            }
+          }
+          case ARRAY: {
+            VectorType vectorType = new VectorType(column.typeName());
+            Vector vector = Vector.fromData(dataString.getBytes(), vectorType.getLength(),
+                vectorType.getJDBCDataType(), false);
+            ElementType type = vectorType.getElementType();
+            r.deliver(vectorToList(vector, type));
+            break;
+          }
           default:
             throw new IllegalArgumentException(
                 String.format("Unknown vector mode: %s", vectorMode));
@@ -519,43 +508,7 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
         Vector v = (Vector) data;
         switch (vectorMode) {
           case ARRAY:
-            switch (new VectorType(column.typeExpression()).getElementType()) {
-              case INT8:
-                byte[] byteArray = v.toByteArray();
-                r.deliver(IntStream.range(0, byteArray.length)
-                    .mapToObj(i -> byteArray[i]) // Convert to Byte
-                    .collect(Collectors.toList()));
-                return;
-              case INT16:
-                short[] shortArray = v.toShortArray();
-                r.deliver(IntStream.range(0, shortArray.length)
-                    .mapToObj(i -> shortArray[i]) // Convert to Short
-                    .collect(Collectors.toList()));
-                return;
-              case INT32:
-                int[] intArray = v.toIntArray();
-                r.deliver(IntStream.of(intArray)
-                    .boxed()
-                    .collect(Collectors.toList()));
-                return;
-              case INT64:
-                long[] longArray = v.toLongArray();
-                r.deliver(LongStream.of(longArray)
-                    .boxed()
-                    .collect(Collectors.toList()));
-                return;
-              case FLOAT32:
-                float[] floatArray = v.toFloatArray();
-                r.deliver(IntStream.range(0, floatArray.length)
-                    .mapToObj(i -> floatArray[i]) // Convert to Float
-                    .collect(Collectors.toList()));
-                return;
-              case FLOAT64:
-                double[] doubleArray = v.toDoubleArray();
-                r.deliver(DoubleStream.of(doubleArray).boxed()
-                    .collect(Collectors.toList()));
-                return;
-            }
+            r.deliver(vectorToList(v, new VectorType(column.typeExpression()).getElementType()));
           case BINARY:
             // If vector.mode is BINARY then data should be byte[].
             // This is because we retrieve it using rs.getBytes instead of rs.getObject.
