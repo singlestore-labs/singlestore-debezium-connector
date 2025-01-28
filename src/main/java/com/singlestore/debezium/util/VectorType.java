@@ -1,41 +1,29 @@
 package com.singlestore.debezium.util;
 
 import com.singlestore.jdbc.client.DataType;
-import java.util.Arrays;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 public class VectorType {
 
+  private static final Pattern pattern = Pattern.compile(
+      "VECTOR\\\\((\\\\d+),\\\\s*(I8|I16|I32|I64|F32|F64)\\\\)");
   private final Integer length;
   private final Integer lengthInBytes;
   private final SchemaBuilder schema;
   private ElementType elementType;
 
   public VectorType(String value) {
-    if (value == null) {
-      throw new IllegalArgumentException("Type name is null");
-    }
-
-    if (value.length() < 13) {
-      throw new IllegalArgumentException(
-          String.format("Too short type name for VECTOR: %s", value));
-    }
-
-    // Skip "VECTOR(" and ")"
-    // "VECTOR(3, I8)" -> "3, I8"
-    value = value.substring(7, value.length() - 1);
-
-    // Split into length and element type and trim
-    // "3, I8" -> ["3", "I8"]
-    String[] parts = Arrays.stream(value.split(","))
-        .map(String::trim)
-        .toArray(String[]::new);
-    if (parts.length != 2) {
+    Matcher matcher = pattern.matcher(value);
+    if (!matcher.matches()) {
       throw new IllegalArgumentException(String.format("Invalid VECTOR type: %s", value));
     }
 
-    String elementTypeStr = parts[1];
+    this.length = Integer.parseInt(matcher.group(1));
+
+    String elementTypeStr = matcher.group(1);
     // Find corresponding enum value
     for (ElementType option : ElementType.values()) {
       if (option.value.equalsIgnoreCase(elementTypeStr)) {
@@ -48,7 +36,6 @@ public class VectorType {
     }
 
     this.schema = SchemaBuilder.array(this.elementType.schema);
-    this.length = Integer.parseInt(parts[0]);
     this.lengthInBytes = this.elementType.lengthInBytes * this.length;
   }
 
