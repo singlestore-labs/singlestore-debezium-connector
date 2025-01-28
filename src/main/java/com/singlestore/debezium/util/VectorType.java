@@ -9,7 +9,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 public class VectorType {
 
   private static final Pattern pattern = Pattern.compile(
-      "VECTOR\\\\((\\\\d+),\\\\s*(I8|I16|I32|I64|F32|F64)\\\\)");
+      "VECTOR\\((\\d+),\\s*(I8|I16|I32|I64|F32|F64)\\)");
   private final Integer length;
   private final Integer lengthInBytes;
   private final SchemaBuilder schema;
