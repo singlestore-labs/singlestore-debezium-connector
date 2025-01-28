@@ -509,6 +509,7 @@ public class SingleStoreValueConverters extends JdbcValueConverters {
         switch (vectorMode) {
           case ARRAY:
             r.deliver(vectorToList(v, new VectorType(column.typeExpression()).getElementType()));
+            return;
           case BINARY:
             // If vector.mode is BINARY then data should be byte[].
             // This is because we retrieve it using rs.getBytes instead of rs.getObject.
