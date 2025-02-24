@@ -293,8 +293,7 @@ public class SingleStoreDefaultValueConverterIT extends IntegrationTestBase {
       testColumn(defaultValueConverter, table, "mediumblobColumn",
           ByteBuffer.wrap("abc".getBytes()));
       testColumn(defaultValueConverter, table, "tinyblobColumn", ByteBuffer.wrap("abc".getBytes()));
-      // TODO: DB-78614 - default values for BSON columns omit trailing zeros
-      byte[] bsonColumnData = {5};
+      byte[] bsonColumnData = {5, 0, 0, 0, 0};
       testColumn(defaultValueConverter, table, "bsonColumn", ByteBuffer.wrap(bsonColumnData));
     } catch (SQLException e) {
       Assert.fail(e.getMessage());
