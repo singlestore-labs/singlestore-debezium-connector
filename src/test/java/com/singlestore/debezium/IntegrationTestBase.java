@@ -27,53 +27,26 @@ import org.testcontainers.containers.wait.strategy.Wait;
 
 abstract class IntegrationTestBase extends AbstractConnectorTest {
 
-  static final String TEST_SERVER = System.getProperty("singlestore.hostname", "localhost");
+  static final String TEST_SERVER = System.getenv()
+      .getOrDefault("SINGLESTORE_HOSTNAME", "127.0.0.1");
   static final String TEST_DATABASE = "db";
   static final String TEST_TOPIC_PREFIX = "singlestore_topic";
-  private static final String TEST_SERVER_VERSION = System.getProperty("singlestore.version", "");
-  private static final String TEST_USER = System.getProperty("singlestore.user", "root");
-  private static final String TEST_PASSWORD = System.getProperty("singlestore.password", "");
-  private static final Logger LOGGER = LoggerFactory.getLogger(IntegrationTestBase.class);
-  private static final String TEST_IMAGE = System.getProperty("singlestore.image",
-      "ghcr.io/singlestore-labs/singlestoredb-dev:latest");
-  private static final String SINGLESTORE_LICENSE = System.getenv("SINGLESTORE_LICENSE");
-  static Integer TEST_PORT = Integer.parseInt(System.getProperty("singlestore.port", "3306"));
-  private static GenericContainer<?> SINGLESTORE_SERVER;
+  private static final String TEST_USER = System.getenv().getOrDefault("SINGLESTORE_USER", "root1");
+  private static final String TEST_PASSWORD = System.getenv()
+      .getOrDefault("SINGLESTORE_PASSWORD", "password");
+  static Integer TEST_PORT = Integer.parseInt(
+      System.getenv().getOrDefault("SINGLESTORE_PORT", "3306"));
 
   @BeforeClass
   public static void init() throws Exception {
     try (SingleStoreConnection conn = create()) {
       conn.connect();
-    } catch (SQLException e) {
-      LOGGER.error(e.getSQLState(), e);
-      // Failed to connect
-      // Assume that docker container is not running and start it
-      LOGGER.info("Starting test container: {}, version: {}", TEST_IMAGE, TEST_SERVER_VERSION);
-      assert SINGLESTORE_LICENSE != null;
-      SINGLESTORE_SERVER = new GenericContainer<>(TEST_IMAGE)
-          .waitingFor(Wait.forLogMessage(".*Log Opened.*", 1))
-          .withExposedPorts(TEST_PORT)
-          .withStartupTimeout(Duration.of(10, ChronoUnit.MINUTES))
-          .withEnv(Map.of(
-              "SINGLESTORE_LICENSE", SINGLESTORE_LICENSE,
-              "ROOT_PASSWORD", TEST_PASSWORD,
-              "SINGLESTORE_VERSION", TEST_SERVER_VERSION));
-
-      SINGLESTORE_SERVER.start();
-      TEST_PORT = SINGLESTORE_SERVER.getFirstMappedPort();
     }
 
     // Create database if it doesn't exist
     executeDDL("create_database.ddl");
     executeDDL("create_tables.ddl");
     execute("SET GLOBAL enable_observe_queries=1");
-  }
-
-  @AfterClass
-  public static void deinit() throws Exception {
-    if (SINGLESTORE_SERVER != null) {
-      SINGLESTORE_SERVER.close();
-    }
   }
 
   /**

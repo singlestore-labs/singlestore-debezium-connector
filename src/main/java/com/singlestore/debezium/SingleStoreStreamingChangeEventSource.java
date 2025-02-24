@@ -143,12 +143,7 @@ public class SingleStoreStreamingChangeEventSource implements
           error.getErrorCode() == 1317 &&
           error.getSQLState().equals("70100"))) {
         String msg;
-        if (error.getMessage().contains(
-            "The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
-            &&
-            error.getErrorCode() == 2851 &&
-            error.getSQLState().equals("HY000")
-        ) {
+        if (StaleOffsetException.isStaleOffsetException(error)) {
           msg = "Offset the connector is trying to resume from is considered stale.\n"
               + "Therefore, the connector cannot resume streaming.\n"
               + "You can use either of the following options to recover from the failure:\n"
