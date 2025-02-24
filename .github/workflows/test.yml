@@ -63,6 +63,7 @@ jobs:
         uses: scacap/action-surefire-report@v1.7.3
         with:
           report_paths: '**/**-reports/TEST-*.xml'
+          check_name: 'Test Report ${{ matrix.singlestore_version }}'
 
       # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
       - name: Update dependency graph
