@@ -7,83 +7,14 @@
   <build>
     <plugins>
       <plugin>
-        <artifactId>docker-maven-plugin</artifactId>
-        <configuration>
-          <images>
-            <image>
-              <!-- A Docker image with SingleStoreDB cluster -->
-              <name>${singlestore.image}</name>
-              <run>
-                <env>
-                  <ROOT_PASSWORD>${singlestore.password}</ROOT_PASSWORD>
-                  <SINGLESTORE_LICENSE>${singlestore.license}</SINGLESTORE_LICENSE>
-                  <SINGLESTORE_VERSION>${singlestore.version}</SINGLESTORE_VERSION>
-                </env>
-                <namingStrategy>none</namingStrategy>
-                <ports>
-                  <port>${singlestore.port}:3306</port>
-                </ports>
-                <!-- Uncomment this to see database logs in the test output
-                <log>
-                    <prefix>SingleStoreDB &gt;&gt;&gt; </prefix>
-                    <enabled>true</enabled>
-                    <color>yellow</color>
-                </log>
-                -->
-                <wait>
-                  <log>Log Opened</log> <!-- 300 seconds max -->
-                  <time>300000</time>
-                </wait>
-              </run>
-            </image>
-          </images>
-          <logDate>default</logDate>
-          <verbose>true</verbose>
-          <watchInterval>500</watchInterval>
-        </configuration>
-        <executions>
-          <execution>
-            <goals>
-              <goal>build</goal>
-              <goal>start</goal>
-            </goals>
-            <id>start</id>
-            <phase>pre-integration-test</phase>
-          </execution>
-          <execution>
-            <goals>
-              <goal>stop</goal>
-            </goals>
-            <id>stop</id>
-            <phase>post-integration-test</phase>
-          </execution>
-        </executions>
-        <!--
-        Connect this plugin to the maven lifecycle around the integration-test phase:
-        start the container in pre-integration-test and stop it in post-integration-test.
-        -->
-        <groupId>io.fabric8</groupId>
-      </plugin>
-      <!--
-      Unlike surefire, the failsafe plugin ensures 'post-integration-test' phase always runs, even
-      when there are failed integration tests. We rely upon this to always shut down the Docker container
-      after the integration tests (defined as '*IT.java') are run.
-      -->
-      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
+        <version>3.5.2</version>
         <configuration>
           <enableAssertions>true</enableAssertions>
           <includes>
             <include>**/*</include>
           </includes>
-          <systemPropertyVariables>
-            <!-- Make these available to the tests via system properties -->
-            <singlestore.hostname>${singlestore.host}</singlestore.hostname>
-            <singlestore.password>${singlestore.password}</singlestore.password>
-            <singlestore.port>${singlestore.port}</singlestore.port>
-            <singlestore.user>${singlestore.user}</singlestore.user>
-            <singlestore.version>${singlestore.version}</singlestore.version>
-          </systemPropertyVariables>
         </configuration>
         <executions>
           <execution>
@@ -99,7 +30,6 @@
             <id>verify</id>
           </execution>
         </executions>
-        <groupId>org.apache.maven.plugins</groupId>
       </plugin>
       <plugin>
         <artifactId>maven-gpg-plugin</artifactId>

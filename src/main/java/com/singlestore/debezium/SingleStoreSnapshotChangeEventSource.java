@@ -254,12 +254,7 @@ public class SingleStoreSnapshotChangeEventSource extends
       snapshotProgressListener.dataCollectionSnapshotCompleted(partition, table.id(), rows);
     } catch (SQLException e) {
       SQLException error = e;
-      if (error.getMessage().contains(
-          "The requested Offset is too stale. Please re-start the OBSERVE query from the latest snapshot.")
-          &&
-          error.getErrorCode() == 2851 &&
-          error.getSQLState().equals("HY000")
-      ) {
+      if (StaleOffsetException.isStaleOffsetException(error)) {
         error = new StaleOffsetException(error);
       }
 
