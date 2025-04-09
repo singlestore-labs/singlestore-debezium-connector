@@ -15,10 +15,24 @@ on:
     branches: [ "main" ]
 
 jobs:
+  fetch-s2-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.get_versions.outputs.versions }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Get supported versions of Singlestore
+        id: get_versions
+        uses: singlestore-labs/singlestore-supported-versions@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+
   test:
+    needs: fetch-s2-versions
     strategy:
       matrix:
-        singlestore_version: [ 8.7, 8.9 ]
+        singlestore_version: ${{ fromJson(needs.fetch-s2-versions.outputs.versions) }}
 
     runs-on: ubuntu-latest
 
