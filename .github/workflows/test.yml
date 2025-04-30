@@ -9,10 +9,10 @@
 name: Test
 
 on:
-  push:
-    branches: [ "main", "resumeSnapshot" ]
   pull_request:
-    branches: [ "main" ]
+    types: [ opened, synchronize, reopened ]
+  schedule:
+    - cron: "0 0 * * 0"
 
 jobs:
   fetch-s2-versions:
