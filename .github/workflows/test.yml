@@ -20,25 +20,17 @@ jobs:
     outputs:
       versions: ${{ steps.get_versions.outputs.versions }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
       - name: Get supported versions of Singlestore
         id: get_versions
         uses: singlestore-labs/singlestore-supported-versions@main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
 
   test:
     needs: fetch-s2-versions
+    runs-on: ubuntu-latest
+
     strategy:
       matrix:
         singlestore_version: ${{ fromJson(needs.fetch-s2-versions.outputs.versions) }}
-
-    runs-on: ubuntu-latest
-
-    permissions:
-      checks: write
-      contents: write
 
     services:
       singlestore:
@@ -49,6 +41,10 @@ jobs:
           SINGLESTORE_LICENSE: ${{ secrets.SINGLESTORE_LICENSE }}
           ROOT_PASSWORD: ${{ secrets.SINGLESTORE_PASSWORD }}
           SINGELSTORE_VERSION: ${{ matrix.singlestore_version }}
+
+    permissions:
+      checks: write
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
